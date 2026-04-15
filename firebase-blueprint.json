@@ -99,10 +99,26 @@
         "author": { "type": "string" },
         "isbn": { "type": "string" },
         "category": { "type": "string" },
-        "totalCopies": { "type": "number" },
-        "availableCopies": { "type": "number" }
+        "total": { "type": "number" },
+        "available": { "type": "number" }
       },
-      "required": ["title", "author", "totalCopies"]
+      "required": ["title", "author", "total"]
+    },
+    "LibraryIssue": {
+      "title": "LibraryIssue",
+      "description": "Records of books issued to students.",
+      "type": "object",
+      "properties": {
+        "bookId": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "returnDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["issued", "returned"] }
+      },
+      "required": ["bookId", "studentId", "issueDate", "dueDate", "status"]
     },
     "Payroll": {
       "title": "Payroll",
@@ -157,6 +173,7 @@
     "/exams/{examId}": { "schema": "Exam", "description": "Exam schedules" },
     "/results/{resultId}": { "schema": "Result", "description": "Exam results" },
     "/library_books/{bookId}": { "schema": "LibraryBook", "description": "Library inventory" },
+    "/library_issues/{issueId}": { "schema": "LibraryIssue", "description": "Book issue records" },
     "/payroll/{payrollId}": { "schema": "Payroll", "description": "Staff payroll" },
     "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" }
   }

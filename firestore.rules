@@ -24,7 +24,10 @@ service cloud.firestore {
     // Fields: studentId, studentName, examId, marksObtained, grade, remarks, updatedAt
     //
     // Collection: library_books
-    // Fields: title, author, totalCopies, availableCopies
+    // Fields: title, author, total, available, isbn, category
+    //
+    // Collection: library_issues
+    // Fields: bookId, bookTitle, studentId, studentName, issueDate, dueDate, returnDate, status
     //
     // Collection: payroll
     // Fields: staffId, month, year, netSalary, status
@@ -122,6 +125,11 @@ service cloud.firestore {
 
     match /library_books/{id} {
       allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /library_issues/{id} {
+      allow read: if isAdmin() || isTeacher() || isOwner(resource.data.studentId);
       allow write: if isAdmin();
     }
 
