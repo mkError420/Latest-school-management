@@ -10,7 +10,8 @@ import {
   AlertCircle,
   MoreHorizontal,
   Edit,
-  Trash2
+  Trash2,
+  Download
 } from 'lucide-react';
 import { 
   Table, 
@@ -182,6 +183,36 @@ export default function Fees() {
     }
   };
 
+  const handleExportFees = () => {
+    if (filteredFees.length === 0) {
+      toast.error('No fee records to export');
+      return;
+    }
+
+    const headers = ['Date', 'Student Name', 'Fee Type', 'Amount (৳)', 'Status'];
+    const csvData = filteredFees.map(fee => {
+      return [
+        format(new Date(fee.date), 'yyyy-MM-dd'),
+        fee.studentName,
+        fee.type,
+        fee.amount.toFixed(2),
+        fee.status
+      ].map(field => `"${field}"`).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...csvData].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `fees_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Fee records exported successfully');
+  };
+
   const filteredFees = fees.filter(fee => 
     fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     fee.type.toLowerCase().includes(searchTerm.toLowerCase())
@@ -203,13 +234,23 @@ export default function Fees() {
             <h1 className="text-2xl font-bold text-white">Fee Collection</h1>
             <p className="text-sidebar-foreground">Manage student fees and payment history.</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger render={
-              <Button className="bg-primary hover:bg-primary/90 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Record Payment
-              </Button>
-            } />
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-border text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={handleExportFees}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger render={
+                <Button className="bg-primary hover:bg-primary/90 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Record Payment
+                </Button>
+              } />
             <DialogContent className="bg-card border-border text-foreground">
               <form onSubmit={handleAddFee}>
                 <DialogHeader>
@@ -340,6 +381,7 @@ export default function Fees() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">

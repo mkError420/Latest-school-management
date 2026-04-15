@@ -5,7 +5,8 @@ import {
   XCircle, 
   Clock, 
   Save,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Download
 } from 'lucide-react';
 import { 
   Table, 
@@ -113,6 +114,40 @@ export default function Attendance() {
     }
   };
 
+  const handleExportAttendance = () => {
+    if (students.length === 0) {
+      toast.error('No attendance data to export');
+      return;
+    }
+
+    const selectedCls = classes.find(c => c.id === selectedClass);
+    const className = selectedCls ? `${selectedCls.name}-${selectedCls.section}` : 'Class';
+    const dateStr = format(date, 'yyyy-MM-dd');
+
+    const headers = ['Roll Number', 'Student Name', 'Status', 'Date', 'Class'];
+    const csvData = students.map(student => {
+      return [
+        student.rollNumber,
+        student.name,
+        attendance[student.id] || 'present',
+        dateStr,
+        className
+      ].map(field => `"${field}"`).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...csvData].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `attendance_${className}_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Attendance exported successfully');
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -153,6 +188,16 @@ export default function Attendance() {
                 )}
               </SelectContent>
             </Select>
+
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-border text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={handleExportAttendance}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
 
             <Button onClick={saveAttendance} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white">
               <Save className="w-4 h-4 mr-2" />
