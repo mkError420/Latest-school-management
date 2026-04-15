@@ -221,7 +221,7 @@ export default function Fees() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Amount ($)</label>
+                      <label className="text-sm font-medium text-sidebar-foreground">Amount (৳)</label>
                       <Input 
                         type="number" 
                         required 
@@ -293,17 +293,17 @@ export default function Fees() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">
             <span className="text-sm font-semibold text-emerald-500 mb-5">Total Collected</span>
-            <div className="text-[28px] font-bold text-white mb-1">${stats.totalCollected.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-[28px] font-bold text-white mb-1">৳{stats.totalCollected.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-sidebar-foreground mt-1">This academic year</p>
           </Card>
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">
             <span className="text-sm font-semibold text-amber-500 mb-5">Pending Dues</span>
-            <div className="text-[28px] font-bold text-white mb-1">${stats.pendingDues.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-[28px] font-bold text-white mb-1">৳{stats.pendingDues.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-sidebar-foreground mt-1">From {stats.pendingCount} records</p>
           </Card>
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">
             <span className="text-sm font-semibold text-rose-500 mb-5">Overdue Payments</span>
-            <div className="text-[28px] font-bold text-white mb-1">${stats.overduePayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-[28px] font-bold text-white mb-1">৳{stats.overduePayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-sidebar-foreground mt-1">Requires immediate action ({stats.overdueCount})</p>
           </Card>
         </div>
@@ -337,7 +337,7 @@ export default function Fees() {
                     <TableCell className="text-sidebar-foreground">{format(new Date(fee.date), 'MMM dd, yyyy')}</TableCell>
                     <TableCell className="font-semibold text-white">{fee.studentName}</TableCell>
                     <TableCell className="capitalize text-sidebar-foreground">{fee.type}</TableCell>
-                    <TableCell className="font-medium text-white">${fee.amount.toFixed(2)}</TableCell>
+                    <TableCell className="font-medium text-white">৳{fee.amount.toFixed(2)}</TableCell>
                     <TableCell>
                       <div className={cn(
                         "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
@@ -428,7 +428,7 @@ export default function Fees() {
                   </div>
                   <div className="pt-3 border-t border-border flex justify-between items-center">
                     <span className="text-base font-bold text-white">Total Amount</span>
-                    <span className="text-xl font-bold text-primary">${selectedFee.amount.toFixed(2)}</span>
+                    <span className="text-xl font-bold text-primary">৳{selectedFee.amount.toFixed(2)}</span>
                   </div>
                 </div>
 
