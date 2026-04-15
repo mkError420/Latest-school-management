@@ -7,7 +7,13 @@ import {
   CheckCircle2,
   Clock,
   GraduationCap,
-  FileText
+  FileText,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  ChevronRight,
+  Save,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   Table, 
@@ -19,12 +25,37 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/components/ui/dialog';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuGroup,
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface Exam {
@@ -33,12 +64,58 @@ interface Exam {
   classId: string;
   date: string;
   time: string;
-  type: string;
+  type: 'midterm' | 'final' | 'quiz' | 'monthly';
   status: 'scheduled' | 'completed' | 'ongoing';
+  totalMarks: number;
+}
+
+interface Result {
+  id: string;
+  examId: string;
+  studentId: string;
+  studentName: string;
+  marksObtained: number;
+  grade: string;
+  remarks: string;
+}
+
+interface Student {
+  id: string;
+  name: string;
+  rollNumber: string;
+  classId: string;
+}
+
+interface Class {
+  id: string;
+  name: string;
+  section: string;
 }
 
 export default function Exams() {
   const [exams, setExams] = useState<Exam[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  
+  const [viewMode, setViewMode] = useState<'list' | 'grading'>('list');
+  const [gradingExam, setGradingExam] = useState<Exam | null>(null);
+  const [gradingResults, setGradingResults] = useState<Record<string, { marks: string, remarks: string }>>({});
+
+  const [newExam, setNewExam] = useState({
+    subject: '',
+    classId: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '09:00',
+    type: 'midterm' as const,
+    status: 'scheduled' as const,
+    totalMarks: 100
+  });
 
   useEffect(() => {
     const q = query(collection(db, 'exams'), orderBy('date', 'asc'));
@@ -49,8 +126,264 @@ export default function Exams() {
       })) as Exam[];
       setExams(examData);
     });
-    return () => unsubscribe();
+
+    const classesQuery = query(collection(db, 'classes'), orderBy('name'));
+    const unsubscribeClasses = onSnapshot(classesQuery, (snapshot) => {
+      const classData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Class[];
+      setClasses(classData);
+    });
+
+    const studentsQuery = query(collection(db, 'students'), orderBy('name'));
+    const unsubscribeStudents = onSnapshot(studentsQuery, (snapshot) => {
+      const studentData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Student[];
+      setStudents(studentData);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeClasses();
+      unsubscribeStudents();
+    };
   }, []);
+
+  const handleAddExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'exams'), {
+        ...newExam,
+        totalMarks: Number(newExam.totalMarks),
+        createdAt: new Date().toISOString()
+      });
+      setIsAddDialogOpen(false);
+      setNewExam({ subject: '', classId: '', date: new Date().toISOString().split('T')[0], time: '09:00', type: 'midterm', status: 'scheduled', totalMarks: 100 });
+      toast.success('Exam scheduled successfully');
+    } catch (error) {
+      console.error('Error adding exam:', error);
+      toast.error('Failed to schedule exam');
+    }
+  };
+
+  const handleEditExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedExam) return;
+    try {
+      const examRef = doc(db, 'exams', selectedExam.id);
+      await updateDoc(examRef, {
+        subject: selectedExam.subject,
+        classId: selectedExam.classId,
+        date: selectedExam.date,
+        time: selectedExam.time,
+        type: selectedExam.type,
+        status: selectedExam.status,
+        totalMarks: Number(selectedExam.totalMarks)
+      });
+      setIsEditDialogOpen(false);
+      toast.success('Exam updated successfully');
+    } catch (error) {
+      console.error('Error updating exam:', error);
+      toast.error('Failed to update exam');
+    }
+  };
+
+  const handleDeleteExam = async () => {
+    if (!selectedExam) return;
+    try {
+      await deleteDoc(doc(db, 'exams', selectedExam.id));
+      setIsDeleteDialogOpen(false);
+      setSelectedExam(null);
+      toast.success('Exam deleted successfully');
+    } catch (error) {
+      console.error('Error deleting exam:', error);
+      toast.error('Failed to delete exam');
+    }
+  };
+
+  const startGrading = async (exam: Exam) => {
+    setGradingExam(exam);
+    setViewMode('grading');
+    
+    // Fetch existing results for this exam
+    const resultsQuery = query(collection(db, 'results'), where('examId', '==', exam.id));
+    const querySnapshot = await getDocs(resultsQuery);
+    const existingResults: Record<string, { marks: string, remarks: string }> = {};
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      existingResults[data.studentId] = {
+        marks: data.marksObtained.toString(),
+        remarks: data.remarks || ''
+      };
+    });
+    
+    setGradingResults(existingResults);
+  };
+
+  const calculateGrade = (marks: number, total: number) => {
+    const percentage = (marks / total) * 100;
+    if (percentage >= 80) return 'A+';
+    if (percentage >= 70) return 'A';
+    if (percentage >= 60) return 'A-';
+    if (percentage >= 50) return 'B';
+    if (percentage >= 40) return 'C';
+    if (percentage >= 33) return 'D';
+    return 'F';
+  };
+
+  const saveResults = async () => {
+    if (!gradingExam) return;
+    try {
+      const batch = writeBatch(db);
+      const examStudents = students.filter(s => s.classId === gradingExam.classId);
+      
+      for (const student of examStudents) {
+        const resultData = gradingResults[student.id] || { marks: '0', remarks: '' };
+        const marks = Number(resultData.marks);
+        const grade = calculateGrade(marks, gradingExam.totalMarks);
+        
+        // We use a deterministic ID for results to avoid duplicates: examId_studentId
+        const resultId = `${gradingExam.id}_${student.id}`;
+        const resultRef = doc(db, 'results', resultId);
+        
+        batch.set(resultRef, {
+          examId: gradingExam.id,
+          studentId: student.id,
+          studentName: student.name,
+          marksObtained: marks,
+          grade,
+          remarks: resultData.remarks,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      
+      await batch.commit();
+      
+      // Update exam status to completed if it was ongoing
+      if (gradingExam.status !== 'completed') {
+        await updateDoc(doc(db, 'exams', gradingExam.id), { status: 'completed' });
+      }
+      
+      toast.success('Results saved successfully');
+      setViewMode('list');
+    } catch (error) {
+      console.error('Error saving results:', error);
+      toast.error('Failed to save results');
+    }
+  };
+
+  const filteredExams = exams.filter(exam => 
+    exam.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    classes.find(c => c.id === exam.classId)?.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const stats = {
+    upcoming: exams.filter(e => e.status === 'scheduled').length,
+    ongoing: exams.filter(e => e.status === 'ongoing').length,
+    completed: exams.filter(e => e.status === 'completed').length
+  };
+
+  if (viewMode === 'grading' && gradingExam) {
+    const examStudents = students.filter(s => s.classId === gradingExam.classId);
+    
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => setViewMode('list')} className="text-sidebar-foreground">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Grading: {gradingExam.subject}</h1>
+                <p className="text-sidebar-foreground">
+                  {classes.find(c => c.id === gradingExam.classId)?.name} • {gradingExam.type} • Total Marks: {gradingExam.totalMarks}
+                </p>
+              </div>
+            </div>
+            <Button onClick={saveResults} className="bg-primary hover:bg-primary/90 text-white">
+              <Save className="w-4 h-4 mr-2" />
+              Save All Results
+            </Button>
+          </div>
+
+          <Card className="bg-card border-border overflow-hidden shadow-none">
+            <Table>
+              <TableHeader className="bg-sidebar-accent/30">
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="font-semibold text-sidebar-foreground">Roll No.</TableHead>
+                  <TableHead className="font-semibold text-sidebar-foreground">Student Name</TableHead>
+                  <TableHead className="font-semibold text-sidebar-foreground w-[150px]">Marks Obtained</TableHead>
+                  <TableHead className="font-semibold text-sidebar-foreground w-[100px]">Grade</TableHead>
+                  <TableHead className="font-semibold text-sidebar-foreground">Remarks</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {examStudents.length > 0 ? (
+                  examStudents.map((student) => {
+                    const result = gradingResults[student.id] || { marks: '', remarks: '' };
+                    const grade = result.marks ? calculateGrade(Number(result.marks), gradingExam.totalMarks) : '-';
+                    
+                    return (
+                      <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                        <TableCell className="text-sidebar-foreground font-medium">{student.rollNumber}</TableCell>
+                        <TableCell className="text-white font-semibold">{student.name}</TableCell>
+                        <TableCell>
+                          <Input 
+                            type="number"
+                            max={gradingExam.totalMarks}
+                            min={0}
+                            value={result.marks}
+                            onChange={(e) => setGradingResults(prev => ({
+                              ...prev,
+                              [student.id]: { ...prev[student.id], marks: e.target.value }
+                            }))}
+                            className="bg-background border-border h-9"
+                            placeholder="0"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "font-bold",
+                            grade === 'A+' ? "text-emerald-500 border-emerald-500/50" :
+                            grade === 'F' ? "text-rose-500 border-rose-500/50" :
+                            "text-primary border-primary/50"
+                          )}>
+                            {grade}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Input 
+                            value={result.remarks}
+                            onChange={(e) => setGradingResults(prev => ({
+                              ...prev,
+                              [student.id]: { ...prev[student.id], remarks: e.target.value }
+                            }))}
+                            className="bg-background border-border h-9"
+                            placeholder="Good performance"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center text-sidebar-foreground">
+                      No students found in this class.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -65,10 +398,113 @@ export default function Exams() {
               <FileText className="w-4 h-4 mr-2" />
               Generate Reports
             </Button>
-            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule Exam
-            </Button>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger render={
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Schedule Exam
+                </Button>
+              } />
+              <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+                <form onSubmit={handleAddExam}>
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Schedule New Exam</DialogTitle>
+                    <DialogDescription className="text-sidebar-foreground">
+                      Enter the exam details to notify students and teachers.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Subject</label>
+                      <Input 
+                        required 
+                        value={newExam.subject} 
+                        onChange={e => setNewExam({...newExam, subject: e.target.value})}
+                        placeholder="Mathematics" 
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Class</label>
+                        <Select 
+                          value={newExam.classId} 
+                          onValueChange={val => setNewExam({...newExam, classId: val})}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border">
+                            <SelectValue placeholder="Select Class">
+                              {newExam.classId && classes.find(c => c.id === newExam.classId) 
+                                ? `${classes.find(c => c.id === newExam.classId)?.name}`
+                                : undefined}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            {classes.map((cls) => (
+                              <SelectItem key={cls.id} value={cls.id}>
+                                {cls.name} - {cls.section}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Exam Type</label>
+                        <Select 
+                          value={newExam.type} 
+                          onValueChange={(val: any) => setNewExam({...newExam, type: val})}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="midterm">Midterm</SelectItem>
+                            <SelectItem value="final">Final Exam</SelectItem>
+                            <SelectItem value="quiz">Quiz</SelectItem>
+                            <SelectItem value="monthly">Monthly Test</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Date</label>
+                        <Input 
+                          type="date"
+                          required 
+                          value={newExam.date} 
+                          onChange={e => setNewExam({...newExam, date: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Time</label>
+                        <Input 
+                          type="time"
+                          required 
+                          value={newExam.time} 
+                          onChange={e => setNewExam({...newExam, time: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Total Marks</label>
+                      <Input 
+                        type="number"
+                        required 
+                        value={newExam.totalMarks} 
+                        onChange={e => setNewExam({...newExam, totalMarks: Number(e.target.value)})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Schedule Exam</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -82,17 +518,17 @@ export default function Exams() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="bg-card border-border p-5 flex flex-col shadow-none">
                 <span className="text-sm font-semibold text-sidebar-foreground mb-5">Upcoming Exams</span>
-                <div className="text-[28px] font-bold text-white mb-1">12</div>
+                <div className="text-[28px] font-bold text-white mb-1">{stats.upcoming}</div>
                 <p className="text-xs text-sidebar-foreground mt-1">Next 30 days</p>
               </Card>
               <Card className="bg-card border-border p-5 flex flex-col shadow-none">
                 <span className="text-sm font-semibold text-primary mb-5">Ongoing Exams</span>
-                <div className="text-[28px] font-bold text-white mb-1">2</div>
+                <div className="text-[28px] font-bold text-white mb-1">{stats.ongoing}</div>
                 <p className="text-xs text-sidebar-foreground mt-1">Currently in progress</p>
               </Card>
               <Card className="bg-card border-border p-5 flex flex-col shadow-none">
                 <span className="text-sm font-semibold text-emerald-500 mb-5">Completed</span>
-                <div className="text-[28px] font-bold text-white mb-1">45</div>
+                <div className="text-[28px] font-bold text-white mb-1">{stats.completed}</div>
                 <p className="text-xs text-sidebar-foreground mt-1">This semester</p>
               </Card>
             </div>
@@ -102,7 +538,12 @@ export default function Exams() {
                 <h3 className="font-semibold text-white">Scheduled Exams</h3>
                 <div className="relative w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
-                  <Input placeholder="Search exams..." className="pl-10 h-9 bg-background border-border text-foreground" />
+                  <Input 
+                    placeholder="Search exams..." 
+                    className="pl-10 h-9 bg-background border-border text-foreground" 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </div>
               <Table>
@@ -117,8 +558,8 @@ export default function Exams() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {exams.length > 0 ? (
-                    exams.map((exam) => (
+                  {filteredExams.length > 0 ? (
+                    filteredExams.map((exam) => (
                       <TableRow key={exam.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                         <TableCell>
                           <div className="flex items-center space-x-3">
@@ -128,7 +569,9 @@ export default function Exams() {
                             <span className="font-semibold text-white">{exam.subject}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sidebar-foreground">{exam.classId}</TableCell>
+                        <TableCell className="text-sidebar-foreground">
+                          {classes.find(c => c.id === exam.classId)?.name} - {classes.find(c => c.id === exam.classId)?.section}
+                        </TableCell>
                         <TableCell>
                           <div className="text-sm">
                             <p className="font-medium text-white">{format(new Date(exam.date), 'MMM dd, yyyy')}</p>
@@ -150,7 +593,45 @@ export default function Exams() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" className="text-primary hover:bg-sidebar-accent">Edit</Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={
+                              <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            } />
+                            <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  className="hover:bg-sidebar-accent cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedExam(exam);
+                                    setIsEditDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="hover:bg-sidebar-accent cursor-pointer text-primary"
+                                  onClick={() => startGrading(exam)}
+                                >
+                                  <ChevronRight className="w-4 h-4 mr-2" />
+                                  Enter Grades
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedExam(exam);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete Exam
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -167,22 +648,152 @@ export default function Exams() {
           </TabsContent>
 
           <TabsContent value="results">
-            <Card className="bg-card border-border">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="p-4 bg-sidebar-accent/50 rounded-full mb-4">
-                  <FileText className="w-12 h-12 text-sidebar-foreground" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {exams.filter(e => e.status === 'completed' || e.status === 'ongoing').map((exam) => (
+                <Card key={exam.id} className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => startGrading(exam)}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <GraduationCap className="w-5 h-5 text-primary" />
+                      </div>
+                      <Badge variant={exam.status === 'completed' ? 'default' : 'secondary'} className="capitalize">
+                        {exam.status}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-white mt-4">{exam.subject}</CardTitle>
+                    <CardDescription className="text-sidebar-foreground">
+                      {classes.find(c => c.id === exam.classId)?.name} • {exam.type}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm mt-4">
+                      <div className="flex items-center text-sidebar-foreground">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {format(new Date(exam.date), 'MMM dd')}
+                      </div>
+                      <div className="text-primary font-medium flex items-center group-hover:translate-x-1 transition-transform">
+                        Manage Results
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {exams.filter(e => e.status === 'completed' || e.status === 'ongoing').length === 0 && (
+                <div className="col-span-full py-12 text-center bg-card border border-border rounded-xl">
+                  <FileText className="w-12 h-12 text-sidebar-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-white">No Exams Ready for Grading</h3>
+                  <p className="text-sidebar-foreground">Complete or start an exam to enter results.</p>
                 </div>
-                <h3 className="text-lg font-semibold text-white">No Results Found</h3>
-                <p className="text-sidebar-foreground max-w-xs mx-auto mt-2">
-                  Select an exam from the schedule to start entering grades and generating results.
-                </p>
-                <Button className="mt-6 bg-primary hover:bg-primary/90 text-white">
-                  Enter Grades
-                </Button>
-              </CardContent>
-            </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Exam Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <form onSubmit={handleEditExam}>
+              <DialogHeader>
+                <DialogTitle className="text-white">Edit Exam Details</DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">
+                  Update the exam schedule or information.
+                </DialogDescription>
+              </DialogHeader>
+              {selectedExam && (
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Subject</label>
+                    <Input 
+                      required 
+                      value={selectedExam.subject} 
+                      onChange={e => setSelectedExam({...selectedExam, subject: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Class</label>
+                      <Select 
+                        value={selectedExam.classId} 
+                        onValueChange={val => setSelectedExam({...selectedExam, classId: val})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {classes.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name} - {cls.section}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Status</label>
+                      <Select 
+                        value={selectedExam.status} 
+                        onValueChange={(val: any) => setSelectedExam({...selectedExam, status: val})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="ongoing">Ongoing</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Date</label>
+                      <Input 
+                        type="date"
+                        required 
+                        value={selectedExam.date} 
+                        onChange={e => setSelectedExam({...selectedExam, date: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Time</label>
+                      <Input 
+                        type="time"
+                        required 
+                        value={selectedExam.time} 
+                        onChange={e => setSelectedExam({...selectedExam, time: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Are you sure you want to delete the exam for <span className="text-white font-semibold">{selectedExam?.subject}</span>? This will also delete any associated results.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteExam}>Delete Exam</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

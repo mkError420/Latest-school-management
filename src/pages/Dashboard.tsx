@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
 import { useAuth } from '@/src/lib/auth';
 import { 
@@ -25,6 +25,9 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/src/lib/firebase';
+import { format, formatDistanceToNow } from 'date-fns';
 
 import { cn } from '@/lib/utils';
 
@@ -41,6 +44,26 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'exams'), 
+      where('status', '==', 'scheduled'),
+      orderBy('date', 'asc'),
+      limit(3)
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const exams = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUpcomingExams(exams);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const StatCard = ({ title, value, trend, color, trendDown }: any) => (
     <Card className="bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
@@ -121,22 +144,24 @@ export default function Dashboard() {
               <span className="text-sm font-semibold text-white">Upcoming Examinations</span>
             </div>
             <div className="space-y-0">
-              {[
-                { title: 'Advanced Mathematics', subtitle: 'Grade 12 • Hall A-1', time: '9:00 AM', relative: 'In 2 Days' },
-                { title: 'Physical Sciences', subtitle: 'Grade 11 • Lab South', time: '1:30 PM', relative: 'In 4 Days' },
-                { title: 'English Literature', subtitle: 'Grade 10 • Room 204', time: '10:30 AM', relative: 'In 5 Days' },
-              ].map((event, i) => (
+              {upcomingExams.length > 0 ? upcomingExams.map((event, i) => (
                 <div key={i} className="flex items-center justify-between py-3 border-b border-border last:border-0">
                   <div>
-                    <h4 className="text-[13px] font-medium text-white">{event.title}</h4>
-                    <p className="text-[11px] text-sidebar-foreground">{event.subtitle}</p>
+                    <h4 className="text-[13px] font-medium text-white">{event.subject}</h4>
+                    <p className="text-[11px] text-sidebar-foreground">{event.type} • {event.time}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[13px] text-white">{event.relative}</p>
-                    <p className="text-[11px] text-sidebar-foreground">{event.time}</p>
+                    <p className="text-[13px] text-white">
+                      {formatDistanceToNow(new Date(event.date), { addSuffix: true })}
+                    </p>
+                    <p className="text-[11px] text-sidebar-foreground">{format(new Date(event.date), 'MMM dd, yyyy')}</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="py-8 text-center text-sidebar-foreground text-sm">
+                  No upcoming exams scheduled.
+                </div>
+              )}
             </div>
           </Card>
 

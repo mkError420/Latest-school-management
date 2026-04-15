@@ -18,10 +18,10 @@ service cloud.firestore {
     // Fields: studentId, amount, type, status, date
     //
     // Collection: exams
-    // Fields: title, classId, subject, date, maxMarks
+    // Fields: subject, classId, date, time, type, status, totalMarks, createdAt
     //
-    // Collection: grades
-    // Fields: studentId, examId, marksObtained, remarks
+    // Collection: results
+    // Fields: studentId, studentName, examId, marksObtained, grade, remarks, updatedAt
     //
     // Collection: library_books
     // Fields: title, author, totalCopies, availableCopies
@@ -73,6 +73,16 @@ service cloud.firestore {
              data.role in ['admin', 'teacher', 'parent', 'student'];
     }
 
+    function isValidExam(data) {
+      return data.keys().hasAll(['subject', 'classId', 'date', 'time', 'type', 'status', 'totalMarks']) &&
+             data.totalMarks is number && data.totalMarks > 0;
+    }
+
+    function isValidResult(data) {
+      return data.keys().hasAll(['studentId', 'examId', 'marksObtained', 'grade']) &&
+             data.marksObtained is number;
+    }
+
     // Rules
     match /users/{uid} {
       allow read: if isAuthenticated();
@@ -105,7 +115,7 @@ service cloud.firestore {
       allow write: if isAdmin() || isTeacher();
     }
 
-    match /grades/{id} {
+    match /results/{id} {
       allow read: if isAdmin() || isTeacher() || (isParent() && get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.parentId == request.auth.uid) || (isStudent() && resource.data.studentId == request.auth.uid);
       allow write: if isAdmin() || isTeacher();
     }

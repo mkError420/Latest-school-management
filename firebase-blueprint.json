@@ -63,25 +63,31 @@
       "description": "Exam schedules and details.",
       "type": "object",
       "properties": {
-        "title": { "type": "string" },
-        "classId": { "type": "string" },
         "subject": { "type": "string" },
+        "classId": { "type": "string" },
         "date": { "type": "string", "format": "date" },
-        "maxMarks": { "type": "number" }
+        "time": { "type": "string" },
+        "type": { "type": "string", "enum": ["midterm", "final", "quiz", "monthly"] },
+        "status": { "type": "string", "enum": ["scheduled", "completed", "ongoing"] },
+        "totalMarks": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["title", "classId", "subject", "date"]
+      "required": ["subject", "classId", "date", "time", "type", "status", "totalMarks"]
     },
-    "Grade": {
-      "title": "Grade",
+    "Result": {
+      "title": "Result",
       "description": "Student exam results.",
       "type": "object",
       "properties": {
         "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
         "examId": { "type": "string" },
         "marksObtained": { "type": "number" },
-        "remarks": { "type": "string" }
+        "grade": { "type": "string" },
+        "remarks": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["studentId", "examId", "marksObtained"]
+      "required": ["studentId", "examId", "marksObtained", "grade"]
     },
     "LibraryBook": {
       "title": "LibraryBook",
@@ -148,7 +154,7 @@
     "/attendance/{attendanceId}": { "schema": "Attendance", "description": "Daily attendance" },
     "/fees/{feeId}": { "schema": "Fee", "description": "Fee payments" },
     "/exams/{examId}": { "schema": "Exam", "description": "Exam schedules" },
-    "/grades/{gradeId}": { "schema": "Grade", "description": "Exam results" },
+    "/results/{resultId}": { "schema": "Result", "description": "Exam results" },
     "/library_books/{bookId}": { "schema": "LibraryBook", "description": "Library inventory" },
     "/payroll/{payrollId}": { "schema": "Payroll", "description": "Staff payroll" },
     "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" }
