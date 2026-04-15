@@ -52,7 +52,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return hasRole('admin') || (request.auth.token.email == "mk.rabbani.cse@gmail.com" && request.auth.token.email_verified == true);
+      return hasRole('admin') || request.auth.token.email == "mk.rabbani.cse@gmail.com";
     }
 
     function isTeacher() {

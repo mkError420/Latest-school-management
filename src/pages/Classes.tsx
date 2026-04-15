@@ -88,7 +88,11 @@ export default function Classes() {
       toast.success('Class added successfully');
     } catch (error) {
       console.error('Error adding class:', error);
-      toast.error('Failed to add class');
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        toast.error('Permission denied. You must be an admin or teacher.');
+      } else {
+        toast.error('Failed to add class');
+      }
     }
   };
 
@@ -107,7 +111,11 @@ export default function Classes() {
       toast.success('Class updated successfully');
     } catch (error) {
       console.error('Error updating class:', error);
-      toast.error('Failed to update class');
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        toast.error('Permission denied. You do not have rights to edit this class.');
+      } else {
+        toast.error('Failed to update class');
+      }
     }
   };
 
@@ -120,7 +128,11 @@ export default function Classes() {
       toast.success('Class deleted successfully');
     } catch (error) {
       console.error('Error deleting class:', error);
-      toast.error('Failed to delete class');
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        toast.error('Permission denied. You do not have rights to delete this class.');
+      } else {
+        toast.error('Failed to delete class');
+      }
     }
   };
 
@@ -239,6 +251,10 @@ export default function Classes() {
                           setSelectedClass(cls);
                           setIsEditDialogOpen(true);
                         }}
+                        onClick={() => {
+                          setSelectedClass(cls);
+                          setIsEditDialogOpen(true);
+                        }}
                       >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Class
@@ -246,6 +262,10 @@ export default function Classes() {
                       <DropdownMenuItem 
                         className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
                         onSelect={() => {
+                          setSelectedClass(cls);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                        onClick={() => {
                           setSelectedClass(cls);
                           setIsDeleteDialogOpen(true);
                         }}

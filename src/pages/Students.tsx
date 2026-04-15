@@ -120,7 +120,11 @@ export default function Students() {
       toast.success('Student added successfully');
     } catch (error) {
       console.error('Error adding student:', error);
-      toast.error('Failed to add student');
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        toast.error('Permission denied. You must be an admin or teacher.');
+      } else {
+        toast.error('Failed to add student');
+      }
     }
   };
 
@@ -140,7 +144,11 @@ export default function Students() {
       toast.success('Student updated successfully');
     } catch (error) {
       console.error('Error updating student:', error);
-      toast.error('Failed to update student');
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        toast.error('Permission denied. You do not have rights to edit this record.');
+      } else {
+        toast.error('Failed to update student');
+      }
     }
   };
 
@@ -153,7 +161,11 @@ export default function Students() {
       toast.success('Student record deleted');
     } catch (error) {
       console.error('Error deleting student:', error);
-      toast.error('Failed to delete student');
+      if (error instanceof Error && error.message.includes('permission-denied')) {
+        toast.error('Permission denied. You do not have rights to delete this record.');
+      } else {
+        toast.error('Failed to delete student');
+      }
     }
   };
 
@@ -321,6 +333,10 @@ export default function Students() {
                                 setSelectedStudent(student);
                                 setIsViewDialogOpen(true);
                               }}
+                              onClick={() => {
+                                setSelectedStudent(student);
+                                setIsViewDialogOpen(true);
+                              }}
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               View Profile
@@ -331,6 +347,10 @@ export default function Students() {
                                 setSelectedStudent(student);
                                 setIsEditDialogOpen(true);
                               }}
+                              onClick={() => {
+                                setSelectedStudent(student);
+                                setIsEditDialogOpen(true);
+                              }}
                             >
                               <Edit className="w-4 h-4 mr-2" />
                               Edit Details
@@ -338,6 +358,10 @@ export default function Students() {
                             <DropdownMenuItem 
                               className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
                               onSelect={() => {
+                                setSelectedStudent(student);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                              onClick={() => {
                                 setSelectedStudent(student);
                                 setIsDeleteDialogOpen(true);
                               }}
