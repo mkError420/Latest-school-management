@@ -473,14 +473,14 @@ export default function Exams() {
                       <SelectTrigger className="w-full bg-background border-border">
                         <SelectValue placeholder="Choose an exam">
                           {reportExamId && exams.find(e => e.id === reportExamId) ? (
-                            `${exams.find(e => e.id === reportExamId)?.subject} - ${classes.find(c => c.id === exams.find(e => e.id === reportExamId)?.classId)?.name}`
+                            `${exams.find(e => e.id === reportExamId)?.subject} - ${classes.find(c => c.id === exams.find(e => e.id === reportExamId)?.classId)?.name} (${exams.find(e => e.id === reportExamId)?.type.replace('_', ' ')})`
                           ) : undefined}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
                         {exams.filter(e => e.status === 'completed').map((exam) => (
                           <SelectItem key={exam.id} value={exam.id}>
-                            {exam.subject} - {classes.find(c => c.id === exam.classId)?.name} ({format(new Date(exam.date), 'MMM dd, yyyy')})
+                            {exam.subject} - {classes.find(c => c.id === exam.classId)?.name} ({exam.type.replace('_', ' ')}) - {format(new Date(exam.date), 'MMM dd, yyyy')}
                           </SelectItem>
                         ))}
                       </SelectContent>
