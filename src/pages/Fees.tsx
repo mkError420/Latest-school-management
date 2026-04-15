@@ -70,6 +70,8 @@ export default function Fees() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
+  const [selectedFee, setSelectedFee] = useState<FeeRecord | null>(null);
   const [newFee, setNewFee] = useState({
     studentId: '',
     studentName: '',
@@ -342,7 +344,17 @@ export default function Fees() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-primary hover:bg-sidebar-accent">View Receipt</Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-primary hover:bg-sidebar-accent"
+                        onClick={() => {
+                          setSelectedFee(fee);
+                          setIsReceiptDialogOpen(true);
+                        }}
+                      >
+                        View Receipt
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -356,6 +368,78 @@ export default function Fees() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Receipt Dialog */}
+        <Dialog open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                Payment Receipt
+              </DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Official payment confirmation for student fees.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedFee && (
+              <div className="space-y-6 py-4">
+                <div className="flex justify-between items-start border-b border-border pb-4">
+                  <div>
+                    <h4 className="text-lg font-bold text-white">School Management System</h4>
+                    <p className="text-xs text-sidebar-foreground">123 Education Lane, Learning City</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Receipt No.</p>
+                    <p className="text-sm font-bold text-white">#{selectedFee.id.slice(-8).toUpperCase()}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Student Name</p>
+                    <p className="text-sm font-semibold text-white">{selectedFee.studentName}</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Payment Date</p>
+                    <p className="text-sm font-semibold text-white">{format(new Date(selectedFee.date), 'MMMM dd, yyyy')}</p>
+                  </div>
+                </div>
+
+                <div className="bg-sidebar-accent/20 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-sidebar-foreground">Fee Description</span>
+                    <span className="text-white font-medium capitalize">{selectedFee.type} Fee</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-sidebar-foreground">Status</span>
+                    <span className={cn(
+                      "font-bold uppercase text-[10px]",
+                      selectedFee.status === 'paid' ? "text-emerald-500" : "text-amber-500"
+                    )}>{selectedFee.status}</span>
+                  </div>
+                  <div className="pt-3 border-t border-border flex justify-between items-center">
+                    <span className="text-base font-bold text-white">Total Amount</span>
+                    <span className="text-xl font-bold text-primary">${selectedFee.amount.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="text-center space-y-2">
+                  <p className="text-[10px] text-sidebar-foreground italic">
+                    This is a computer-generated receipt and does not require a physical signature.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="flex sm:justify-between gap-2">
+              <Button variant="outline" onClick={() => window.print()} className="border-border text-sidebar-foreground">
+                Print Receipt
+              </Button>
+              <Button onClick={() => setIsReceiptDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
