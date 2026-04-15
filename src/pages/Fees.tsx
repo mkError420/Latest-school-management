@@ -136,6 +136,14 @@ export default function Fees() {
     }
   };
 
+  const stats = {
+    totalCollected: fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0),
+    pendingDues: fees.filter(f => f.status === 'pending').reduce((acc, curr) => acc + curr.amount, 0),
+    overduePayments: fees.filter(f => f.status === 'overdue').reduce((acc, curr) => acc + curr.amount, 0),
+    pendingCount: fees.filter(f => f.status === 'pending').length,
+    overdueCount: fees.filter(f => f.status === 'overdue').length
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -285,18 +293,18 @@ export default function Fees() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">
             <span className="text-sm font-semibold text-emerald-500 mb-5">Total Collected</span>
-            <div className="text-[28px] font-bold text-white mb-1">$124,500.00</div>
+            <div className="text-[28px] font-bold text-white mb-1">${stats.totalCollected.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-sidebar-foreground mt-1">This academic year</p>
           </Card>
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">
             <span className="text-sm font-semibold text-amber-500 mb-5">Pending Dues</span>
-            <div className="text-[28px] font-bold text-white mb-1">$12,400.00</div>
-            <p className="text-xs text-sidebar-foreground mt-1">From 45 students</p>
+            <div className="text-[28px] font-bold text-white mb-1">${stats.pendingDues.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <p className="text-xs text-sidebar-foreground mt-1">From {stats.pendingCount} records</p>
           </Card>
           <Card className="bg-card border-border p-5 flex flex-col shadow-none">
             <span className="text-sm font-semibold text-rose-500 mb-5">Overdue Payments</span>
-            <div className="text-[28px] font-bold text-white mb-1">$3,200.00</div>
-            <p className="text-xs text-sidebar-foreground mt-1">Requires immediate action</p>
+            <div className="text-[28px] font-bold text-white mb-1">${stats.overduePayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <p className="text-xs text-sidebar-foreground mt-1">Requires immediate action ({stats.overdueCount})</p>
           </Card>
         </div>
 
