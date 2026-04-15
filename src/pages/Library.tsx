@@ -104,6 +104,7 @@ interface Issue {
   bookTitle: string;
   studentId: string;
   studentName: string;
+  studentClass?: string;
   issueDate: string;
   dueDate: string;
   returnDate?: string;
@@ -272,6 +273,7 @@ export default function Library() {
     e.preventDefault();
     const book = books.find(b => b.id === newIssue.bookId);
     const student = students.find(s => s.id === newIssue.studentId);
+    const cls = classes.find(c => c.id === issueSelectedClassId);
     
     if (!book || !student) return;
     if (book.available <= 0) {
@@ -292,6 +294,7 @@ export default function Library() {
         bookTitle: book.title,
         studentId: student.id,
         studentName: student.name,
+        studentClass: cls ? `${cls.name} - ${cls.section}` : 'N/A',
         issueDate: issueDate.toISOString(),
         dueDate: dueDate.toISOString(),
         status: 'issued'
@@ -354,6 +357,7 @@ export default function Library() {
       
       const book = books.find(b => b.id === selectedIssue.bookId);
       const student = students.find(s => s.id === selectedIssue.studentId);
+      const cls = classes.find(c => c.id === editIssueSelectedClassId);
       
       if (!book || !student) return;
 
@@ -380,6 +384,7 @@ export default function Library() {
         bookTitle: book.title,
         studentId: selectedIssue.studentId,
         studentName: student.name,
+        studentClass: cls ? `${cls.name} - ${cls.section}` : 'N/A',
         dueDate: selectedIssue.dueDate,
         status: selectedIssue.status,
         returnDate: selectedIssue.status === 'returned' ? (selectedIssue.returnDate || new Date().toISOString()) : null
@@ -430,7 +435,8 @@ export default function Library() {
 
   const filteredIssues = issues.filter(issue => 
     issue.bookTitle.toLowerCase().includes(issueSearchTerm.toLowerCase()) ||
-    issue.studentName.toLowerCase().includes(issueSearchTerm.toLowerCase())
+    issue.studentName.toLowerCase().includes(issueSearchTerm.toLowerCase()) ||
+    issue.studentClass?.toLowerCase().includes(issueSearchTerm.toLowerCase())
   );
 
   const categories = Array.from(new Set(books.map(b => b.category)));
@@ -469,7 +475,9 @@ export default function Library() {
                       <label className="text-sm font-medium text-sidebar-foreground">Select Book</label>
                       <Select value={newIssue.bookId} onValueChange={val => setNewIssue({...newIssue, bookId: val})}>
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Choose a book" />
+                          <SelectValue placeholder="Choose a book">
+                            {newIssue.bookId && books.find(b => b.id === newIssue.bookId)?.title}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {books.filter(b => b.available > 0).map(book => (
@@ -485,7 +493,11 @@ export default function Library() {
                         setNewIssue({...newIssue, studentId: ''});
                       }}>
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Choose a class" />
+                          <SelectValue placeholder="Choose a class">
+                            {issueSelectedClassId && classes.find(c => c.id === issueSelectedClassId) 
+                              ? `${classes.find(c => c.id === issueSelectedClassId)?.name} - ${classes.find(c => c.id === issueSelectedClassId)?.section}`
+                              : null}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map(cls => (
@@ -502,7 +514,9 @@ export default function Library() {
                         disabled={!issueSelectedClassId}
                       >
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder={issueSelectedClassId ? "Choose a student" : "Select a class first"} />
+                          <SelectValue placeholder={issueSelectedClassId ? "Choose a student" : "Select a class first"}>
+                            {newIssue.studentId && students.find(s => s.id === newIssue.studentId)?.name}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {students.filter(s => s.classId === issueSelectedClassId).map(student => (
@@ -642,7 +656,9 @@ export default function Library() {
               </div>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="w-[180px] bg-background border-border">
-                  <SelectValue placeholder="Category" />
+                  <SelectValue placeholder="Category">
+                    {selectedCategory === 'all' ? 'All Categories' : selectedCategory}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
                   <SelectItem value="all">All Categories</SelectItem>
@@ -772,6 +788,7 @@ export default function Library() {
                 <TableHeader className="bg-sidebar-accent/30">
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="font-semibold text-sidebar-foreground">Student</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Class</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Book Title</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Issue Date</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Due Date</TableHead>
@@ -783,6 +800,15 @@ export default function Library() {
                   {filteredIssues.length > 0 ? (
                     filteredIssues.map((issue) => {
                       const isOverdue = issue.status === 'issued' && isAfter(new Date(), new Date(issue.dueDate));
+                      
+                      // Fallback for older records without studentClass
+                      let displayClass = issue.studentClass;
+                      if (!displayClass) {
+                        const student = students.find(s => s.id === issue.studentId);
+                        const cls = classes.find(c => c.id === student?.classId);
+                        displayClass = cls ? `${cls.name} - ${cls.section}` : 'N/A';
+                      }
+
                       return (
                         <TableRow key={issue.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                           <TableCell>
@@ -792,6 +818,11 @@ export default function Library() {
                               </div>
                               <span className="font-semibold text-white">{issue.studentName}</span>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-sidebar-accent text-sidebar-foreground border-none">
+                              {displayClass}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-sidebar-foreground">{issue.bookTitle}</TableCell>
                           <TableCell className="text-sidebar-foreground">{format(new Date(issue.issueDate), 'MMM dd, yyyy')}</TableCell>
@@ -979,7 +1010,9 @@ export default function Library() {
                     <label className="text-sm font-medium text-sidebar-foreground">Book</label>
                     <Select value={selectedIssue.bookId} onValueChange={val => setSelectedIssue({...selectedIssue, bookId: val})}>
                       <SelectTrigger className="bg-background border-border">
-                        <SelectValue placeholder="Choose a book" />
+                        <SelectValue placeholder="Choose a book">
+                          {selectedIssue.bookId && books.find(b => b.id === selectedIssue.bookId)?.title}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
                         {books.map(book => (
@@ -995,7 +1028,11 @@ export default function Library() {
                       setSelectedIssue({...selectedIssue, studentId: ''});
                     }}>
                       <SelectTrigger className="bg-background border-border">
-                        <SelectValue placeholder="Choose a class" />
+                        <SelectValue placeholder="Choose a class">
+                          {editIssueSelectedClassId && classes.find(c => c.id === editIssueSelectedClassId) 
+                            ? `${classes.find(c => c.id === editIssueSelectedClassId)?.name} - ${classes.find(c => c.id === editIssueSelectedClassId)?.section}`
+                            : null}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
                         {classes.map(cls => (
@@ -1012,7 +1049,9 @@ export default function Library() {
                       disabled={!editIssueSelectedClassId}
                     >
                       <SelectTrigger className="bg-background border-border">
-                        <SelectValue placeholder={editIssueSelectedClassId ? "Choose a student" : "Select a class first"} />
+                        <SelectValue placeholder={editIssueSelectedClassId ? "Choose a student" : "Select a class first"}>
+                          {selectedIssue.studentId && students.find(s => s.id === selectedIssue.studentId)?.name}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
                         {students.filter(s => s.classId === editIssueSelectedClassId).map(student => (
@@ -1034,7 +1073,9 @@ export default function Library() {
                     <label className="text-sm font-medium text-sidebar-foreground">Status</label>
                     <Select value={selectedIssue.status} onValueChange={(val: 'issued' | 'returned') => setSelectedIssue({...selectedIssue, status: val})}>
                       <SelectTrigger className="bg-background border-border">
-                        <SelectValue placeholder="Status" />
+                        <SelectValue placeholder="Status">
+                          {selectedIssue.status === 'issued' ? 'Issued' : 'Returned'}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
                         <SelectItem value="issued">Issued</SelectItem>

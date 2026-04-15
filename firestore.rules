@@ -27,7 +27,7 @@ service cloud.firestore {
     // Fields: title, author, total, available, isbn, category
     //
     // Collection: library_issues
-    // Fields: bookId, bookTitle, studentId, studentName, issueDate, dueDate, returnDate, status
+    // Fields: bookId, bookTitle, studentId, studentName, studentClass, issueDate, dueDate, returnDate, status
     //
     // Collection: payroll
     // Fields: staffId, month, year, netSalary, status

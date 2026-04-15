@@ -113,6 +113,7 @@
         "bookTitle": { "type": "string" },
         "studentId": { "type": "string" },
         "studentName": { "type": "string" },
+        "studentClass": { "type": "string" },
         "issueDate": { "type": "string", "format": "date-time" },
         "dueDate": { "type": "string", "format": "date-time" },
         "returnDate": { "type": "string", "format": "date-time" },
