@@ -46,7 +46,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -71,6 +71,10 @@ export default function Students() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [newStudent, setNewStudent] = useState({
     name: '',
     rollNumber: '',
@@ -120,10 +124,32 @@ export default function Students() {
     }
   };
 
-  const handleDeleteStudent = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this student record?')) return;
+  const handleEditStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent) return;
     try {
-      await deleteDoc(doc(db, 'students', id));
+      const studentRef = doc(db, 'students', selectedStudent.id);
+      await updateDoc(studentRef, {
+        name: selectedStudent.name,
+        rollNumber: selectedStudent.rollNumber,
+        classId: selectedStudent.classId,
+        email: selectedStudent.email,
+        status: selectedStudent.status
+      });
+      setIsEditDialogOpen(false);
+      toast.success('Student updated successfully');
+    } catch (error) {
+      console.error('Error updating student:', error);
+      toast.error('Failed to update student');
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return;
+    try {
+      await deleteDoc(doc(db, 'students', selectedStudent.id));
+      setIsDeleteDialogOpen(false);
+      setSelectedStudent(null);
       toast.success('Student record deleted');
     } catch (error) {
       console.error('Error deleting student:', error);
@@ -289,17 +315,32 @@ export default function Students() {
                         <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
                           <DropdownMenuGroup>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem className="hover:bg-sidebar-accent cursor-pointer">
+                            <DropdownMenuItem 
+                              className="hover:bg-sidebar-accent cursor-pointer"
+                              onSelect={() => {
+                                setSelectedStudent(student);
+                                setIsViewDialogOpen(true);
+                              }}
+                            >
                               <Eye className="w-4 h-4 mr-2" />
                               View Profile
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="hover:bg-sidebar-accent cursor-pointer">
+                            <DropdownMenuItem 
+                              className="hover:bg-sidebar-accent cursor-pointer"
+                              onSelect={() => {
+                                setSelectedStudent(student);
+                                setIsEditDialogOpen(true);
+                              }}
+                            >
                               <Edit className="w-4 h-4 mr-2" />
                               Edit Details
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                              onClick={() => handleDeleteStudent(student.id)}
+                              onSelect={() => {
+                                setSelectedStudent(student);
+                                setIsDeleteDialogOpen(true);
+                              }}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete Record
@@ -320,6 +361,146 @@ export default function Students() {
             </TableBody>
           </Table>
         </div>
+
+        {/* View Student Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-white">Student Profile</DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Detailed information about the student.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedStudent && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Name:</div>
+                  <div className="col-span-2 text-white">{selectedStudent.name}</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Roll No:</div>
+                  <div className="col-span-2 text-white">{selectedStudent.rollNumber}</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Class:</div>
+                  <div className="col-span-2 text-white">
+                    {classes.find(c => c.id === selectedStudent.classId)?.name} - {classes.find(c => c.id === selectedStudent.classId)?.section}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Email:</div>
+                  <div className="col-span-2 text-white">{selectedStudent.email}</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Status:</div>
+                  <div className="col-span-2">
+                    <Badge variant={selectedStudent.status === 'active' ? 'default' : 'secondary'} className="capitalize">
+                      {selectedStudent.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Student Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <form onSubmit={handleEditStudent}>
+              <DialogHeader>
+                <DialogTitle className="text-white">Edit Student Details</DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">
+                  Update the student's information.
+                </DialogDescription>
+              </DialogHeader>
+              {selectedStudent && (
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
+                    <Input 
+                      required 
+                      value={selectedStudent.name} 
+                      onChange={e => setSelectedStudent({...selectedStudent, name: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Roll Number</label>
+                      <Input 
+                        required 
+                        value={selectedStudent.rollNumber} 
+                        onChange={e => setSelectedStudent({...selectedStudent, rollNumber: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Class</label>
+                      <Select 
+                        value={selectedStudent.classId} 
+                        onValueChange={val => setSelectedStudent({...selectedStudent, classId: val})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Class">
+                            {selectedStudent.classId && classes.find(c => c.id === selectedStudent.classId) 
+                              ? `${classes.find(c => c.id === selectedStudent.classId)?.name} - ${classes.find(c => c.id === selectedStudent.classId)?.section}`
+                              : undefined}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {classes.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name} - {cls.section}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Status</label>
+                    <Select 
+                      value={selectedStudent.status} 
+                      onValueChange={(val: any) => setSelectedStudent({...selectedStudent, status: val})}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Are you sure you want to delete the record for <span className="text-white font-semibold">{selectedStudent?.name}</span>? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteStudent}>Delete Record</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
