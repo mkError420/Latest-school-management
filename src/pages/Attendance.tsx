@@ -105,12 +105,12 @@ export default function Attendance() {
           </div>
           <div className="flex items-center gap-3">
             <Popover>
-              <PopoverTrigger asChild>
+              <PopoverTrigger render={
                 <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal border-border bg-card text-sidebar-foreground hover:bg-sidebar-accent", !date && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
                 </Button>
-              </PopoverTrigger>
+              } />
               <PopoverContent className="w-auto p-0 bg-card border-border" align="end">
                 <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus className="bg-card text-foreground" />
               </PopoverContent>

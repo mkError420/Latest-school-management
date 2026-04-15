@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
+  DropdownMenuGroup,
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuSeparator, 
@@ -114,11 +115,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <header className="h-20 bg-background border-b border-border flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10">
           <div className="flex items-center">
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-              <SheetTrigger asChild>
+              <SheetTrigger render={
                 <Button variant="ghost" size="icon" className="lg:hidden mr-2">
                   <Menu className="w-6 h-6" />
                 </Button>
-              </SheetTrigger>
+              } />
               <SheetContent side="left" className="p-0 w-64">
                 <NavContent />
               </SheetContent>
@@ -137,7 +138,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
             
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger render={
                 <Button variant="ghost" className="flex items-center space-x-3 bg-[#1A1D23] hover:bg-[#23262D] border border-border rounded-full px-4 py-6 h-auto">
                   <div className="text-right hidden sm:block">
                     <p className="text-[13px] font-medium text-white">{profile?.displayName}</p>
@@ -149,12 +150,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </AvatarFallback>
                   </Avatar>
                 </Button>
-              </DropdownMenuTrigger>
+              } />
               <DropdownMenuContent align="end" className="w-56 bg-card border-border text-foreground">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem onClick={() => navigate('/settings')} className="hover:bg-sidebar-accent">Profile Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="text-rose-500 hover:bg-sidebar-accent">Logout</DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border" />
+                  <DropdownMenuItem onClick={() => navigate('/settings')} className="hover:bg-sidebar-accent">Profile Settings</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} className="text-rose-500 hover:bg-sidebar-accent">Logout</DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

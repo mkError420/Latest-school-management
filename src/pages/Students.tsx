@@ -37,6 +37,7 @@ import {
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
+  DropdownMenuGroup,
   DropdownMenuItem, 
   DropdownMenuLabel, 
   DropdownMenuTrigger 
@@ -115,12 +116,12 @@ export default function Students() {
               Export
             </Button>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
+              <DialogTrigger render={
                 <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Add Student
                 </Button>
-              </DialogTrigger>
+              } />
               <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
                 <form onSubmit={handleAddStudent}>
                   <DialogHeader>
@@ -236,16 +237,18 @@ export default function Students() {
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger render={
                           <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
-                        </DropdownMenuTrigger>
+                        } />
                         <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem className="hover:bg-sidebar-accent">View Profile</DropdownMenuItem>
-                          <DropdownMenuItem className="hover:bg-sidebar-accent">Edit Details</DropdownMenuItem>
-                          <DropdownMenuItem className="text-rose-500 hover:bg-sidebar-accent">Delete Record</DropdownMenuItem>
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem className="hover:bg-sidebar-accent">View Profile</DropdownMenuItem>
+                            <DropdownMenuItem className="hover:bg-sidebar-accent">Edit Details</DropdownMenuItem>
+                            <DropdownMenuItem className="text-rose-500 hover:bg-sidebar-accent">Delete Record</DropdownMenuItem>
+                          </DropdownMenuGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

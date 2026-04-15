@@ -101,12 +101,12 @@ export default function Fees() {
             <p className="text-sidebar-foreground">Manage student fees and payment history.</p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button className="bg-primary hover:bg-primary/90 text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 Record Payment
               </Button>
-            </DialogTrigger>
+            } />
             <DialogContent className="bg-card border-border text-foreground">
               <form onSubmit={handleAddFee}>
                 <DialogHeader>
