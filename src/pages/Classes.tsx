@@ -37,7 +37,7 @@ import {
   DropdownMenuLabel, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -54,6 +54,9 @@ export default function Classes() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [newClass, setNewClass] = useState({
     name: '',
     section: '',
@@ -89,10 +92,31 @@ export default function Classes() {
     }
   };
 
-  const handleDeleteClass = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this class?')) return;
+  const handleEditClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClass) return;
     try {
-      await deleteDoc(doc(db, 'classes', id));
+      const classRef = doc(db, 'classes', selectedClass.id);
+      await updateDoc(classRef, {
+        name: selectedClass.name,
+        section: selectedClass.section,
+        teacher: selectedClass.teacher,
+        roomNumber: selectedClass.roomNumber
+      });
+      setIsEditDialogOpen(false);
+      toast.success('Class updated successfully');
+    } catch (error) {
+      console.error('Error updating class:', error);
+      toast.error('Failed to update class');
+    }
+  };
+
+  const handleDeleteClass = async () => {
+    if (!selectedClass) return;
+    try {
+      await deleteDoc(doc(db, 'classes', selectedClass.id));
+      setIsDeleteDialogOpen(false);
+      setSelectedClass(null);
       toast.success('Class deleted successfully');
     } catch (error) {
       console.error('Error deleting class:', error);
@@ -209,13 +233,22 @@ export default function Classes() {
                   <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
                     <DropdownMenuGroup>
                       <DropdownMenuLabel>Class Options</DropdownMenuLabel>
-                      <DropdownMenuItem className="hover:bg-sidebar-accent">
+                      <DropdownMenuItem 
+                        className="hover:bg-sidebar-accent cursor-pointer"
+                        onSelect={() => {
+                          setSelectedClass(cls);
+                          setIsEditDialogOpen(true);
+                        }}
+                      >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Class
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        className="text-rose-500 hover:bg-sidebar-accent"
-                        onClick={() => handleDeleteClass(cls.id)}
+                        className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                        onSelect={() => {
+                          setSelectedClass(cls);
+                          setIsDeleteDialogOpen(true);
+                        }}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete Class
@@ -244,6 +277,81 @@ export default function Classes() {
             </div>
           )}
         </div>
+
+        {/* Edit Class Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <form onSubmit={handleEditClass}>
+              <DialogHeader>
+                <DialogTitle className="text-white">Edit Class Details</DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">
+                  Update the class information.
+                </DialogDescription>
+              </DialogHeader>
+              {selectedClass && (
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Class Name</label>
+                      <Input 
+                        required 
+                        value={selectedClass.name} 
+                        onChange={e => setSelectedClass({...selectedClass, name: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Section</label>
+                      <Input 
+                        required 
+                        value={selectedClass.section} 
+                        onChange={e => setSelectedClass({...selectedClass, section: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Class Teacher</label>
+                    <Input 
+                      required 
+                      value={selectedClass.teacher} 
+                      onChange={e => setSelectedClass({...selectedClass, teacher: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Room Number</label>
+                    <Input 
+                      value={selectedClass.roomNumber} 
+                      onChange={e => setSelectedClass({...selectedClass, roomNumber: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Are you sure you want to delete <span className="text-white font-semibold">{selectedClass?.name} - {selectedClass?.section}</span>? This will not delete students assigned to this class, but they will no longer be associated with it.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteClass}>Delete Class</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
