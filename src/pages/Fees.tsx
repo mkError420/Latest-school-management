@@ -7,7 +7,10 @@ import {
   History,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  MoreHorizontal,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { 
   Table, 
@@ -35,9 +38,17 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuGroup,
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { collection, onSnapshot, addDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -70,8 +81,11 @@ export default function Fees() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState<FeeRecord | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [newFee, setNewFee] = useState({
     studentId: '',
     studentName: '',
@@ -135,6 +149,43 @@ export default function Fees() {
       toast.error('Failed to add fee record');
     }
   };
+
+  const handleEditFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFee) return;
+    try {
+      const feeRef = doc(db, 'fees', selectedFee.id);
+      await updateDoc(feeRef, {
+        amount: Number(selectedFee.amount),
+        status: selectedFee.status,
+        type: selectedFee.type,
+        date: selectedFee.date
+      });
+      setIsEditDialogOpen(false);
+      toast.success('Fee record updated successfully');
+    } catch (error) {
+      console.error('Error updating fee:', error);
+      toast.error('Failed to update fee record');
+    }
+  };
+
+  const handleDeleteFee = async () => {
+    if (!selectedFee) return;
+    try {
+      await deleteDoc(doc(db, 'fees', selectedFee.id));
+      setIsDeleteDialogOpen(false);
+      setSelectedFee(null);
+      toast.success('Fee record deleted');
+    } catch (error) {
+      console.error('Error deleting fee:', error);
+      toast.error('Failed to delete fee record');
+    }
+  };
+
+  const filteredFees = fees.filter(fee => 
+    fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    fee.type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const stats = {
     totalCollected: fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0),
@@ -316,7 +367,12 @@ export default function Fees() {
             </h3>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
-              <Input placeholder="Search transactions..." className="pl-10 h-9 bg-background border-border text-foreground" />
+              <Input 
+                placeholder="Search transactions..." 
+                className="pl-10 h-9 bg-background border-border text-foreground" 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
           <Table>
@@ -331,8 +387,8 @@ export default function Fees() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fees.length > 0 ? (
-                fees.map((fee) => (
+              {filteredFees.length > 0 ? (
+                filteredFees.map((fee) => (
                   <TableRow key={fee.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                     <TableCell className="text-sidebar-foreground">{format(new Date(fee.date), 'MMM dd, yyyy')}</TableCell>
                     <TableCell className="font-semibold text-white">{fee.studentName}</TableCell>
@@ -352,17 +408,48 @@ export default function Fees() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-primary hover:bg-sidebar-accent"
-                        onClick={() => {
-                          setSelectedFee(fee);
-                          setIsReceiptDialogOpen(true);
-                        }}
-                      >
-                        View Receipt
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={
+                          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        } />
+                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem 
+                              className="hover:bg-sidebar-accent cursor-pointer"
+                              onClick={() => {
+                                setSelectedFee(fee);
+                                setIsReceiptDialogOpen(true);
+                              }}
+                            >
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              View Receipt
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="hover:bg-sidebar-accent cursor-pointer"
+                              onClick={() => {
+                                setSelectedFee(fee);
+                                setIsEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Record
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                              onClick={() => {
+                                setSelectedFee(fee);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Record
+                            </DropdownMenuItem>
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))
@@ -445,6 +532,104 @@ export default function Fees() {
                 Print Receipt
               </Button>
               <Button onClick={() => setIsReceiptDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Fee Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <form onSubmit={handleEditFee}>
+              <DialogHeader>
+                <DialogTitle className="text-white">Edit Fee Record</DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">
+                  Update payment details for <span className="text-white font-semibold">{selectedFee?.studentName}</span>.
+                </DialogDescription>
+              </DialogHeader>
+              {selectedFee && (
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Amount (৳)</label>
+                      <Input 
+                        type="number" 
+                        required 
+                        value={selectedFee.amount} 
+                        onChange={e => setSelectedFee({...selectedFee, amount: Number(e.target.value)})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Fee Type</label>
+                      <Select value={selectedFee.type} onValueChange={val => setSelectedFee({...selectedFee, type: val})}>
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue>
+                            {selectedFee.type === 'tuition' && 'Tuition Fee'}
+                            {selectedFee.type === 'exam' && 'Exam Fee'}
+                            {selectedFee.type === 'library' && 'Library Fee'}
+                            {selectedFee.type === 'transport' && 'Transport Fee'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="tuition">Tuition Fee</SelectItem>
+                          <SelectItem value="exam">Exam Fee</SelectItem>
+                          <SelectItem value="library">Library Fee</SelectItem>
+                          <SelectItem value="transport">Transport Fee</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Payment Date</label>
+                      <Input 
+                        type="date" 
+                        required 
+                        value={selectedFee.date} 
+                        onChange={e => setSelectedFee({...selectedFee, date: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Status</label>
+                      <Select value={selectedFee.status} onValueChange={(val: any) => setSelectedFee({...selectedFee, status: val})}>
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue>
+                            {selectedFee.status === 'paid' && 'Paid'}
+                            {selectedFee.status === 'pending' && 'Pending'}
+                            {selectedFee.status === 'overdue' && 'Overdue'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Are you sure you want to delete the fee record for <span className="text-white font-semibold">{selectedFee?.studentName}</span>? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDeleteFee}>Delete Record</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

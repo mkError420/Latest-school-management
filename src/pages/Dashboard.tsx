@@ -45,6 +45,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 export default function Dashboard() {
   const { profile } = useAuth();
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   useEffect(() => {
     const q = query(
@@ -62,7 +63,24 @@ export default function Dashboard() {
       setUpcomingExams(exams);
     });
 
-    return () => unsubscribe();
+    const transactionsQuery = query(
+      collection(db, 'fees'),
+      orderBy('date', 'desc'),
+      limit(3)
+    );
+
+    const unsubscribeTransactions = onSnapshot(transactionsQuery, (snapshot) => {
+      const transactions = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setRecentTransactions(transactions);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeTransactions();
+    };
   }, []);
 
   const StatCard = ({ title, value, trend, color, trendDown }: any) => (
@@ -170,24 +188,26 @@ export default function Dashboard() {
               <span className="text-sm font-semibold text-white">Recent Transactions</span>
             </div>
             <div className="space-y-0">
-              {[
-                { name: 'Sarah Jenkins', type: 'Tuition Fee • Grade 9', status: 'paid' },
-                { name: 'Marcus Thorne', type: 'Transport Fee • Grade 11', status: 'pending' },
-                { name: 'Elena Rodriguez', type: 'Library Fee • Grade 12', status: 'paid' },
-              ].map((tx, i) => (
+              {recentTransactions.length > 0 ? recentTransactions.map((tx, i) => (
                 <div key={i} className="flex items-center justify-between py-3 border-b border-border last:border-0">
                   <div>
-                    <h4 className="text-[13px] font-medium text-white">{tx.name}</h4>
-                    <p className="text-[11px] text-sidebar-foreground">{tx.type}</p>
+                    <h4 className="text-[13px] font-medium text-white">{tx.studentName}</h4>
+                    <p className="text-[11px] text-sidebar-foreground capitalize">{tx.type} Fee • ৳{tx.amount.toFixed(2)}</p>
                   </div>
                   <div className={cn(
                     "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                    tx.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                    tx.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" : 
+                    tx.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
+                    "bg-rose-500/10 text-rose-500"
                   )}>
                     {tx.status}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="py-8 text-center text-sidebar-foreground text-sm">
+                  No recent transactions.
+                </div>
+              )}
             </div>
           </Card>
         </div>
