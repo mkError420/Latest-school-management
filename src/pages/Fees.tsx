@@ -71,6 +71,7 @@ export default function Fees() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newFee, setNewFee] = useState({
+    studentId: '',
     studentName: '',
     classId: '',
     amount: '',
@@ -125,7 +126,7 @@ export default function Fees() {
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
-      setNewFee({ studentName: '', classId: '', amount: '', type: 'tuition', status: 'paid', date: new Date().toISOString().split('T')[0] });
+      setNewFee({ studentId: '', studentName: '', classId: '', amount: '', type: 'tuition', status: 'paid', date: new Date().toISOString().split('T')[0] });
       toast.success('Fee record added successfully');
     } catch (error) {
       console.error('Error adding fee:', error);
@@ -160,7 +161,7 @@ export default function Fees() {
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
                         value={newFee.classId} 
-                        onValueChange={val => setNewFee({...newFee, classId: val, studentName: ''})}
+                        onValueChange={val => setNewFee({...newFee, classId: val, studentId: '', studentName: ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue placeholder="Select Class">
@@ -181,8 +182,11 @@ export default function Fees() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Student Name</label>
                       <Select 
-                        value={newFee.studentName} 
-                        onValueChange={val => setNewFee({...newFee, studentName: val})}
+                        value={newFee.studentId} 
+                        onValueChange={val => {
+                          const student = students.find(s => s.id === val);
+                          setNewFee({...newFee, studentId: val, studentName: student?.name || ''});
+                        }}
                         disabled={!newFee.classId}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
@@ -194,7 +198,7 @@ export default function Fees() {
                           {students
                             .filter(s => s.classId === newFee.classId)
                             .map((student) => (
-                              <SelectItem key={student.id} value={student.name}>
+                              <SelectItem key={student.id} value={student.id}>
                                 {student.name} ({student.rollNumber})
                               </SelectItem>
                             ))}
