@@ -70,6 +70,7 @@ export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -169,10 +170,68 @@ export default function Students() {
     }
   };
 
-  const filteredStudents = students.filter(student => 
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleExportStudents = () => {
+    if (filteredStudents.length === 0) {
+      toast.error('No students to export');
+      return;
+    }
+
+    const headers = ['Roll Number', 'Name', 'Class', 'Guardian Phone', 'Status'];
+    const csvData = filteredStudents.map(student => {
+      const cls = classes.find(c => c.id === student.classId);
+      const classInfo = cls ? `${cls.name} - ${cls.section}` : student.classId;
+      return [
+        student.rollNumber,
+        student.name,
+        classInfo,
+        student.guardianPhone,
+        student.status
+      ].map(field => `"${field}"`).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...csvData].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `students_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Students exported successfully');
+  };
+
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClass = selectedClassId === 'all' || student.classId === selectedClassId;
+    return matchesSearch && matchesClass;
+  });
+
+  // Group students by class
+  const groupedStudents = classes.reduce((acc, cls) => {
+    const classStudents = filteredStudents
+      .filter(s => s.classId === cls.id)
+      .sort((a, b) => a.rollNumber.localeCompare(b.rollNumber, undefined, { numeric: true }));
+    
+    if (classStudents.length > 0 || selectedClassId === cls.id) {
+      acc.push({
+        class: cls,
+        students: classStudents
+      });
+    }
+    return acc;
+  }, [] as { class: Class; students: Student[] }[]);
+
+  // Add a group for students without a class if any
+  const unassignedStudents = filteredStudents.filter(s => !classes.find(c => c.id === s.classId));
+  if (unassignedStudents.length > 0 && (selectedClassId === 'all' || selectedClassId === 'unassigned')) {
+    groupedStudents.push({
+      class: { id: 'unassigned', name: 'Unassigned', section: 'N/A' },
+      students: unassignedStudents
+    });
+  }
 
   return (
     <DashboardLayout>
@@ -183,7 +242,12 @@ export default function Students() {
             <p className="text-sidebar-foreground">View and manage student records.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-border text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={handleExportStudents}
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
@@ -272,8 +336,8 @@ export default function Students() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-card p-4 rounded-xl border border-border">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-4 bg-card p-4 rounded-xl border border-border">
+          <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
             <Input 
               placeholder="Search by name or roll number..." 
@@ -282,108 +346,172 @@ export default function Students() {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
-            <Filter className="w-4 h-4" />
+          <div className="w-full sm:w-48">
+            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+              <SelectTrigger className="bg-background border-border text-foreground">
+                <div className="flex items-center">
+                  <Filter className="w-4 h-4 mr-2 text-sidebar-foreground" />
+                  <SelectValue placeholder="Filter by Class">
+                    {selectedClassId === 'all' ? 'All Classes' : 
+                     selectedClassId === 'unassigned' ? 'Unassigned' :
+                     classes.find(c => c.id === selectedClassId) ? 
+                     `${classes.find(c => c.id === selectedClassId)?.name} - ${classes.find(c => c.id === selectedClassId)?.section}` : 
+                     undefined}
+                  </SelectValue>
+                </div>
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                <SelectItem value="all">All Classes</SelectItem>
+                {classes.map(cls => (
+                  <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                ))}
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-sidebar-foreground hover:text-white"
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedClassId('all');
+            }}
+          >
+            Reset
           </Button>
         </div>
 
-        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
-          <Table>
-            <TableHeader className="bg-sidebar-accent/30">
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="font-semibold text-sidebar-foreground">Roll No.</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Name</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Class</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Guardian Phone</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
-                <TableHead className="text-right font-semibold text-sidebar-foreground">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
-                  <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
-                    <TableCell className="font-medium text-sidebar-foreground">{student.rollNumber}</TableCell>
-                    <TableCell className="font-semibold text-white">{student.name}</TableCell>
-                    <TableCell className="text-sidebar-foreground">
-                      {classes.find(c => c.id === student.classId)?.name} - {classes.find(c => c.id === student.classId)?.section || student.classId}
-                    </TableCell>
-                    <TableCell className="text-sidebar-foreground">{student.guardianPhone}</TableCell>
-                    <TableCell>
-                      <div className={cn(
-                        "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                        student.status === 'active' ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-500/10 text-slate-500"
-                      )}>
-                        {student.status}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        } />
-                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem 
-                              className="hover:bg-sidebar-accent cursor-pointer"
-                              onSelect={() => {
-                                setSelectedStudent(student);
-                                setIsViewDialogOpen(true);
-                              }}
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setIsViewDialogOpen(true);
-                              }}
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="hover:bg-sidebar-accent cursor-pointer"
-                              onSelect={() => {
-                                setSelectedStudent(student);
-                                setIsEditDialogOpen(true);
-                              }}
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setIsEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                              onSelect={() => {
-                                setSelectedStudent(student);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete Record
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
-                    No students found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <div className="space-y-8">
+          {groupedStudents.length > 0 ? (
+            groupedStudents.map((group) => (
+              <div key={group.class.id} className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-1 bg-primary rounded-full" />
+                    <h2 className="text-lg font-bold text-white">
+                      {group.class.name} <span className="text-sidebar-foreground font-normal text-sm ml-2">Section: {group.class.section}</span>
+                    </h2>
+                    <Badge variant="outline" className="ml-2 border-primary/30 text-primary bg-primary/5">
+                      {group.students.length} Students
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                  <Table>
+                    <TableHeader className="bg-sidebar-accent/30">
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-16 font-semibold text-sidebar-foreground">SL</TableHead>
+                        <TableHead className="w-24 font-semibold text-sidebar-foreground">Roll No.</TableHead>
+                        <TableHead className="font-semibold text-sidebar-foreground">Student Name</TableHead>
+                        <TableHead className="font-semibold text-sidebar-foreground">Guardian Phone</TableHead>
+                        <TableHead className="w-32 font-semibold text-sidebar-foreground">Status</TableHead>
+                        <TableHead className="text-right font-semibold text-sidebar-foreground">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.students.length > 0 ? (
+                        group.students.map((student, index) => (
+                          <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors group">
+                            <TableCell className="text-sidebar-foreground font-mono text-xs">{index + 1}</TableCell>
+                            <TableCell className="font-medium text-sidebar-foreground">{student.rollNumber}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-white group-hover:text-primary transition-colors">{student.name}</span>
+                                <span className="text-[10px] text-sidebar-foreground uppercase tracking-wider">ID: {student.id.slice(-6)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sidebar-foreground">{student.guardianPhone}</TableCell>
+                            <TableCell>
+                              <div className={cn(
+                                "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                                student.status === 'active' 
+                                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                                  : "bg-slate-500/10 text-slate-500 border-slate-500/20"
+                              )}>
+                                <span className={cn(
+                                  "w-1 h-1 rounded-full mr-1.5",
+                                  student.status === 'active' ? "bg-emerald-500" : "bg-slate-500"
+                                )} />
+                                {student.status}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger render={
+                                  <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                } />
+                                <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem 
+                                      className="hover:bg-sidebar-accent cursor-pointer"
+                                      onClick={() => {
+                                        setSelectedStudent(student);
+                                        setIsViewDialogOpen(true);
+                                      }}
+                                    >
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View Profile
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      className="hover:bg-sidebar-accent cursor-pointer"
+                                      onClick={() => {
+                                        setSelectedStudent(student);
+                                        setIsEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Edit Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                      onClick={() => {
+                                        setSelectedStudent(student);
+                                        setIsDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Record
+                                    </DropdownMenuItem>
+                                  </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground italic">
+                            No students in this class matching your search.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-20 text-center bg-card border border-border rounded-xl">
+              <Search className="w-12 h-12 text-sidebar-foreground mx-auto mb-4 opacity-20" />
+              <h3 className="text-lg font-semibold text-white">No Students Found</h3>
+              <p className="text-sidebar-foreground">Try adjusting your search or filters.</p>
+              <Button 
+                variant="link" 
+                className="text-primary mt-2"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedClassId('all');
+                }}
+              >
+                Clear all filters
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* View Student Dialog */}
