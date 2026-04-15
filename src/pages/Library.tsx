@@ -135,6 +135,14 @@ export default function Library() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [issueSelectedClassId, setIssueSelectedClassId] = useState<string>('');
   const [editIssueSelectedClassId, setEditIssueSelectedClassId] = useState<string>('');
+
+  // Search states for selects
+  const [bookSearch, setBookSearch] = useState('');
+  const [classSearch, setClassSearch] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
+  const [editBookSearch, setEditBookSearch] = useState('');
+  const [editClassSearch, setEditClassSearch] = useState('');
+  const [editStudentSearch, setEditStudentSearch] = useState('');
   
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [isEditBookOpen, setIsEditBookOpen] = useState(false);
@@ -159,6 +167,22 @@ export default function Library() {
     studentId: '',
     days: 7
   });
+
+  useEffect(() => {
+    if (!isIssueOpen) {
+      setBookSearch('');
+      setClassSearch('');
+      setStudentSearch('');
+    }
+  }, [isIssueOpen]);
+
+  useEffect(() => {
+    if (!isEditIssueOpen) {
+      setEditBookSearch('');
+      setEditClassSearch('');
+      setEditStudentSearch('');
+    }
+  }, [isEditIssueOpen]);
 
   useEffect(() => {
     const q = query(collection(db, 'library_books'), orderBy('title'));
@@ -480,9 +504,21 @@ export default function Library() {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
-                          {books.filter(b => b.available > 0).map(book => (
-                            <SelectItem key={book.id} value={book.id}>{book.title} ({book.available} left)</SelectItem>
-                          ))}
+                          <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                            <Input 
+                              placeholder="Search book..." 
+                              value={bookSearch}
+                              onChange={e => setBookSearch(e.target.value)}
+                              className="h-8 text-xs bg-background"
+                              onKeyDown={e => e.stopPropagation()}
+                            />
+                          </div>
+                          {books
+                            .filter(b => b.available > 0)
+                            .filter(b => b.title.toLowerCase().includes(bookSearch.toLowerCase()) || b.author.toLowerCase().includes(bookSearch.toLowerCase()))
+                            .map(book => (
+                              <SelectItem key={book.id} value={book.id}>{book.title} ({book.available} left)</SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -500,9 +536,20 @@ export default function Library() {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
-                          {classes.map(cls => (
-                            <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
-                          ))}
+                          <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                            <Input 
+                              placeholder="Search class..." 
+                              value={classSearch}
+                              onChange={e => setClassSearch(e.target.value)}
+                              className="h-8 text-xs bg-background"
+                              onKeyDown={e => e.stopPropagation()}
+                            />
+                          </div>
+                          {classes
+                            .filter(c => c.name.toLowerCase().includes(classSearch.toLowerCase()) || c.section.toLowerCase().includes(classSearch.toLowerCase()))
+                            .map(cls => (
+                              <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -519,9 +566,21 @@ export default function Library() {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
-                          {students.filter(s => s.classId === issueSelectedClassId).map(student => (
-                            <SelectItem key={student.id} value={student.id}>{student.name} ({student.rollNumber})</SelectItem>
-                          ))}
+                          <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                            <Input 
+                              placeholder="Search student..." 
+                              value={studentSearch}
+                              onChange={e => setStudentSearch(e.target.value)}
+                              className="h-8 text-xs bg-background"
+                              onKeyDown={e => e.stopPropagation()}
+                            />
+                          </div>
+                          {students
+                            .filter(s => s.classId === issueSelectedClassId)
+                            .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.rollNumber.includes(studentSearch))
+                            .map(student => (
+                              <SelectItem key={student.id} value={student.id}>{student.name} ({student.rollNumber})</SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1015,9 +1074,20 @@ export default function Library() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
-                        {books.map(book => (
-                          <SelectItem key={book.id} value={book.id}>{book.title} ({book.available} left)</SelectItem>
-                        ))}
+                        <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                          <Input 
+                            placeholder="Search book..." 
+                            value={editBookSearch}
+                            onChange={e => setEditBookSearch(e.target.value)}
+                            className="h-8 text-xs bg-background"
+                            onKeyDown={e => e.stopPropagation()}
+                          />
+                        </div>
+                        {books
+                          .filter(b => b.title.toLowerCase().includes(editBookSearch.toLowerCase()) || b.author.toLowerCase().includes(editBookSearch.toLowerCase()))
+                          .map(book => (
+                            <SelectItem key={book.id} value={book.id}>{book.title} ({book.available} left)</SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1035,9 +1105,20 @@ export default function Library() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
-                        {classes.map(cls => (
-                          <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
-                        ))}
+                        <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                          <Input 
+                            placeholder="Search class..." 
+                            value={editClassSearch}
+                            onChange={e => setEditClassSearch(e.target.value)}
+                            className="h-8 text-xs bg-background"
+                            onKeyDown={e => e.stopPropagation()}
+                          />
+                        </div>
+                        {classes
+                          .filter(c => c.name.toLowerCase().includes(editClassSearch.toLowerCase()) || c.section.toLowerCase().includes(editClassSearch.toLowerCase()))
+                          .map(cls => (
+                            <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1054,9 +1135,21 @@ export default function Library() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
-                        {students.filter(s => s.classId === editIssueSelectedClassId).map(student => (
-                          <SelectItem key={student.id} value={student.id}>{student.name} ({student.rollNumber})</SelectItem>
-                        ))}
+                        <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                          <Input 
+                            placeholder="Search student..." 
+                            value={editStudentSearch}
+                            onChange={e => setEditStudentSearch(e.target.value)}
+                            className="h-8 text-xs bg-background"
+                            onKeyDown={e => e.stopPropagation()}
+                          />
+                        </div>
+                        {students
+                          .filter(s => s.classId === editIssueSelectedClassId)
+                          .filter(s => s.name.toLowerCase().includes(editStudentSearch.toLowerCase()) || s.rollNumber.includes(editStudentSearch))
+                          .map(student => (
+                            <SelectItem key={student.id} value={student.id}>{student.name} ({student.rollNumber})</SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
