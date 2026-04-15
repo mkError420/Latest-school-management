@@ -101,7 +101,11 @@ export default function Exams() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [reportExamId, setReportExamId] = useState<string>('');
+  const [reportResults, setReportResults] = useState<Result[]>([]);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   
   const [viewMode, setViewMode] = useState<'list' | 'grading'>('list');
   const [gradingExam, setGradingExam] = useState<Exam | null>(null);
@@ -151,6 +155,10 @@ export default function Exams() {
       unsubscribeStudents();
     };
   }, []);
+
+  useEffect(() => {
+    setReportResults([]);
+  }, [reportExamId]);
 
   const handleAddExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,7 +251,7 @@ export default function Exams() {
       
       for (const student of examStudents) {
         const resultData = gradingResults[student.id] || { marks: '0', remarks: '' };
-        const marks = Number(resultData.marks);
+        const marks = Number(resultData.marks) || 0;
         const grade = calculateGrade(marks, gradingExam.totalMarks);
         
         // We use a deterministic ID for results to avoid duplicates: examId_studentId
@@ -256,7 +264,7 @@ export default function Exams() {
           studentName: student.name,
           marksObtained: marks,
           grade,
-          remarks: resultData.remarks,
+          remarks: resultData.remarks || '',
           updatedAt: new Date().toISOString()
         });
       }
@@ -274,6 +282,38 @@ export default function Exams() {
       console.error('Error saving results:', error);
       toast.error('Failed to save results');
     }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!reportExamId) return;
+    setIsGeneratingReport(true);
+    try {
+      const resultsQuery = query(collection(db, 'results'), where('examId', '==', reportExamId));
+      const querySnapshot = await getDocs(resultsQuery);
+      const resultsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Result[];
+      setReportResults(resultsData);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error('Failed to generate report');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  const getReportStats = () => {
+    if (reportResults.length === 0) return null;
+    const marks = reportResults.map(r => r.marksObtained);
+    const totalMarks = exams.find(e => e.id === reportExamId)?.totalMarks || 100;
+    const avg = marks.reduce((a, b) => a + b, 0) / marks.length;
+    const high = Math.max(...marks);
+    const low = Math.min(...marks);
+    const passCount = reportResults.filter(r => r.grade !== 'F').length;
+    const passPercentage = (passCount / reportResults.length) * 100;
+
+    return { avg, high, low, passPercentage, total: reportResults.length };
   };
 
   const filteredExams = exams.filter(exam => 
@@ -337,7 +377,7 @@ export default function Exams() {
                             type="number"
                             max={gradingExam.totalMarks}
                             min={0}
-                            value={result.marks}
+                            value={result.marks || ''}
                             onChange={(e) => setGradingResults(prev => ({
                               ...prev,
                               [student.id]: { ...prev[student.id], marks: e.target.value }
@@ -358,7 +398,7 @@ export default function Exams() {
                         </TableCell>
                         <TableCell>
                           <Input 
-                            value={result.remarks}
+                            value={result.remarks || ''}
                             onChange={(e) => setGradingResults(prev => ({
                               ...prev,
                               [student.id]: { ...prev[student.id], remarks: e.target.value }
@@ -394,10 +434,117 @@ export default function Exams() {
             <p className="text-sidebar-foreground">Schedule exams, manage results, and track student performance.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
-              <FileText className="w-4 h-4 mr-2" />
-              Generate Reports
-            </Button>
+            <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+              <DialogTrigger render={
+                <Button variant="outline" size="sm" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Generate Reports
+                </Button>
+              } />
+              <DialogContent className="bg-card border-border text-foreground sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Generate Exam Report</DialogTitle>
+                  <DialogDescription className="text-sidebar-foreground">
+                    Select an exam to generate a detailed performance report.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Select Exam</label>
+                    <Select value={reportExamId} onValueChange={setReportExamId}>
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Choose an exam">
+                          {reportExamId && exams.find(e => e.id === reportExamId) ? (
+                            `${exams.find(e => e.id === reportExamId)?.subject} - ${classes.find(c => c.id === exams.find(e => e.id === reportExamId)?.classId)?.name}`
+                          ) : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        {exams.filter(e => e.status === 'completed').map((exam) => (
+                          <SelectItem key={exam.id} value={exam.id}>
+                            {exam.subject} - {classes.find(c => c.id === exam.classId)?.name} ({format(new Date(exam.date), 'MMM dd, yyyy')})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    onClick={handleGenerateReport} 
+                    disabled={!reportExamId || isGeneratingReport}
+                    className="w-full bg-primary hover:bg-primary/90 text-white"
+                  >
+                    {isGeneratingReport ? "Generating..." : "Generate Report"}
+                  </Button>
+
+                  {reportResults.length > 0 && (
+                    <div className="space-y-6 border-t border-border pt-6" id="printable-report">
+                      <div className="text-center space-y-1">
+                        <h2 className="text-xl font-bold text-white">Exam Performance Report</h2>
+                        <p className="text-sm text-sidebar-foreground">
+                          {exams.find(e => e.id === reportExamId)?.subject} • {classes.find(c => c.id === exams.find(e => e.id === reportExamId)?.classId)?.name}
+                        </p>
+                      </div>
+
+                      {getReportStats() && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
+                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Average</p>
+                            <p className="text-lg font-bold text-white">{getReportStats()?.avg.toFixed(1)}</p>
+                          </div>
+                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
+                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Highest</p>
+                            <p className="text-lg font-bold text-emerald-500">{getReportStats()?.high}</p>
+                          </div>
+                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
+                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Lowest</p>
+                            <p className="text-lg font-bold text-rose-500">{getReportStats()?.low}</p>
+                          </div>
+                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
+                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Pass %</p>
+                            <p className="text-lg font-bold text-primary">{getReportStats()?.passPercentage.toFixed(1)}%</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="rounded-md border border-border overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-sidebar-accent/30">
+                            <TableRow className="border-border hover:bg-transparent">
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase">Student</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">Marks</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right">Grade</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {reportResults.sort((a, b) => b.marksObtained - a.marksObtained).map((result) => (
+                              <TableRow key={result.id} className="border-border hover:bg-transparent">
+                                <TableCell className="text-sm text-white font-medium">{result.studentName}</TableCell>
+                                <TableCell className="text-sm text-white text-center">{result.marksObtained}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant="outline" className={cn(
+                                    "text-[10px] font-bold",
+                                    result.grade === 'F' ? "text-rose-500 border-rose-500/50" : "text-emerald-500 border-emerald-500/50"
+                                  )}>
+                                    {result.grade}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="flex sm:justify-between gap-2">
+                  <Button variant="outline" onClick={() => window.print()} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
+                    Print Report
+                  </Button>
+                  <Button onClick={() => setIsReportDialogOpen(false)}>Close</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger render={
                 <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
@@ -418,7 +565,7 @@ export default function Exams() {
                       <label className="text-sm font-medium text-sidebar-foreground">Subject</label>
                       <Input 
                         required 
-                        value={newExam.subject} 
+                        value={newExam.subject || ''} 
                         onChange={e => setNewExam({...newExam, subject: e.target.value})}
                         placeholder="Mathematics" 
                         className="bg-background border-border"
@@ -454,7 +601,9 @@ export default function Exams() {
                           onValueChange={(val: any) => setNewExam({...newExam, type: val})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
-                            <SelectValue />
+                            <SelectValue>
+                              {newExam.type ? newExam.type.charAt(0).toUpperCase() + newExam.type.slice(1) : undefined}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
                             <SelectItem value="midterm">Midterm</SelectItem>
@@ -471,7 +620,7 @@ export default function Exams() {
                         <Input 
                           type="date"
                           required 
-                          value={newExam.date} 
+                          value={newExam.date || ''} 
                           onChange={e => setNewExam({...newExam, date: e.target.value})}
                           className="bg-background border-border"
                         />
@@ -481,7 +630,7 @@ export default function Exams() {
                         <Input 
                           type="time"
                           required 
-                          value={newExam.time} 
+                          value={newExam.time || ''} 
                           onChange={e => setNewExam({...newExam, time: e.target.value})}
                           className="bg-background border-border"
                         />
@@ -492,7 +641,7 @@ export default function Exams() {
                       <Input 
                         type="number"
                         required 
-                        value={newExam.totalMarks} 
+                        value={newExam.totalMarks || ''} 
                         onChange={e => setNewExam({...newExam, totalMarks: Number(e.target.value)})}
                         className="bg-background border-border"
                       />
@@ -719,7 +868,11 @@ export default function Exams() {
                         onValueChange={val => setSelectedExam({...selectedExam, classId: val})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue />
+                          <SelectValue>
+                            {selectedExam.classId && classes.find(c => c.id === selectedExam.classId) 
+                              ? `${classes.find(c => c.id === selectedExam.classId)?.name}`
+                              : undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
@@ -737,7 +890,9 @@ export default function Exams() {
                         onValueChange={(val: any) => setSelectedExam({...selectedExam, status: val})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue />
+                          <SelectValue>
+                            {selectedExam.status ? selectedExam.status.charAt(0).toUpperCase() + selectedExam.status.slice(1) : undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           <SelectItem value="scheduled">Scheduled</SelectItem>
