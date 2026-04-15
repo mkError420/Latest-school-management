@@ -9,7 +9,7 @@ service cloud.firestore {
     // Fields: uid, email, displayName, role (admin, teacher, parent, student), createdAt
     //
     // Collection: students
-    // Fields: name, rollNumber, classId, parentId, status, etc.
+    // Fields: name, rollNumber, classId, guardianPhone, status, etc.
     //
     // Collection: attendance
     // Fields: studentId, classId, date, status, markedBy

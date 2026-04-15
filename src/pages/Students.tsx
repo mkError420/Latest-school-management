@@ -57,7 +57,7 @@ interface Student {
   rollNumber: string;
   classId: string;
   status: 'active' | 'inactive';
-  email: string;
+  guardianPhone: string;
 }
 
 interface Class {
@@ -79,7 +79,7 @@ export default function Students() {
     name: '',
     rollNumber: '',
     classId: '',
-    email: '',
+    guardianPhone: '',
     status: 'active' as const
   });
 
@@ -116,7 +116,7 @@ export default function Students() {
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
-      setNewStudent({ name: '', rollNumber: '', classId: '', email: '', status: 'active' });
+      setNewStudent({ name: '', rollNumber: '', classId: '', guardianPhone: '', status: 'active' });
       toast.success('Student added successfully');
     } catch (error) {
       console.error('Error adding student:', error);
@@ -137,7 +137,7 @@ export default function Students() {
         name: selectedStudent.name,
         rollNumber: selectedStudent.rollNumber,
         classId: selectedStudent.classId,
-        email: selectedStudent.email,
+        guardianPhone: selectedStudent.guardianPhone,
         status: selectedStudent.status
       });
       setIsEditDialogOpen(false);
@@ -251,13 +251,13 @@ export default function Students() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Email Address</label>
+                      <label className="text-sm font-medium text-sidebar-foreground">Guardian Phone Number</label>
                       <Input 
-                        type="email" 
+                        type="tel" 
                         required 
-                        value={newStudent.email} 
-                        onChange={e => setNewStudent({...newStudent, email: e.target.value})}
-                        placeholder="john@school.com" 
+                        value={newStudent.guardianPhone} 
+                        onChange={e => setNewStudent({...newStudent, guardianPhone: e.target.value})}
+                        placeholder="+880 1XXX XXXXXX" 
                         className="bg-background border-border"
                       />
                     </div>
@@ -294,7 +294,7 @@ export default function Students() {
                 <TableHead className="font-semibold text-sidebar-foreground">Roll No.</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Name</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Class</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Email</TableHead>
+                <TableHead className="font-semibold text-sidebar-foreground">Guardian Phone</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
                 <TableHead className="text-right font-semibold text-sidebar-foreground">Actions</TableHead>
               </TableRow>
@@ -308,7 +308,7 @@ export default function Students() {
                     <TableCell className="text-sidebar-foreground">
                       {classes.find(c => c.id === student.classId)?.name} - {classes.find(c => c.id === student.classId)?.section || student.classId}
                     </TableCell>
-                    <TableCell className="text-sidebar-foreground">{student.email}</TableCell>
+                    <TableCell className="text-sidebar-foreground">{student.guardianPhone}</TableCell>
                     <TableCell>
                       <div className={cn(
                         "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
@@ -412,8 +412,8 @@ export default function Students() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-sm font-medium text-sidebar-foreground">Email:</div>
-                  <div className="col-span-2 text-white">{selectedStudent.email}</div>
+                  <div className="text-sm font-medium text-sidebar-foreground">Guardian Phone:</div>
+                  <div className="col-span-2 text-white">{selectedStudent.guardianPhone}</div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Status:</div>
@@ -484,6 +484,16 @@ export default function Students() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Guardian Phone Number</label>
+                    <Input 
+                      type="tel"
+                      required 
+                      value={selectedStudent.guardianPhone} 
+                      onChange={e => setSelectedStudent({...selectedStudent, guardianPhone: e.target.value})}
+                      className="bg-background border-border"
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Status</label>
