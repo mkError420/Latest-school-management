@@ -85,6 +85,11 @@ service cloud.firestore {
       allow write: if isAdmin() || isTeacher();
     }
 
+    match /classes/{classId} {
+      allow read: if isAdmin() || isTeacher();
+      allow write: if isAdmin() || isTeacher();
+    }
+
     match /attendance/{id} {
       allow read: if isAuthenticated();
       allow write: if isAdmin() || isTeacher();

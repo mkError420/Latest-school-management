@@ -126,11 +126,25 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["recipientId", "title", "message"]
+    },
+    "Class": {
+      "title": "Class",
+      "description": "School class and section definitions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "section": { "type": "string" },
+        "teacher": { "type": "string" },
+        "roomNumber": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "section", "teacher"]
     }
   },
   "firestore": {
     "/users/{uid}": { "schema": "User", "description": "User profiles" },
     "/students/{studentId}": { "schema": "Student", "description": "Student records" },
+    "/classes/{classId}": { "schema": "Class", "description": "Class definitions" },
     "/attendance/{attendanceId}": { "schema": "Attendance", "description": "Daily attendance" },
     "/fees/{feeId}": { "schema": "Fee", "description": "Fee payments" },
     "/exams/{examId}": { "schema": "Exam", "description": "Exam schedules" },

@@ -6,7 +6,10 @@ import {
   MoreHorizontal, 
   UserPlus,
   Filter,
-  Download
+  Download,
+  Eye,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { 
   Table, 
@@ -43,7 +46,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { collection, onSnapshot, addDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -57,8 +60,15 @@ interface Student {
   email: string;
 }
 
+interface Class {
+  id: string;
+  name: string;
+  section: string;
+}
+
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({
@@ -78,7 +88,20 @@ export default function Students() {
       })) as Student[];
       setStudents(studentData);
     });
-    return () => unsubscribe();
+
+    const classesQuery = query(collection(db, 'classes'), orderBy('name'));
+    const unsubscribeClasses = onSnapshot(classesQuery, (snapshot) => {
+      const classData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Class[];
+      setClasses(classData);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeClasses();
+    };
   }, []);
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -94,6 +117,17 @@ export default function Students() {
     } catch (error) {
       console.error('Error adding student:', error);
       toast.error('Failed to add student');
+    }
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this student record?')) return;
+    try {
+      await deleteDoc(doc(db, 'students', id));
+      toast.success('Student record deleted');
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      toast.error('Failed to delete student');
     }
   };
 
@@ -158,14 +192,22 @@ export default function Students() {
                           value={newStudent.classId} 
                           onValueChange={val => setNewStudent({...newStudent, classId: val})}
                         >
-                          <SelectTrigger className="bg-background border-border">
-                            <SelectValue placeholder="Select Class" />
+                          <SelectTrigger className="w-full bg-background border-border">
+                            <SelectValue placeholder="Select Class">
+                              {newStudent.classId && classes.find(c => c.id === newStudent.classId) 
+                                ? `${classes.find(c => c.id === newStudent.classId)?.name} - ${classes.find(c => c.id === newStudent.classId)?.section}`
+                                : undefined}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
-                            <SelectItem value="10A">Class 10-A</SelectItem>
-                            <SelectItem value="10B">Class 10-B</SelectItem>
-                            <SelectItem value="11A">Class 11-A</SelectItem>
-                            <SelectItem value="11B">Class 11-B</SelectItem>
+                            {classes.map((cls) => (
+                              <SelectItem key={cls.id} value={cls.id}>
+                                {cls.name} - {cls.section}
+                              </SelectItem>
+                            ))}
+                            {classes.length === 0 && (
+                              <SelectItem value="none" disabled>No classes available</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -225,7 +267,9 @@ export default function Students() {
                   <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                     <TableCell className="font-medium text-sidebar-foreground">{student.rollNumber}</TableCell>
                     <TableCell className="font-semibold text-white">{student.name}</TableCell>
-                    <TableCell className="text-sidebar-foreground">{student.classId}</TableCell>
+                    <TableCell className="text-sidebar-foreground">
+                      {classes.find(c => c.id === student.classId)?.name} - {classes.find(c => c.id === student.classId)?.section || student.classId}
+                    </TableCell>
                     <TableCell className="text-sidebar-foreground">{student.email}</TableCell>
                     <TableCell>
                       <div className={cn(
@@ -238,16 +282,28 @@ export default function Students() {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent">
+                          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         } />
-                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
                           <DropdownMenuGroup>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem className="hover:bg-sidebar-accent">View Profile</DropdownMenuItem>
-                            <DropdownMenuItem className="hover:bg-sidebar-accent">Edit Details</DropdownMenuItem>
-                            <DropdownMenuItem className="text-rose-500 hover:bg-sidebar-accent">Delete Record</DropdownMenuItem>
+                            <DropdownMenuItem className="hover:bg-sidebar-accent cursor-pointer">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="hover:bg-sidebar-accent cursor-pointer">
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                              onClick={() => handleDeleteStudent(student.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Record
+                            </DropdownMenuItem>
                           </DropdownMenuGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>

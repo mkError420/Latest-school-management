@@ -47,6 +47,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'teacher', 'parent', 'student'] },
+    { name: 'Classes', href: '/classes', icon: GraduationCap, roles: ['admin', 'teacher'] },
     { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
     { name: 'Attendance', href: '/attendance', icon: CalendarCheck, roles: ['admin', 'teacher'] },
     { name: 'Fees', href: '/fees', icon: CreditCard, roles: ['admin', 'parent'] },

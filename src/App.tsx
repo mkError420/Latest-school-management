@@ -11,6 +11,7 @@ import { Toaster } from '@/components/ui/sonner';
 // Pages (to be created)
 import Login from '@/src/pages/Login';
 import Dashboard from '@/src/pages/Dashboard';
+import Classes from '@/src/pages/Classes';
 import Students from '@/src/pages/Students';
 import Attendance from '@/src/pages/Attendance';
 import Fees from '@/src/pages/Fees';
@@ -31,6 +32,12 @@ export default function App() {
           <Route path="/" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/classes" element={
+            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+              <Classes />
             </ProtectedRoute>
           } />
           

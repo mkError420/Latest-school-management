@@ -26,7 +26,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { collection, onSnapshot, query, where, addDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, addDoc, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -38,19 +38,37 @@ interface Student {
   classId: string;
 }
 
-interface AttendanceRecord {
-  studentId: string;
-  status: 'present' | 'absent' | 'late';
+interface Class {
+  id: string;
+  name: string;
+  section: string;
 }
 
 export default function Attendance() {
   const [date, setDate] = useState<Date>(new Date());
-  const [selectedClass, setSelectedClass] = useState<string>('10A');
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    const classesQuery = query(collection(db, 'classes'), orderBy('name'));
+    const unsubscribeClasses = onSnapshot(classesQuery, (snapshot) => {
+      const classData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Class[];
+      setClasses(classData);
+      if (classData.length > 0 && !selectedClass) {
+        setSelectedClass(classData[0].id);
+      }
+    });
+    return () => unsubscribeClasses();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedClass) return;
     const q = query(collection(db, 'students'), where('classId', '==', selectedClass));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const studentData = snapshot.docs.map(doc => ({
@@ -117,14 +135,22 @@ export default function Attendance() {
             </Popover>
             
             <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="w-[180px] bg-card border-border text-sidebar-foreground">
-                <SelectValue placeholder="Select Class" />
+              <SelectTrigger className="w-[200px] bg-card border-border text-sidebar-foreground">
+                <SelectValue placeholder="Select Class">
+                  {selectedClass && classes.find(c => c.id === selectedClass)
+                    ? `${classes.find(c => c.id === selectedClass)?.name} - ${classes.find(c => c.id === selectedClass)?.section}`
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
-                <SelectItem value="10A">Class 10-A</SelectItem>
-                <SelectItem value="10B">Class 10-B</SelectItem>
-                <SelectItem value="11A">Class 11-A</SelectItem>
-                <SelectItem value="11B">Class 11-B</SelectItem>
+                {classes.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.name} - {cls.section}
+                  </SelectItem>
+                ))}
+                {classes.length === 0 && (
+                  <SelectItem value="none" disabled>No classes</SelectItem>
+                )}
               </SelectContent>
             </Select>
 

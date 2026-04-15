@@ -139,8 +139,13 @@ export default function Fees() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Fee Type</label>
                       <Select value={newFee.type} onValueChange={val => setNewFee({...newFee, type: val})}>
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue />
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Type">
+                            {newFee.type === 'tuition' && 'Tuition Fee'}
+                            {newFee.type === 'exam' && 'Exam Fee'}
+                            {newFee.type === 'library' && 'Library Fee'}
+                            {newFee.type === 'transport' && 'Transport Fee'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           <SelectItem value="tuition">Tuition Fee</SelectItem>
@@ -165,8 +170,12 @@ export default function Fees() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Status</label>
                       <Select value={newFee.status} onValueChange={(val: any) => setNewFee({...newFee, status: val})}>
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue />
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Status">
+                            {newFee.status === 'paid' && 'Paid'}
+                            {newFee.status === 'pending' && 'Pending'}
+                            {newFee.status === 'overdue' && 'Overdue'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           <SelectItem value="paid">Paid</SelectItem>
