@@ -221,7 +221,7 @@ export default function Fees() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
-                        value={newFee.classId} 
+                        value={newFee.classId || ''} 
                         onValueChange={val => setNewFee({...newFee, classId: val, studentId: '', studentName: ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
@@ -243,7 +243,7 @@ export default function Fees() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Student Name</label>
                       <Select 
-                        value={newFee.studentId} 
+                        value={newFee.studentId || ''} 
                         onValueChange={val => {
                           const student = students.find(s => s.id === val);
                           setNewFee({...newFee, studentId: val, studentName: student?.name || ''});
@@ -276,7 +276,7 @@ export default function Fees() {
                       <Input 
                         type="number" 
                         required 
-                        value={newFee.amount} 
+                        value={newFee.amount || ''} 
                         onChange={e => setNewFee({...newFee, amount: e.target.value})}
                         placeholder="0.00" 
                         className="bg-background border-border"
@@ -284,7 +284,7 @@ export default function Fees() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Fee Type</label>
-                      <Select value={newFee.type} onValueChange={val => setNewFee({...newFee, type: val})}>
+                      <Select value={newFee.type || ''} onValueChange={val => setNewFee({...newFee, type: val})}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue placeholder="Select Type">
                             {newFee.type === 'tuition' && 'Tuition Fee'}
@@ -308,14 +308,14 @@ export default function Fees() {
                       <Input 
                         type="date" 
                         required 
-                        value={newFee.date} 
+                        value={newFee.date || ''} 
                         onChange={e => setNewFee({...newFee, date: e.target.value})}
                         className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Status</label>
-                      <Select value={newFee.status} onValueChange={(val: any) => setNewFee({...newFee, status: val})}>
+                      <Select value={newFee.status || ''} onValueChange={(val: any) => setNewFee({...newFee, status: val})}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue placeholder="Select Status">
                             {newFee.status === 'paid' && 'Paid'}
@@ -554,14 +554,14 @@ export default function Fees() {
                       <Input 
                         type="number" 
                         required 
-                        value={selectedFee.amount} 
+                        value={selectedFee.amount || ''} 
                         onChange={e => setSelectedFee({...selectedFee, amount: Number(e.target.value)})}
                         className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Fee Type</label>
-                      <Select value={selectedFee.type} onValueChange={val => setSelectedFee({...selectedFee, type: val})}>
+                      <Select value={selectedFee.type || ''} onValueChange={val => setSelectedFee({...selectedFee, type: val})}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue>
                             {selectedFee.type === 'tuition' && 'Tuition Fee'}
@@ -585,14 +585,14 @@ export default function Fees() {
                       <Input 
                         type="date" 
                         required 
-                        value={selectedFee.date} 
+                        value={selectedFee.date || ''} 
                         onChange={e => setSelectedFee({...selectedFee, date: e.target.value})}
                         className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Status</label>
-                      <Select value={selectedFee.status} onValueChange={(val: any) => setSelectedFee({...selectedFee, status: val})}>
+                      <Select value={selectedFee.status || ''} onValueChange={(val: any) => setSelectedFee({...selectedFee, status: val})}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue>
                             {selectedFee.status === 'paid' && 'Paid'}

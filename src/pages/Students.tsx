@@ -207,7 +207,7 @@ export default function Students() {
                       <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
                       <Input 
                         required 
-                        value={newStudent.name} 
+                        value={newStudent.name || ''} 
                         onChange={e => setNewStudent({...newStudent, name: e.target.value})}
                         placeholder="John Doe" 
                         className="bg-background border-border"
@@ -218,7 +218,7 @@ export default function Students() {
                         <label className="text-sm font-medium text-sidebar-foreground">Roll Number</label>
                         <Input 
                           required 
-                          value={newStudent.rollNumber} 
+                          value={newStudent.rollNumber || ''} 
                           onChange={e => setNewStudent({...newStudent, rollNumber: e.target.value})}
                           placeholder="S101" 
                           className="bg-background border-border"
@@ -227,7 +227,7 @@ export default function Students() {
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                         <Select 
-                          value={newStudent.classId} 
+                          value={newStudent.classId || ''} 
                           onValueChange={val => setNewStudent({...newStudent, classId: val})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
@@ -255,7 +255,7 @@ export default function Students() {
                       <Input 
                         type="tel" 
                         required 
-                        value={newStudent.guardianPhone} 
+                        value={newStudent.guardianPhone || ''} 
                         onChange={e => setNewStudent({...newStudent, guardianPhone: e.target.value})}
                         placeholder="+880 1XXX XXXXXX" 
                         className="bg-background border-border"
@@ -447,7 +447,7 @@ export default function Students() {
                     <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
                     <Input 
                       required 
-                      value={selectedStudent.name} 
+                      value={selectedStudent.name || ''} 
                       onChange={e => setSelectedStudent({...selectedStudent, name: e.target.value})}
                       className="bg-background border-border"
                     />
@@ -457,7 +457,7 @@ export default function Students() {
                       <label className="text-sm font-medium text-sidebar-foreground">Roll Number</label>
                       <Input 
                         required 
-                        value={selectedStudent.rollNumber} 
+                        value={selectedStudent.rollNumber || ''} 
                         onChange={e => setSelectedStudent({...selectedStudent, rollNumber: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -465,7 +465,7 @@ export default function Students() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
-                        value={selectedStudent.classId} 
+                        value={selectedStudent.classId || ''} 
                         onValueChange={val => setSelectedStudent({...selectedStudent, classId: val})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
@@ -490,7 +490,7 @@ export default function Students() {
                     <Input 
                       type="tel"
                       required 
-                      value={selectedStudent.guardianPhone} 
+                      value={selectedStudent.guardianPhone || ''} 
                       onChange={e => setSelectedStudent({...selectedStudent, guardianPhone: e.target.value})}
                       className="bg-background border-border"
                     />
@@ -498,7 +498,7 @@ export default function Students() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Status</label>
                     <Select 
-                      value={selectedStudent.status} 
+                      value={selectedStudent.status || ''} 
                       onValueChange={(val: any) => setSelectedStudent({...selectedStudent, status: val})}
                     >
                       <SelectTrigger className="w-full bg-background border-border">

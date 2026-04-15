@@ -451,7 +451,7 @@ export default function Exams() {
                 <div className="space-y-6 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Select Exam</label>
-                    <Select value={reportExamId} onValueChange={setReportExamId}>
+                    <Select value={reportExamId || ''} onValueChange={setReportExamId}>
                       <SelectTrigger className="w-full bg-background border-border">
                         <SelectValue placeholder="Choose an exam">
                           {reportExamId && exams.find(e => e.id === reportExamId) ? (
@@ -575,7 +575,7 @@ export default function Exams() {
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                         <Select 
-                          value={newExam.classId} 
+                          value={newExam.classId || ''} 
                           onValueChange={val => setNewExam({...newExam, classId: val})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
@@ -597,7 +597,7 @@ export default function Exams() {
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Exam Type</label>
                         <Select 
-                          value={newExam.type} 
+                          value={newExam.type || ''} 
                           onValueChange={(val: any) => setNewExam({...newExam, type: val})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
@@ -855,7 +855,7 @@ export default function Exams() {
                     <label className="text-sm font-medium text-sidebar-foreground">Subject</label>
                     <Input 
                       required 
-                      value={selectedExam.subject} 
+                      value={selectedExam.subject || ''} 
                       onChange={e => setSelectedExam({...selectedExam, subject: e.target.value})}
                       className="bg-background border-border"
                     />
@@ -864,7 +864,7 @@ export default function Exams() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
-                        value={selectedExam.classId} 
+                        value={selectedExam.classId || ''} 
                         onValueChange={val => setSelectedExam({...selectedExam, classId: val})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
@@ -886,7 +886,7 @@ export default function Exams() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Status</label>
                       <Select 
-                        value={selectedExam.status} 
+                        value={selectedExam.status || ''} 
                         onValueChange={(val: any) => setSelectedExam({...selectedExam, status: val})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
@@ -908,7 +908,7 @@ export default function Exams() {
                       <Input 
                         type="date"
                         required 
-                        value={selectedExam.date} 
+                        value={selectedExam.date || ''} 
                         onChange={e => setSelectedExam({...selectedExam, date: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -918,7 +918,7 @@ export default function Exams() {
                       <Input 
                         type="time"
                         required 
-                        value={selectedExam.time} 
+                        value={selectedExam.time || ''} 
                         onChange={e => setSelectedExam({...selectedExam, time: e.target.value})}
                         className="bg-background border-border"
                       />
