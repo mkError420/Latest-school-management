@@ -64,7 +64,7 @@ interface Exam {
   classId: string;
   date: string;
   time: string;
-  type: 'midterm' | 'final' | 'quiz' | 'monthly';
+  type: 'class_test' | 'midterm' | 'final';
   status: 'scheduled' | 'completed' | 'ongoing';
   totalMarks: number;
 }
@@ -116,7 +116,7 @@ export default function Exams() {
     classId: '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
-    type: 'midterm' as const,
+    type: 'class_test' as const,
     status: 'scheduled' as const,
     totalMarks: 100
   });
@@ -232,15 +232,33 @@ export default function Exams() {
     setGradingResults(existingResults);
   };
 
-  const calculateGrade = (marks: number, total: number) => {
+  const calculateGrade = (marks: number, total: number, type: string) => {
     const percentage = (marks / total) * 100;
-    if (percentage >= 80) return 'A+';
-    if (percentage >= 70) return 'A';
-    if (percentage >= 60) return 'A-';
-    if (percentage >= 50) return 'B';
-    if (percentage >= 40) return 'C';
-    if (percentage >= 33) return 'D';
-    return 'F';
+    
+    if (type === 'class_test') {
+      if (percentage >= 90) return 'A+';
+      if (percentage >= 80) return 'A';
+      if (percentage >= 70) return 'B';
+      if (percentage >= 60) return 'C';
+      if (percentage >= 40) return 'D';
+      return 'F';
+    } else if (type === 'midterm') {
+      if (percentage >= 85) return 'A+';
+      if (percentage >= 75) return 'A';
+      if (percentage >= 65) return 'A-';
+      if (percentage >= 55) return 'B';
+      if (percentage >= 45) return 'C';
+      if (percentage >= 33) return 'D';
+      return 'F';
+    } else { // final
+      if (percentage >= 80) return 'A+';
+      if (percentage >= 70) return 'A';
+      if (percentage >= 60) return 'A-';
+      if (percentage >= 50) return 'B';
+      if (percentage >= 40) return 'C';
+      if (percentage >= 33) return 'D';
+      return 'F';
+    }
   };
 
   const saveResults = async () => {
@@ -252,7 +270,7 @@ export default function Exams() {
       for (const student of examStudents) {
         const resultData = gradingResults[student.id] || { marks: '0', remarks: '' };
         const marks = Number(resultData.marks) || 0;
-        const grade = calculateGrade(marks, gradingExam.totalMarks);
+        const grade = calculateGrade(marks, gradingExam.totalMarks, gradingExam.type);
         
         // We use a deterministic ID for results to avoid duplicates: examId_studentId
         const resultId = `${gradingExam.id}_${student.id}`;
@@ -366,7 +384,7 @@ export default function Exams() {
                 {examStudents.length > 0 ? (
                   examStudents.map((student) => {
                     const result = gradingResults[student.id] || { marks: '', remarks: '' };
-                    const grade = result.marks ? calculateGrade(Number(result.marks), gradingExam.totalMarks) : '-';
+                    const grade = result.marks ? calculateGrade(Number(result.marks), gradingExam.totalMarks, gradingExam.type) : '-';
                     
                     return (
                       <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
@@ -606,10 +624,9 @@ export default function Exams() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
-                            <SelectItem value="midterm">Midterm</SelectItem>
+                            <SelectItem value="class_test">Class Test</SelectItem>
+                            <SelectItem value="midterm">Mid Term</SelectItem>
                             <SelectItem value="final">Final Exam</SelectItem>
-                            <SelectItem value="quiz">Quiz</SelectItem>
-                            <SelectItem value="monthly">Monthly Test</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -695,104 +712,128 @@ export default function Exams() {
                   />
                 </div>
               </div>
-              <Table>
-                <TableHeader className="bg-sidebar-accent/30">
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="font-semibold text-sidebar-foreground">Subject</TableHead>
-                    <TableHead className="font-semibold text-sidebar-foreground">Class</TableHead>
-                    <TableHead className="font-semibold text-sidebar-foreground">Date & Time</TableHead>
-                    <TableHead className="font-semibold text-sidebar-foreground">Type</TableHead>
-                    <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
-                    <TableHead className="text-right font-semibold text-sidebar-foreground">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredExams.length > 0 ? (
-                    filteredExams.map((exam) => (
-                      <TableRow key={exam.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                              <GraduationCap className="w-4 h-4 text-primary" />
-                            </div>
-                            <span className="font-semibold text-white">{exam.subject}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sidebar-foreground">
-                          {classes.find(c => c.id === exam.classId)?.name} - {classes.find(c => c.id === exam.classId)?.section}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <p className="font-medium text-white">{format(new Date(exam.date), 'MMM dd, yyyy')}</p>
-                            <p className="text-xs text-sidebar-foreground">{exam.time}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="capitalize text-sidebar-foreground">{exam.type}</TableCell>
-                        <TableCell>
-                          <div className={cn(
-                            "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                            exam.status === 'scheduled' ? "bg-primary/10 text-primary" :
-                            exam.status === 'ongoing' ? "bg-amber-500/10 text-amber-500" :
-                            "bg-emerald-500/10 text-emerald-500"
-                          )}>
-                            {exam.status === 'scheduled' && <Calendar className="w-3 h-3 mr-1" />}
-                            {exam.status === 'ongoing' && <Clock className="w-3 h-3 mr-1" />}
-                            {exam.status === 'completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                            {exam.status}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger render={
-                              <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            } />
-                            <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
-                              <DropdownMenuGroup>
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                  className="hover:bg-sidebar-accent cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedExam(exam);
-                                    setIsEditDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Edit Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="hover:bg-sidebar-accent cursor-pointer text-primary"
-                                  onClick={() => startGrading(exam)}
-                                >
-                                  <ChevronRight className="w-4 h-4 mr-2" />
-                                  Enter Grades
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedExam(exam);
-                                    setIsDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Exam
-                                </DropdownMenuItem>
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
-                        No exams scheduled.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              
+              <div className="p-6 space-y-8">
+                {classes.map((cls) => {
+                  const classExams = filteredExams.filter(e => e.classId === cls.id);
+                  if (classExams.length === 0) return null;
+
+                  return (
+                    <div key={cls.id} className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                        <div className="w-1.5 h-6 bg-primary rounded-full" />
+                        <h4 className="text-lg font-bold text-white">
+                          {cls.name} - {cls.section}
+                        </h4>
+                        <Badge variant="outline" className="ml-2 text-xs text-sidebar-foreground border-border">
+                          {classExams.length} Exams
+                        </Badge>
+                      </div>
+                      
+                      <div className="rounded-lg border border-border overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-sidebar-accent/30">
+                            <TableRow className="border-border hover:bg-transparent">
+                              <TableHead className="font-semibold text-sidebar-foreground">Subject</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground">Date & Time</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground">Type</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
+                              <TableHead className="text-right font-semibold text-sidebar-foreground">Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {classExams.map((exam) => (
+                              <TableRow key={exam.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                                <TableCell>
+                                  <div className="flex items-center space-x-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                      <GraduationCap className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <span className="font-semibold text-white">{exam.subject}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    <p className="font-medium text-white">{format(new Date(exam.date), 'MMM dd, yyyy')}</p>
+                                    <p className="text-xs text-sidebar-foreground">{exam.time}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className="capitalize bg-sidebar-accent/50 text-sidebar-foreground border-none">
+                                    {exam.type.replace('_', ' ')}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className={cn(
+                                    "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
+                                    exam.status === 'scheduled' ? "bg-primary/10 text-primary" :
+                                    exam.status === 'ongoing' ? "bg-amber-500/10 text-amber-500" :
+                                    "bg-emerald-500/10 text-emerald-500"
+                                  )}>
+                                    {exam.status === 'scheduled' && <Calendar className="w-3 h-3 mr-1" />}
+                                    {exam.status === 'ongoing' && <Clock className="w-3 h-3 mr-1" />}
+                                    {exam.status === 'completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                                    {exam.status}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger render={
+                                      <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    } />
+                                    <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                                      <DropdownMenuGroup>
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem 
+                                          className="hover:bg-sidebar-accent cursor-pointer"
+                                          onClick={() => {
+                                            setSelectedExam(exam);
+                                            setIsEditDialogOpen(true);
+                                          }}
+                                        >
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Edit Details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          className="hover:bg-sidebar-accent cursor-pointer text-primary"
+                                          onClick={() => startGrading(exam)}
+                                        >
+                                          <ChevronRight className="w-4 h-4 mr-2" />
+                                          Enter Grades
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                          onClick={() => {
+                                            setSelectedExam(exam);
+                                            setIsDeleteDialogOpen(true);
+                                          }}
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Delete Exam
+                                        </DropdownMenuItem>
+                                      </DropdownMenuGroup>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {filteredExams.length === 0 && (
+                  <div className="py-12 text-center">
+                    <Calendar className="w-12 h-12 text-sidebar-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white">No Exams Found</h3>
+                    <p className="text-sidebar-foreground">Try adjusting your search or schedule a new exam.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -883,6 +924,26 @@ export default function Exams() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Exam Type</label>
+                      <Select 
+                        value={selectedExam.type || ''} 
+                        onValueChange={(val: any) => setSelectedExam({...selectedExam, type: val})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue>
+                            {selectedExam.type ? selectedExam.type.replace('_', ' ').charAt(0).toUpperCase() + selectedExam.type.replace('_', ' ').slice(1) : undefined}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="class_test">Class Test</SelectItem>
+                          <SelectItem value="midterm">Mid Term</SelectItem>
+                          <SelectItem value="final">Final Exam</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Status</label>
                       <Select 

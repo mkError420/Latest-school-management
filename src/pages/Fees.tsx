@@ -87,6 +87,7 @@ export default function Fees() {
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState<FeeRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState<string>('all');
   const [newFee, setNewFee] = useState({
     studentId: '',
     studentName: '',
@@ -213,10 +214,12 @@ export default function Fees() {
     toast.success('Fee records exported successfully');
   };
 
-  const filteredFees = fees.filter(fee => 
-    fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    fee.type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFees = fees.filter(fee => {
+    const matchesSearch = fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         fee.type.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = selectedType === 'all' || fee.type === selectedType;
+    return matchesSearch && matchesType;
+  });
 
   const stats = {
     totalCollected: fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0),
@@ -407,14 +410,28 @@ export default function Fees() {
               <History className="w-4 h-4 mr-2 text-primary" />
               Recent Transactions
             </h3>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
-              <Input 
-                placeholder="Search transactions..." 
-                className="pl-10 h-9 bg-background border-border text-foreground" 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-3">
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="tuition">Tuition Fee</SelectItem>
+                  <SelectItem value="exam">Exam Fee</SelectItem>
+                  <SelectItem value="library">Library Fee</SelectItem>
+                  <SelectItem value="transport">Transport Fee</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
+                <Input 
+                  placeholder="Search transactions..." 
+                  className="pl-10 h-9 bg-background border-border text-foreground" 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <Table>
