@@ -52,11 +52,27 @@ interface FeeRecord {
   date: string;
 }
 
+interface Student {
+  id: string;
+  name: string;
+  rollNumber: string;
+  classId: string;
+}
+
+interface Class {
+  id: string;
+  name: string;
+  section: string;
+}
+
 export default function Fees() {
   const [fees, setFees] = useState<FeeRecord[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newFee, setNewFee] = useState({
     studentName: '',
+    classId: '',
     amount: '',
     type: 'tuition',
     status: 'paid' as const,
@@ -72,7 +88,32 @@ export default function Fees() {
       })) as FeeRecord[];
       setFees(feeData);
     });
-    return () => unsubscribe();
+
+    const studentsQuery = query(collection(db, 'students'), orderBy('name'));
+    const unsubscribeStudents = onSnapshot(studentsQuery, (snapshot) => {
+      const studentData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        rollNumber: doc.data().rollNumber,
+        classId: doc.data().classId
+      })) as Student[];
+      setStudents(studentData);
+    });
+
+    const classesQuery = query(collection(db, 'classes'), orderBy('name'));
+    const unsubscribeClasses = onSnapshot(classesQuery, (snapshot) => {
+      const classData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Class[];
+      setClasses(classData);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeStudents();
+      unsubscribeClasses();
+    };
   }, []);
 
   const handleAddFee = async (e: React.FormEvent) => {
@@ -84,7 +125,7 @@ export default function Fees() {
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
-      setNewFee({ studentName: '', amount: '', type: 'tuition', status: 'paid', date: new Date().toISOString().split('T')[0] });
+      setNewFee({ studentName: '', classId: '', amount: '', type: 'tuition', status: 'paid', date: new Date().toISOString().split('T')[0] });
       toast.success('Fee record added successfully');
     } catch (error) {
       console.error('Error adding fee:', error);
@@ -114,15 +155,55 @@ export default function Fees() {
                   <DialogDescription className="text-sidebar-foreground">Enter payment details for the student.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Student Name</label>
-                    <Input 
-                      required 
-                      value={newFee.studentName} 
-                      onChange={e => setNewFee({...newFee, studentName: e.target.value})}
-                      placeholder="Search student..." 
-                      className="bg-background border-border"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Class</label>
+                      <Select 
+                        value={newFee.classId} 
+                        onValueChange={val => setNewFee({...newFee, classId: val, studentName: ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Class">
+                            {newFee.classId && classes.find(c => c.id === newFee.classId) 
+                              ? `${classes.find(c => c.id === newFee.classId)?.name} - ${classes.find(c => c.id === newFee.classId)?.section}`
+                              : undefined}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {classes.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name} - {cls.section}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Student Name</label>
+                      <Select 
+                        value={newFee.studentName} 
+                        onValueChange={val => setNewFee({...newFee, studentName: val})}
+                        disabled={!newFee.classId}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Student">
+                            {newFee.studentName || undefined}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {students
+                            .filter(s => s.classId === newFee.classId)
+                            .map((student) => (
+                              <SelectItem key={student.id} value={student.name}>
+                                {student.name} ({student.rollNumber})
+                              </SelectItem>
+                            ))}
+                          {students.filter(s => s.classId === newFee.classId).length === 0 && (
+                            <SelectItem value="none" disabled>No students in this class</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
