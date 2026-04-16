@@ -233,6 +233,12 @@ export default function Fees() {
     overdueCount: fees.filter(f => f.status === 'overdue').length
   };
 
+  const handlePrint = () => {
+    document.body.classList.add('report-printing');
+    window.print();
+    document.body.classList.remove('report-printing');
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -550,69 +556,72 @@ export default function Fees() {
 
         {/* Receipt Dialog */}
         <Dialog open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-white flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-primary" />
-                Payment Receipt
-              </DialogTitle>
-              <DialogDescription className="text-sidebar-foreground">
-                Official payment confirmation for student fees.
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px] print:p-0 print:border-none print:shadow-none print:bg-white">
+            <div className="print:hidden">
+              <DialogHeader>
+                <DialogTitle className="text-white flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  Payment Receipt
+                </DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">
+                  Official payment confirmation for student fees.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
             
             {selectedFee && (
-              <div className="space-y-6 py-4">
-                <div className="flex justify-between items-start border-b border-border pb-4">
+              <div className="space-y-6 py-4 print:py-0 print:text-black">
+                <div className="flex justify-between items-start border-b border-border print:border-black pb-4">
                   <div>
-                    <h4 className="text-lg font-bold text-white">School Management System</h4>
-                    <p className="text-xs text-sidebar-foreground">123 Education Lane, Learning City</p>
+                    <h4 className="text-lg font-bold text-white print:text-black">School Management System</h4>
+                    <p className="text-xs text-sidebar-foreground print:text-gray-600">123 Education Lane, Learning City</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Receipt No.</p>
-                    <p className="text-sm font-bold text-white">#{selectedFee.id.slice(-8).toUpperCase()}</p>
+                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Receipt No.</p>
+                    <p className="text-sm font-bold text-white print:text-black">#{selectedFee.id.slice(-8).toUpperCase()}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Student Name</p>
-                    <p className="text-sm font-semibold text-white">{selectedFee.studentName}</p>
+                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Student Name</p>
+                    <p className="text-sm font-semibold text-white print:text-black">{selectedFee.studentName}</p>
+                    <p className="text-xs text-sidebar-foreground print:text-gray-600">Roll: {selectedFee.rollNumber} | Class: {classes.find(c => c.id === selectedFee.classId)?.name}</p>
                   </div>
                   <div className="space-y-1 text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Payment Date</p>
-                    <p className="text-sm font-semibold text-white">{format(new Date(selectedFee.date), 'MMMM dd, yyyy')}</p>
+                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Payment Date</p>
+                    <p className="text-sm font-semibold text-white print:text-black">{format(new Date(selectedFee.date), 'MMMM dd, yyyy')}</p>
                   </div>
                 </div>
 
-                <div className="bg-sidebar-accent/20 rounded-lg p-4 space-y-3">
+                <div className="bg-sidebar-accent/20 print:bg-gray-100 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground">Fee Description</span>
-                    <span className="text-white font-medium capitalize">{selectedFee.type} Fee</span>
+                    <span className="text-sidebar-foreground print:text-gray-600">Fee Description</span>
+                    <span className="text-white print:text-black font-medium capitalize">{selectedFee.type} Fee</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground">Status</span>
+                    <span className="text-sidebar-foreground print:text-gray-600">Status</span>
                     <span className={cn(
                       "font-bold uppercase text-[10px]",
                       selectedFee.status === 'paid' ? "text-emerald-500" : "text-amber-500"
                     )}>{selectedFee.status}</span>
                   </div>
-                  <div className="pt-3 border-t border-border flex justify-between items-center">
-                    <span className="text-base font-bold text-white">Total Amount</span>
-                    <span className="text-xl font-bold text-primary">৳{selectedFee.amount.toFixed(2)}</span>
+                  <div className="pt-3 border-t border-border print:border-gray-300 flex justify-between items-center">
+                    <span className="text-base font-bold text-white print:text-black">Total Amount</span>
+                    <span className="text-xl font-bold text-primary print:text-black">৳{selectedFee.amount.toFixed(2)}</span>
                   </div>
                 </div>
 
                 <div className="text-center space-y-2">
-                  <p className="text-[10px] text-sidebar-foreground italic">
+                  <p className="text-[10px] text-sidebar-foreground print:text-gray-500 italic">
                     This is a computer-generated receipt and does not require a physical signature.
                   </p>
                 </div>
               </div>
             )}
 
-            <DialogFooter className="flex sm:justify-between gap-2">
-              <Button variant="outline" onClick={() => window.print()} className="border-border text-sidebar-foreground">
+            <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
+              <Button variant="outline" onClick={handlePrint} className="border-border text-sidebar-foreground">
                 Print Receipt
               </Button>
               <Button onClick={() => setIsReceiptDialogOpen(false)}>Close</Button>

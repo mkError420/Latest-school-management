@@ -248,6 +248,12 @@ export default function Payroll() {
     totalDeductions: payroll.reduce((acc, curr) => acc + curr.deductions, 0)
   };
 
+  const handlePrint = () => {
+    document.body.classList.add('report-printing');
+    window.print();
+    document.body.classList.remove('report-printing');
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -603,72 +609,74 @@ export default function Payroll() {
 
         {/* Payslip Dialog */}
         <Dialog open={isViewPayslipOpen} onOpenChange={setIsViewPayslipOpen}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Salary Payslip
-              </DialogTitle>
-              <DialogDescription className="text-sidebar-foreground">
-                Official salary statement for the month of {selectedRecord?.month}.
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px] print:p-0 print:border-none print:shadow-none print:bg-white">
+            <div className="print:hidden">
+              <DialogHeader>
+                <DialogTitle className="text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Salary Payslip
+                </DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">
+                  Official salary statement for the month of {selectedRecord?.month}.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
             
             {selectedRecord && (
-              <div className="space-y-6 py-4">
-                <div className="flex justify-between items-start border-b border-border pb-4">
+              <div className="space-y-6 py-4 print:py-0 print:text-black">
+                <div className="flex justify-between items-start border-b border-border print:border-black pb-4">
                   <div>
-                    <h4 className="text-lg font-bold text-white">School Management System</h4>
-                    <p className="text-xs text-sidebar-foreground">123 Education Lane, Learning City</p>
+                    <h4 className="text-lg font-bold text-white print:text-black">School Management System</h4>
+                    <p className="text-xs text-sidebar-foreground print:text-gray-600">123 Education Lane, Learning City</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Payslip No.</p>
-                    <p className="text-sm font-bold text-white">#{selectedRecord.id.slice(-8).toUpperCase()}</p>
+                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Payslip No.</p>
+                    <p className="text-sm font-bold text-white print:text-black">#{selectedRecord.id.slice(-8).toUpperCase()}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Employee Name</p>
-                    <p className="text-sm font-semibold text-white">{selectedRecord.staffName}</p>
-                    <p className="text-xs text-sidebar-foreground">{selectedRecord.role}</p>
+                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Employee Name</p>
+                    <p className="text-sm font-semibold text-white print:text-black">{selectedRecord.staffName}</p>
+                    <p className="text-xs text-sidebar-foreground print:text-gray-600">{selectedRecord.role}</p>
                   </div>
                   <div className="space-y-1 text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground uppercase tracking-wider">Payment Date</p>
-                    <p className="text-sm font-semibold text-white">{format(new Date(selectedRecord.paymentDate), 'MMMM dd, yyyy')}</p>
-                    <p className="text-xs text-sidebar-foreground">Method: {selectedRecord.paymentMethod}</p>
+                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Payment Date</p>
+                    <p className="text-sm font-semibold text-white print:text-black">{format(new Date(selectedRecord.paymentDate), 'MMMM dd, yyyy')}</p>
+                    <p className="text-xs text-sidebar-foreground print:text-gray-600">Method: {selectedRecord.paymentMethod}</p>
                   </div>
                 </div>
 
-                <div className="bg-sidebar-accent/20 rounded-lg p-4 space-y-3">
+                <div className="bg-sidebar-accent/20 print:bg-gray-100 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground">Base Salary</span>
-                    <span className="text-white font-medium">৳{selectedRecord.amount.toLocaleString()}</span>
+                    <span className="text-sidebar-foreground print:text-gray-600">Base Salary</span>
+                    <span className="text-white print:text-black font-medium">৳{selectedRecord.amount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground">Bonus</span>
+                    <span className="text-sidebar-foreground print:text-gray-600">Bonus</span>
                     <span className="text-emerald-500 font-medium">+৳{selectedRecord.bonus.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground">Deductions</span>
+                    <span className="text-sidebar-foreground print:text-gray-600">Deductions</span>
                     <span className="text-rose-500 font-medium">-৳{selectedRecord.deductions.toLocaleString()}</span>
                   </div>
-                  <div className="pt-3 border-t border-border flex justify-between items-center">
-                    <span className="text-base font-bold text-white">Net Salary</span>
-                    <span className="text-xl font-bold text-primary">৳{selectedRecord.netSalary.toLocaleString()}</span>
+                  <div className="pt-3 border-t border-border print:border-gray-300 flex justify-between items-center">
+                    <span className="text-base font-bold text-white print:text-black">Net Salary</span>
+                    <span className="text-xl font-bold text-primary print:text-black">৳{selectedRecord.netSalary.toLocaleString()}</span>
                   </div>
                 </div>
 
                 <div className="text-center space-y-2">
-                  <p className="text-[10px] text-sidebar-foreground italic">
+                  <p className="text-[10px] text-sidebar-foreground print:text-gray-500 italic">
                     This is a computer-generated payslip and does not require a physical signature.
                   </p>
                 </div>
               </div>
             )}
 
-            <DialogFooter className="flex sm:justify-between gap-2">
-              <Button variant="outline" onClick={() => window.print()} className="border-border text-sidebar-foreground">
+            <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
+              <Button variant="outline" onClick={handlePrint} className="border-border text-sidebar-foreground">
                 Print Payslip
               </Button>
               <Button onClick={() => setIsViewPayslipOpen(false)}>Close</Button>
