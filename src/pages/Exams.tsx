@@ -109,6 +109,8 @@ export default function Exams() {
   const [reportResults, setReportResults] = useState<Result[]>([]);
   const [reportExams, setReportExams] = useState<Exam[]>([]);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [resultsClassFilter, setResultsClassFilter] = useState<string>('all');
+  const [resultsTypeFilter, setResultsTypeFilter] = useState<string>('all');
 
   useEffect(() => {
     if (isReportDialogOpen) {
@@ -954,43 +956,110 @@ export default function Exams() {
             </div>
           </TabsContent>
 
-          <TabsContent value="results">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {exams.filter(e => e.status === 'completed' || e.status === 'ongoing').map((exam) => (
-                <Card key={exam.id} className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => startGrading(exam)}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <GraduationCap className="w-5 h-5 text-primary" />
+          <TabsContent value="results" className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="w-full md:w-64">
+                <label className="text-xs font-medium text-sidebar-foreground mb-1.5 block">Filter by Class</label>
+                <Select value={resultsClassFilter} onValueChange={setResultsClassFilter}>
+                  <SelectTrigger className="bg-card border-border">
+                    <SelectValue placeholder="All Classes" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {classes.map(cls => (
+                      <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full md:w-64">
+                <label className="text-xs font-medium text-sidebar-foreground mb-1.5 block">Filter by Exam Type</label>
+                <Select value={resultsTypeFilter} onValueChange={setResultsTypeFilter}>
+                  <SelectTrigger className="bg-card border-border">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="class_test">Class Test</SelectItem>
+                    <SelectItem value="midterm">Midterm</SelectItem>
+                    <SelectItem value="final">Final Exam</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              {classes
+                .filter(cls => resultsClassFilter === 'all' || cls.id === resultsClassFilter)
+                .map(cls => {
+                  const classExams = exams.filter(e => 
+                    e.classId === cls.id && 
+                    (e.status === 'completed' || e.status === 'ongoing') &&
+                    (resultsTypeFilter === 'all' || e.type === resultsTypeFilter)
+                  );
+
+                  if (classExams.length === 0) return null;
+
+                  return (
+                    <div key={cls.id} className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                        <div className="w-1.5 h-6 bg-primary rounded-full" />
+                        <h4 className="text-lg font-bold text-white">{cls.name}</h4>
                       </div>
-                      <Badge variant={exam.status === 'completed' ? 'default' : 'secondary'} className="capitalize">
-                        {exam.status}
-                      </Badge>
+
+                      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
+                        <Table>
+                          <TableHeader className="bg-sidebar-accent/30">
+                            <TableRow className="border-border hover:bg-transparent">
+                              <TableHead className="font-semibold text-sidebar-foreground">Subject</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground">Type</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground text-center">Date</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground text-center">Status</TableHead>
+                              <TableHead className="font-semibold text-sidebar-foreground text-right">Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {classExams.map(exam => (
+                              <TableRow key={exam.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                                <TableCell className="font-medium text-white">{exam.subject}</TableCell>
+                                <TableCell className="text-sidebar-foreground capitalize">{exam.type.replace('_', ' ')}</TableCell>
+                                <TableCell className="text-sidebar-foreground text-center">{format(new Date(exam.date), 'MMM dd, yyyy')}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant={exam.status === 'completed' ? 'default' : 'secondary'} className="capitalize">
+                                    {exam.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="text-primary hover:text-primary hover:bg-primary/10"
+                                    onClick={() => startGrading(exam)}
+                                  >
+                                    Manage Results
+                                    <ChevronRight className="w-4 h-4 ml-1" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
-                    <CardTitle className="text-white mt-4">{exam.subject}</CardTitle>
-                    <CardDescription className="text-sidebar-foreground">
-                      {classes.find(c => c.id === exam.classId)?.name} • {exam.type}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-sm mt-4">
-                      <div className="flex items-center text-sidebar-foreground">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        {format(new Date(exam.date), 'MMM dd')}
-                      </div>
-                      <div className="text-primary font-medium flex items-center group-hover:translate-x-1 transition-transform">
-                        Manage Results
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {exams.filter(e => e.status === 'completed' || e.status === 'ongoing').length === 0 && (
-                <div className="col-span-full py-12 text-center bg-card border border-border rounded-xl">
+                  );
+                })}
+
+              {classes.filter(cls => resultsClassFilter === 'all' || cls.id === resultsClassFilter).every(cls => 
+                exams.filter(e => 
+                  e.classId === cls.id && 
+                  (e.status === 'completed' || e.status === 'ongoing') &&
+                  (resultsTypeFilter === 'all' || e.type === resultsTypeFilter)
+                ).length === 0
+              ) && (
+                <div className="py-12 text-center bg-card border border-border rounded-xl">
                   <FileText className="w-12 h-12 text-sidebar-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-white">No Exams Ready for Grading</h3>
-                  <p className="text-sidebar-foreground">Complete or start an exam to enter results.</p>
+                  <h3 className="text-lg font-semibold text-white">No Exams Found</h3>
+                  <p className="text-sidebar-foreground">Try adjusting your filters or complete an exam to enter results.</p>
                 </div>
               )}
             </div>
