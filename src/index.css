@@ -132,10 +132,17 @@
       background-color: white !important;
       color: black !important;
       overflow: visible !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
     
+    /* When the report is open, hide the main application root */
+    body.report-printing #root {
+      display: none !important;
+    }
+
     /* Reset dialog positioning for print */
-    [role="dialog"] {
+    [role="dialog"], [data-slot="dialog-content"] {
       position: relative !important;
       width: 100% !important;
       max-width: none !important;
@@ -148,18 +155,49 @@
       left: 0 !important;
       top: 0 !important;
       transform: none !important;
+      display: block !important;
+    }
+
+    /* Hide interactive elements in the dialog during print */
+    [data-slot="dialog-close"], 
+    [data-slot="dialog-overlay"],
+    [data-slot="dialog-footer"],
+    .print\:hidden {
+      display: none !important;
     }
 
     /* Ensure the portal container is visible */
-    [data-radix-portal] {
+    [data-radix-portal], [data-slot="dialog-portal"] {
       position: static !important;
       display: block !important;
+    }
+
+    /* Table print optimizations */
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      page-break-inside: auto !important;
+    }
+
+    tr {
+      page-break-inside: avoid !important;
+      page-break-after: auto !important;
+    }
+
+    thead {
+      display: table-header-group !important;
     }
 
     /* Force background colors to print */
     * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+    }
+    
+    /* Remove any fixed heights that might cause blank pages */
+    .h-screen, .h-full, .min-h-screen {
+      height: auto !important;
+      min-height: 0 !important;
     }
   }
 }

@@ -108,6 +108,15 @@ export default function Exams() {
   const [reportResults, setReportResults] = useState<Result[]>([]);
   const [reportExams, setReportExams] = useState<Exam[]>([]);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  useEffect(() => {
+    if (isReportDialogOpen) {
+      document.body.classList.add('report-printing');
+    } else {
+      document.body.classList.remove('report-printing');
+    }
+    return () => document.body.classList.remove('report-printing');
+  }, [isReportDialogOpen]);
   
   const [viewMode, setViewMode] = useState<'list' | 'grading'>('list');
   const [gradingExam, setGradingExam] = useState<Exam | null>(null);
