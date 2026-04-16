@@ -256,6 +256,102 @@ export default function Payroll() {
 
   return (
     <DashboardLayout>
+      {/* Print Only Payslip Container */}
+      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans">
+        {selectedRecord && (
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b-2 border-black pb-6">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-bold uppercase tracking-tight">Salary Payslip</h1>
+                <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
+                <p className="text-sm text-gray-600">123 Education Lane, Learning City</p>
+                <p className="text-sm text-gray-600">Phone: +880 1234 567890 | Email: hr@school.edu</p>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">CONFIDENTIAL</div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Payslip ID</p>
+                <p className="text-lg font-mono font-bold">#{selectedRecord.id.slice(-8).toUpperCase()}</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Pay Period</p>
+                <p className="text-sm font-semibold">{selectedRecord.month}</p>
+              </div>
+            </div>
+
+            {/* Employee Info */}
+            <div className="grid grid-cols-2 gap-12 py-4">
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Employee Details</h3>
+                <div className="space-y-1">
+                  <p className="text-base font-bold">{selectedRecord.staffName}</p>
+                  <p className="text-sm text-gray-700">Designation: <span className="font-semibold">{selectedRecord.role}</span></p>
+                  <p className="text-sm text-gray-700">Payment Date: <span className="font-semibold">{format(new Date(selectedRecord.paymentDate), 'MMMM dd, yyyy')}</span></p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Payment Summary</h3>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-700">Payment Method: <span className="font-semibold">{selectedRecord.paymentMethod}</span></p>
+                  <p className="text-sm text-gray-700">Status: <span className="font-bold text-emerald-600 uppercase">{selectedRecord.status}</span></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Earnings & Deductions */}
+            <div className="mt-8">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 px-4 py-2 text-left text-xs font-bold uppercase">Description</th>
+                    <th className="border border-gray-300 px-4 py-2 text-right text-xs font-bold uppercase w-32">Earnings</th>
+                    <th className="border border-gray-300 px-4 py-2 text-right text-xs font-bold uppercase w-32">Deductions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-4 text-sm font-medium">Basic Salary</td>
+                    <td className="border border-gray-300 px-4 py-4 text-right text-sm font-mono font-bold">৳{selectedRecord.amount.toLocaleString()}</td>
+                    <td className="border border-gray-300 px-4 py-4 text-right text-sm font-mono text-gray-400">-</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-4 text-sm font-medium">Bonus / Allowances</td>
+                    <td className="border border-gray-300 px-4 py-4 text-right text-sm font-mono font-bold text-emerald-600">+৳{selectedRecord.bonus.toLocaleString()}</td>
+                    <td className="border border-gray-300 px-4 py-4 text-right text-sm font-mono text-gray-400">-</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-4 text-sm font-medium">Tax / Other Deductions</td>
+                    <td className="border border-gray-300 px-4 py-4 text-right text-sm font-mono text-gray-400">-</td>
+                    <td className="border border-gray-300 px-4 py-4 text-right text-sm font-mono font-bold text-rose-600">-৳{selectedRecord.deductions.toLocaleString()}</td>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2 text-right text-sm font-bold">Totals</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right text-sm font-mono font-bold text-emerald-600">৳{(selectedRecord.amount + selectedRecord.bonus).toLocaleString()}</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right text-sm font-mono font-bold text-rose-600">৳{selectedRecord.deductions.toLocaleString()}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={2} className="border border-gray-300 px-4 py-3 text-right text-base font-bold uppercase">Net Payable Amount</td>
+                    <td className="border border-gray-300 px-4 py-3 text-right text-xl font-mono font-bold bg-gray-100">৳{selectedRecord.netSalary.toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-16 flex justify-between items-end">
+              <div className="space-y-4">
+                <div className="w-48 border-b border-black"></div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Authorized Signature</p>
+              </div>
+              <div className="text-right space-y-2">
+                <p className="text-[10px] text-gray-400 italic max-w-[250px]">
+                  This is a computer-generated payslip. No physical signature is required for its validity.
+                </p>
+                <p className="text-[10px] font-bold text-gray-500">Generated on: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

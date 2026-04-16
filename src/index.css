@@ -137,25 +137,29 @@
     }
     
     /* When the report is open, hide the main application root */
-    body.report-printing #root {
+    body.report-printing #root,
+    body.report-printing [role="dialog"],
+    body.report-printing [data-radix-portal] {
       display: none !important;
     }
 
-    /* Reset dialog positioning for print */
-    [role="dialog"], [data-slot="dialog-content"] {
+    body.report-printing .print-only {
+      display: block !important;
       position: relative !important;
       width: 100% !important;
-      max-width: none !important;
-      height: auto !important;
-      margin: 0 !important;
+      background: white !important;
+      color: black !important;
       padding: 0 !important;
-      box-shadow: none !important;
-      border: none !important;
-      background-color: white !important;
-      left: 0 !important;
-      top: 0 !important;
-      transform: none !important;
-      display: block !important;
+      margin: 0 !important;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    /* Reset dialog positioning for print if not using print-only */
+    body:not(.report-printing) .print-only {
+      display: none !important;
     }
 
     /* Hide interactive elements in the dialog during print */

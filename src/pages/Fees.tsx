@@ -241,6 +241,102 @@ export default function Fees() {
 
   return (
     <DashboardLayout>
+      {/* Print Only Receipt Container */}
+      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans">
+        {selectedFee && (
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b-2 border-black pb-6">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-bold uppercase tracking-tight">Payment Receipt</h1>
+                <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
+                <p className="text-sm text-gray-600">123 Education Lane, Learning City</p>
+                <p className="text-sm text-gray-600">Phone: +880 1234 567890 | Email: info@school.edu</p>
+              </div>
+              <div className="text-right space-y-1">
+                <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">OFFICIAL RECEIPT</div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Receipt Number</p>
+                <p className="text-lg font-mono font-bold">#{selectedFee.id.slice(-8).toUpperCase()}</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Date Issued</p>
+                <p className="text-sm font-semibold">{format(new Date(selectedFee.date), 'MMMM dd, yyyy')}</p>
+              </div>
+            </div>
+
+            {/* Student Info */}
+            <div className="grid grid-cols-2 gap-12 py-4">
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Student Details</h3>
+                <div className="space-y-1">
+                  <p className="text-base font-bold">{selectedFee.studentName}</p>
+                  <p className="text-sm text-gray-700">Roll Number: <span className="font-semibold">{selectedFee.rollNumber}</span></p>
+                  <p className="text-sm text-gray-700">Class: <span className="font-semibold">{classes.find(c => c.id === selectedFee.classId)?.name}</span></p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Payment Summary</h3>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-700">Fee Type: <span className="font-semibold capitalize">{selectedFee.type} Fee</span></p>
+                  <p className="text-sm text-gray-700">Payment Status: <span className="font-bold text-emerald-600 uppercase">{selectedFee.status}</span></p>
+                  <p className="text-sm text-gray-700">Payment Method: <span className="font-semibold">Cash/Online</span></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="mt-8">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 px-4 py-2 text-left text-xs font-bold uppercase">Description</th>
+                    <th className="border border-gray-300 px-4 py-2 text-right text-xs font-bold uppercase w-32">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-6 text-sm">
+                      <p className="font-bold capitalize">{selectedFee.type} Fee Payment</p>
+                      <p className="text-xs text-gray-500 mt-1">Full payment for the specified academic period.</p>
+                    </td>
+                    <td className="border border-gray-300 px-4 py-6 text-right text-sm font-mono font-bold">
+                      ৳{selectedFee.amount.toFixed(2)}
+                    </td>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2 text-right text-sm font-bold">Subtotal</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right text-sm font-mono font-bold">৳{selectedFee.amount.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-4 py-3 text-right text-base font-bold uppercase">Total Paid</td>
+                    <td className="border border-gray-300 px-4 py-3 text-right text-xl font-mono font-bold bg-gray-100">৳{selectedFee.amount.toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-16 flex justify-between items-end">
+              <div className="space-y-4">
+                <div className="w-48 border-b border-black"></div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Authorized Signature</p>
+              </div>
+              <div className="text-right space-y-2">
+                <p className="text-[10px] text-gray-400 italic max-w-[250px]">
+                  This is a computer-generated document. No physical signature is required for its validity.
+                </p>
+                <p className="text-[10px] font-bold text-gray-500">Generated on: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
+              </div>
+            </div>
+
+            {/* Paid Stamp Placeholder */}
+            {selectedFee.status === 'paid' && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-emerald-600/30 rounded-full px-8 py-4 rotate-[-25deg] pointer-events-none">
+                <span className="text-6xl font-black text-emerald-600/30 uppercase tracking-tighter">PAID</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
