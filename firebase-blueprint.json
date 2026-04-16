@@ -127,15 +127,31 @@
       "type": "object",
       "properties": {
         "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "role": { "type": "string" },
         "month": { "type": "string" },
-        "year": { "type": "number" },
-        "baseSalary": { "type": "number" },
-        "allowances": { "type": "number" },
+        "amount": { "type": "number", "description": "Base salary" },
+        "bonus": { "type": "number" },
         "deductions": { "type": "number" },
         "netSalary": { "type": "number" },
-        "status": { "type": "string", "enum": ["paid", "pending"] }
+        "status": { "type": "string", "enum": ["paid", "pending"] },
+        "paymentDate": { "type": "string", "format": "date" },
+        "paymentMethod": { "type": "string" }
       },
-      "required": ["staffId", "month", "year", "netSalary"]
+      "required": ["staffId", "month", "netSalary", "status"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "School staff members.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "salary": { "type": "number" },
+        "joinDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      },
+      "required": ["name", "role", "salary", "status"]
     },
     "Notification": {
       "title": "Notification",
@@ -175,6 +191,7 @@
     "/results/{resultId}": { "schema": "Result", "description": "Exam results" },
     "/library_books/{bookId}": { "schema": "LibraryBook", "description": "Library inventory" },
     "/library_issues/{issueId}": { "schema": "LibraryIssue", "description": "Book issue records" },
+    "/staff/{staffId}": { "schema": "Staff", "description": "Staff records" },
     "/payroll/{payrollId}": { "schema": "Payroll", "description": "Staff payroll" },
     "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" }
   }

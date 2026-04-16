@@ -29,8 +29,11 @@ service cloud.firestore {
     // Collection: library_issues
     // Fields: bookId, bookTitle, studentId, studentName, studentClass, issueDate, dueDate, returnDate, status
     //
+    // Collection: staff
+    // Fields: name, role, salary, joinDate, status
+    //
     // Collection: payroll
-    // Fields: staffId, month, year, netSalary, status
+    // Fields: staffId, staffName, role, month, amount, bonus, deductions, netSalary, status, paymentDate, paymentMethod
     //
     // Collection: notifications
     // Fields: recipientId, title, message, type, read, createdAt
@@ -86,6 +89,18 @@ service cloud.firestore {
              data.marksObtained is number;
     }
 
+    function isValidStaff(data) {
+      return data.keys().hasAll(['name', 'role', 'salary', 'status']) &&
+             data.salary is number &&
+             data.status in ['active', 'inactive'];
+    }
+
+    function isValidPayroll(data) {
+      return data.keys().hasAll(['staffId', 'month', 'netSalary', 'status']) &&
+             data.netSalary is number &&
+             data.status in ['paid', 'pending'];
+    }
+
     // Rules
     match /users/{uid} {
       allow read: if isAuthenticated();
@@ -133,8 +148,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /staff/{id} {
+      allow read: if isAdmin() || isTeacher();
+      allow write: if isAdmin();
+    }
+
     match /payroll/{id} {
-      allow read: if isAdmin() || isOwner(resource.data.staffId);
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.staffId == request.auth.uid);
       allow write: if isAdmin();
     }
 
