@@ -51,6 +51,12 @@ import {
   DropdownMenuLabel, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
 import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { toast } from 'sonner';
@@ -193,6 +199,16 @@ export default function Payroll() {
       toast.success('Payroll record deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `payroll/${id}`);
+    }
+  };
+
+  const handleDeleteStaff = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this staff member? This will not delete their payroll history.')) return;
+    try {
+      await deleteDoc(doc(db, 'staff', id));
+      toast.success('Staff member removed');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `staff/${id}`);
     }
   };
 
@@ -397,116 +413,191 @@ export default function Payroll() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-card border-border p-5 flex flex-col shadow-none">
-            <span className="text-sm font-semibold text-sidebar-foreground mb-5">Total Monthly Payout</span>
-            <div className="text-[28px] font-bold text-white mb-1">৳{stats.totalPayout.toLocaleString()}</div>
-            <div className="flex items-center text-xs text-emerald-500 mt-1">
-              <ArrowUpRight className="w-3 h-3 mr-1" />
-              Calculated from paid records
-            </div>
-          </Card>
-          <Card className="bg-card border-border p-5 flex flex-col shadow-none">
-            <span className="text-sm font-semibold text-amber-500 mb-5">Pending Payments</span>
-            <div className="text-[28px] font-bold text-white mb-1">৳{stats.pendingAmount.toLocaleString()}</div>
-            <div className="flex items-center text-xs text-sidebar-foreground mt-1">
-              {stats.pendingCount} staff members
-            </div>
-          </Card>
-          <Card className="bg-card border-border p-5 flex flex-col shadow-none">
-            <span className="text-sm font-semibold text-sidebar-foreground mb-5">Tax & Deductions</span>
-            <div className="text-[28px] font-bold text-white mb-1">৳{stats.totalDeductions.toLocaleString()}</div>
-            <div className="flex items-center text-xs text-rose-500 mt-1">
-              <ArrowDownRight className="w-3 h-3 mr-1" />
-              Total deductions recorded
-            </div>
-          </Card>
-        </div>
+        <Tabs defaultValue="history" className="space-y-6">
+          <TabsList className="bg-card border border-border p-1">
+            <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+              Payroll History
+            </TabsTrigger>
+            <TabsTrigger value="staff" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+              Staff Directory
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold text-white">Payroll History</h3>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
-              <Input 
-                placeholder="Search staff..." 
-                className="pl-10 h-9 bg-background border-border text-foreground" 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+          <TabsContent value="history" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-card border-border p-5 flex flex-col shadow-none">
+                <span className="text-sm font-semibold text-sidebar-foreground mb-5">Total Monthly Payout</span>
+                <div className="text-[28px] font-bold text-white mb-1">৳{stats.totalPayout.toLocaleString()}</div>
+                <div className="flex items-center text-xs text-emerald-500 mt-1">
+                  <ArrowUpRight className="w-3 h-3 mr-1" />
+                  Calculated from paid records
+                </div>
+              </Card>
+              <Card className="bg-card border-border p-5 flex flex-col shadow-none">
+                <span className="text-sm font-semibold text-amber-500 mb-5">Pending Payments</span>
+                <div className="text-[28px] font-bold text-white mb-1">৳{stats.pendingAmount.toLocaleString()}</div>
+                <div className="flex items-center text-xs text-sidebar-foreground mt-1">
+                  {stats.pendingCount} staff members
+                </div>
+              </Card>
+              <Card className="bg-card border-border p-5 flex flex-col shadow-none">
+                <span className="text-sm font-semibold text-sidebar-foreground mb-5">Tax & Deductions</span>
+                <div className="text-[28px] font-bold text-white mb-1">৳{stats.totalDeductions.toLocaleString()}</div>
+                <div className="flex items-center text-xs text-rose-500 mt-1">
+                  <ArrowDownRight className="w-3 h-3 mr-1" />
+                  Total deductions recorded
+                </div>
+              </Card>
             </div>
-          </div>
-          <Table>
-            <TableHeader className="bg-sidebar-accent/30">
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="font-semibold text-sidebar-foreground">Staff Name</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Role</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Month</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Net Salary</TableHead>
-                <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
-                <TableHead className="text-right font-semibold text-sidebar-foreground">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPayroll.length > 0 ? (
-                filteredPayroll.map((record) => (
-                  <TableRow key={record.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
-                    <TableCell className="font-semibold text-white">{record.staffName}</TableCell>
-                    <TableCell className="capitalize text-sidebar-foreground">{record.role}</TableCell>
-                    <TableCell className="text-sidebar-foreground">{record.month}</TableCell>
-                    <TableCell className="font-medium text-white">৳{record.netSalary.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className={cn(
-                        "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                        record.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
-                      )}>
-                        {record.status === 'paid' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
-                        {record.status}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        } />
-                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem 
-                              className="hover:bg-sidebar-accent cursor-pointer"
-                              onClick={() => {
-                                setSelectedRecord(record);
-                                setIsViewPayslipOpen(true);
-                              }}
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Payslip
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                              onClick={() => handleDeletePayroll(record.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete Record
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+
+            <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="font-semibold text-white">Payroll History</h3>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
+                  <Input 
+                    placeholder="Search staff..." 
+                    className="pl-10 h-9 bg-background border-border text-foreground" 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Table>
+                <TableHeader className="bg-sidebar-accent/30">
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="font-semibold text-sidebar-foreground">Staff Name</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Role</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Month</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Net Salary</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
+                    <TableHead className="text-right font-semibold text-sidebar-foreground">Action</TableHead>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
-                    No payroll records found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredPayroll.length > 0 ? (
+                    filteredPayroll.map((record) => (
+                      <TableRow key={record.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                        <TableCell className="font-semibold text-white">{record.staffName}</TableCell>
+                        <TableCell className="capitalize text-sidebar-foreground">{record.role}</TableCell>
+                        <TableCell className="text-sidebar-foreground">{record.month}</TableCell>
+                        <TableCell className="font-medium text-white">৳{record.netSalary.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <div className={cn(
+                            "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
+                            record.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                          )}>
+                            {record.status === 'paid' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
+                            {record.status}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={
+                              <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            } />
+                            <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  className="hover:bg-sidebar-accent cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedRecord(record);
+                                    setIsViewPayslipOpen(true);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Payslip
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                  onClick={() => handleDeletePayroll(record.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete Record
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
+                        No payroll records found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="staff" className="space-y-6">
+            <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="font-semibold text-white">Staff Directory</h3>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
+                  <Input 
+                    placeholder="Search staff..." 
+                    className="pl-10 h-9 bg-background border-border text-foreground" 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Table>
+                <TableHeader className="bg-sidebar-accent/30">
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="font-semibold text-sidebar-foreground">Name</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Role</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Base Salary</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Join Date</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
+                    <TableHead className="text-right font-semibold text-sidebar-foreground">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staff.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).length > 0 ? (
+                    staff.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
+                      <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                        <TableCell className="font-semibold text-white">{s.name}</TableCell>
+                        <TableCell className="capitalize text-sidebar-foreground">{s.role}</TableCell>
+                        <TableCell className="font-medium text-white">৳{s.salary.toLocaleString()}</TableCell>
+                        <TableCell className="text-sidebar-foreground">{format(new Date(s.joinDate), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>
+                          <Badge variant={s.status === 'active' ? 'default' : 'secondary'} className="capitalize">
+                            {s.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
+                            onClick={() => handleDeleteStaff(s.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
+                        No staff members found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Payslip Dialog */}
         <Dialog open={isViewPayslipOpen} onOpenChange={setIsViewPayslipOpen}>
