@@ -103,8 +103,10 @@ export default function Exams() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
-  const [reportExamId, setReportExamId] = useState<string>('');
+  const [reportClassId, setReportClassId] = useState<string>('');
+  const [reportExamType, setReportExamType] = useState<'class_test' | 'midterm' | 'final'>('midterm');
   const [reportResults, setReportResults] = useState<Result[]>([]);
+  const [reportExams, setReportExams] = useState<Exam[]>([]);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   
   const [viewMode, setViewMode] = useState<'list' | 'grading'>('list');
@@ -158,7 +160,8 @@ export default function Exams() {
 
   useEffect(() => {
     setReportResults([]);
-  }, [reportExamId]);
+    setReportExams([]);
+  }, [reportClassId, reportExamType]);
 
   const handleAddExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,10 +306,22 @@ export default function Exams() {
   };
 
   const handleGenerateReport = async () => {
-    if (!reportExamId) return;
+    if (!reportClassId || !reportExamType) return;
     setIsGeneratingReport(true);
     try {
-      const resultsQuery = query(collection(db, 'results'), where('examId', '==', reportExamId));
+      // 1. Find all exams for this class and type
+      const classExams = exams.filter(e => e.classId === reportClassId && e.type === reportExamType && e.status === 'completed');
+      setReportExams(classExams);
+
+      if (classExams.length === 0) {
+        setReportResults([]);
+        toast.info('No completed exams found for this selection');
+        return;
+      }
+
+      // 2. Fetch all results for these exams
+      const examIds = classExams.map(e => e.id);
+      const resultsQuery = query(collection(db, 'results'), where('examId', 'in', examIds));
       const querySnapshot = await getDocs(resultsQuery);
       const resultsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -319,19 +334,6 @@ export default function Exams() {
     } finally {
       setIsGeneratingReport(false);
     }
-  };
-
-  const getReportStats = () => {
-    if (reportResults.length === 0) return null;
-    const marks = reportResults.map(r => r.marksObtained);
-    const totalMarks = exams.find(e => e.id === reportExamId)?.totalMarks || 100;
-    const avg = marks.reduce((a, b) => a + b, 0) / marks.length;
-    const high = Math.max(...marks);
-    const low = Math.min(...marks);
-    const passCount = reportResults.filter(r => r.grade !== 'F').length;
-    const passPercentage = (passCount / reportResults.length) * 100;
-
-    return { avg, high, low, passPercentage, total: reportResults.length };
   };
 
   const filteredExams = exams.filter(exam => 
@@ -467,29 +469,44 @@ export default function Exams() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
-                  <div className="space-y-2 print:hidden">
-                    <label className="text-sm font-medium text-sidebar-foreground">Select Exam</label>
-                    <Select value={reportExamId || ''} onValueChange={setReportExamId}>
-                      <SelectTrigger className="w-full bg-background border-border">
-                        <SelectValue placeholder="Choose an exam">
-                          {reportExamId && exams.find(e => e.id === reportExamId) ? (
-                            `${exams.find(e => e.id === reportExamId)?.subject} - ${classes.find(c => c.id === exams.find(e => e.id === reportExamId)?.classId)?.name} (${exams.find(e => e.id === reportExamId)?.type.replace('_', ' ')})`
-                          ) : undefined}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        {exams.filter(e => e.status === 'completed').map((exam) => (
-                          <SelectItem key={exam.id} value={exam.id}>
-                            {exam.subject} - {classes.find(c => c.id === exam.classId)?.name} ({exam.type.replace('_', ' ')}) - {format(new Date(exam.date), 'MMM dd, yyyy')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:hidden">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
+                      <Select value={reportClassId} onValueChange={setReportClassId}>
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Choose a class">
+                            {reportClassId && classes.find(c => c.id === reportClassId) 
+                              ? `${classes.find(c => c.id === reportClassId)?.name} - ${classes.find(c => c.id === reportClassId)?.section}`
+                              : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {classes.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Exam Type</label>
+                      <Select value={reportExamType} onValueChange={(val: any) => setReportExamType(val)}>
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Exam Type">
+                            {reportExamType ? reportExamType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="class_test">Class Test</SelectItem>
+                          <SelectItem value="midterm">Midterm</SelectItem>
+                          <SelectItem value="final">Final Exam</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <Button 
                     onClick={handleGenerateReport} 
-                    disabled={!reportExamId || isGeneratingReport}
+                    disabled={!reportClassId || !reportExamType || isGeneratingReport}
                     className="w-full bg-primary hover:bg-primary/90 text-white print:hidden"
                   >
                     {isGeneratingReport ? "Generating..." : "Generate Report"}
@@ -500,55 +517,49 @@ export default function Exams() {
                       <div className="text-center space-y-1">
                         <h2 className="text-xl font-bold text-white">Exam Performance Report</h2>
                         <p className="text-sm text-sidebar-foreground">
-                          {exams.find(e => e.id === reportExamId)?.subject} • {classes.find(c => c.id === exams.find(e => e.id === reportExamId)?.classId)?.name}
+                          {reportExamType.replace('_', ' ').toUpperCase()} • {classes.find(c => c.id === reportClassId)?.name}
                         </p>
                       </div>
 
-                      {getReportStats() && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
-                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Average</p>
-                            <p className="text-lg font-bold text-white">{getReportStats()?.avg.toFixed(1)}</p>
-                          </div>
-                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
-                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Highest</p>
-                            <p className="text-lg font-bold text-emerald-500">{getReportStats()?.high}</p>
-                          </div>
-                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
-                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Lowest</p>
-                            <p className="text-lg font-bold text-rose-500">{getReportStats()?.low}</p>
-                          </div>
-                          <div className="bg-sidebar-accent/20 p-3 rounded-lg text-center">
-                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground">Pass %</p>
-                            <p className="text-lg font-bold text-primary">{getReportStats()?.passPercentage.toFixed(1)}%</p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="rounded-md border border-border overflow-hidden">
+                      <div className="rounded-md border border-border overflow-x-auto">
                         <Table>
                           <TableHeader className="bg-sidebar-accent/30">
                             <TableRow className="border-border hover:bg-transparent">
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase">Student</TableHead>
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">Marks</TableHead>
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right">Grade</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase min-w-[120px]">Student</TableHead>
+                              {reportExams.map(exam => (
+                                <TableHead key={exam.id} className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">
+                                  {exam.subject}
+                                </TableHead>
+                              ))}
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">Total</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right">Avg</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {reportResults.sort((a, b) => b.marksObtained - a.marksObtained).map((result) => (
-                              <TableRow key={result.id} className="border-border hover:bg-transparent">
-                                <TableCell className="text-sm text-white font-medium">{result.studentName}</TableCell>
-                                <TableCell className="text-sm text-white text-center">{result.marksObtained}</TableCell>
-                                <TableCell className="text-right">
-                                  <Badge variant="outline" className={cn(
-                                    "text-[10px] font-bold",
-                                    result.grade === 'F' ? "text-rose-500 border-rose-500/50" : "text-emerald-500 border-emerald-500/50"
-                                  )}>
-                                    {result.grade}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {students
+                              .filter(s => s.classId === reportClassId)
+                              .map(student => {
+                                const studentResults = reportResults.filter(r => r.studentId === student.id);
+                                let total = 0;
+                                return (
+                                  <TableRow key={student.id} className="border-border hover:bg-transparent">
+                                    <TableCell className="text-sm text-white font-medium">{student.name}</TableCell>
+                                    {reportExams.map(exam => {
+                                      const result = studentResults.find(r => r.examId === exam.id);
+                                      if (result) total += result.marksObtained;
+                                      return (
+                                        <TableCell key={exam.id} className="text-sm text-sidebar-foreground text-center">
+                                          {result ? result.marksObtained : '-'}
+                                        </TableCell>
+                                      );
+                                    })}
+                                    <TableCell className="text-sm text-white font-bold text-center">{total}</TableCell>
+                                    <TableCell className="text-sm text-primary font-bold text-right">
+                                      {reportExams.length > 0 ? (total / reportExams.length).toFixed(1) : '0.0'}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
                           </TableBody>
                         </Table>
                       </div>
@@ -559,7 +570,11 @@ export default function Exams() {
                   <Button variant="outline" onClick={() => window.print()} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
                     Print Report
                   </Button>
-                  <Button onClick={() => setIsReportDialogOpen(false)}>Close</Button>
+                  <Button onClick={() => {
+                    setIsReportDialogOpen(false);
+                    setReportResults([]);
+                    setReportExams([]);
+                  }}>Close</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
