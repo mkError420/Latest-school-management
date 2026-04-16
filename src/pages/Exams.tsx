@@ -526,6 +526,7 @@ export default function Exams() {
                           <TableHeader className="bg-sidebar-accent/30">
                             <TableRow className="border-border hover:bg-transparent">
                               <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase min-w-[120px]">Student</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">Roll</TableHead>
                               {reportExams.map(exam => (
                                 <TableHead key={exam.id} className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">
                                   {exam.subject}
@@ -544,6 +545,7 @@ export default function Exams() {
                                 return (
                                   <TableRow key={student.id} className="border-border hover:bg-transparent">
                                     <TableCell className="text-sm text-white font-medium">{student.name}</TableCell>
+                                    <TableCell className="text-sm text-sidebar-foreground text-center">{student.rollNumber}</TableCell>
                                     {reportExams.map(exam => {
                                       const result = studentResults.find(r => r.examId === exam.id);
                                       if (result) total += result.marksObtained;
