@@ -131,16 +131,12 @@
     body {
       background-color: white !important;
       color: black !important;
+      overflow: visible !important;
     }
     
-    /* Hide everything except the dialog content when printing */
-    body > *:not([role="dialog"]) {
-      display: none !important;
-    }
-
-    /* Ensure the dialog takes full width and height */
+    /* Reset dialog positioning for print */
     [role="dialog"] {
-      position: static !important;
+      position: relative !important;
       width: 100% !important;
       max-width: none !important;
       height: auto !important;
@@ -149,6 +145,15 @@
       box-shadow: none !important;
       border: none !important;
       background-color: white !important;
+      left: 0 !important;
+      top: 0 !important;
+      transform: none !important;
+    }
+
+    /* Ensure the portal container is visible */
+    [data-radix-portal] {
+      position: static !important;
+      display: block !important;
     }
 
     /* Force background colors to print */
