@@ -345,7 +345,9 @@ export default function Payroll() {
                       <label className="text-sm font-medium text-sidebar-foreground">Select Staff</label>
                       <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val})}>
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Select Employee" />
+                          <SelectValue placeholder="Select Employee">
+                            {newPayroll.staffId ? staff.find(s => s.id === newPayroll.staffId)?.name : "Select Employee"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {staff.filter(s => s.status === 'active').map(s => (
