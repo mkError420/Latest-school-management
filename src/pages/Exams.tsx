@@ -962,7 +962,9 @@ export default function Exams() {
                 <label className="text-xs font-medium text-sidebar-foreground mb-1.5 block">Filter by Class</label>
                 <Select value={resultsClassFilter} onValueChange={setResultsClassFilter}>
                   <SelectTrigger className="bg-card border-border">
-                    <SelectValue placeholder="All Classes" />
+                    <SelectValue placeholder="All Classes">
+                      {resultsClassFilter === 'all' ? 'All Classes' : classes.find(c => c.id === resultsClassFilter)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Classes</SelectItem>
@@ -976,7 +978,11 @@ export default function Exams() {
                 <label className="text-xs font-medium text-sidebar-foreground mb-1.5 block">Filter by Exam Type</label>
                 <Select value={resultsTypeFilter} onValueChange={setResultsTypeFilter}>
                   <SelectTrigger className="bg-card border-border">
-                    <SelectValue placeholder="All Types" />
+                    <SelectValue placeholder="All Types">
+                      {resultsTypeFilter === 'all' ? 'All Types' : 
+                       resultsTypeFilter === 'class_test' ? 'Class Test' :
+                       resultsTypeFilter === 'midterm' ? 'Midterm' : 'Final Exam'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Types</SelectItem>

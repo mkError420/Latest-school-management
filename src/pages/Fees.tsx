@@ -57,7 +57,9 @@ import { cn } from '@/lib/utils';
 
 interface FeeRecord {
   id: string;
+  studentId: string;
   studentName: string;
+  classId: string;
   amount: number;
   type: string;
   status: 'paid' | 'pending' | 'overdue';
@@ -88,6 +90,7 @@ export default function Fees() {
   const [selectedFee, setSelectedFee] = useState<FeeRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [classFilter, setClassFilter] = useState<string>('all');
   const [newFee, setNewFee] = useState({
     studentId: '',
     studentName: '',
@@ -218,7 +221,8 @@ export default function Fees() {
     const matchesSearch = fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          fee.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'all' || fee.type === selectedType;
-    return matchesSearch && matchesType;
+    const matchesClass = classFilter === 'all' || fee.classId === classFilter;
+    return matchesSearch && matchesType && matchesClass;
   });
 
   const stats = {
@@ -411,6 +415,19 @@ export default function Fees() {
               Recent Transactions
             </h3>
             <div className="flex items-center gap-3">
+              <Select value={classFilter} onValueChange={setClassFilter}>
+                <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
+                  <SelectValue placeholder="All Classes">
+                    {classFilter === 'all' ? 'All Classes' : classes.find(c => c.id === classFilter)?.name}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classes.map(cls => (
+                    <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={selectedType} onValueChange={setSelectedType}>
                 <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
                   <SelectValue placeholder="All Types" />
@@ -439,6 +456,8 @@ export default function Fees() {
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="font-semibold text-sidebar-foreground">Date</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Student</TableHead>
+                <TableHead className="font-semibold text-sidebar-foreground">Class</TableHead>
+                <TableHead className="font-semibold text-sidebar-foreground">Roll</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Fee Type</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Amount</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
@@ -447,13 +466,18 @@ export default function Fees() {
             </TableHeader>
             <TableBody>
               {filteredFees.length > 0 ? (
-                filteredFees.map((fee) => (
-                  <TableRow key={fee.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
-                    <TableCell className="text-sidebar-foreground">{format(new Date(fee.date), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell className="font-semibold text-white">{fee.studentName}</TableCell>
-                    <TableCell className="capitalize text-sidebar-foreground">{fee.type}</TableCell>
-                    <TableCell className="font-medium text-white">৳{fee.amount.toFixed(2)}</TableCell>
-                    <TableCell>
+                filteredFees.map((fee) => {
+                  const student = students.find(s => s.id === fee.studentId);
+                  const className = classes.find(c => c.id === fee.classId)?.name || 'N/A';
+                  return (
+                    <TableRow key={fee.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                      <TableCell className="text-sidebar-foreground">{format(new Date(fee.date), 'MMM dd, yyyy')}</TableCell>
+                      <TableCell className="font-semibold text-white">{fee.studentName}</TableCell>
+                      <TableCell className="text-sidebar-foreground">{className}</TableCell>
+                      <TableCell className="text-sidebar-foreground">{student?.rollNumber || 'N/A'}</TableCell>
+                      <TableCell className="capitalize text-sidebar-foreground">{fee.type}</TableCell>
+                      <TableCell className="font-medium text-white">৳{fee.amount.toFixed(2)}</TableCell>
+                      <TableCell>
                       <div className={cn(
                         "inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
                         fee.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" :
@@ -511,10 +535,11 @@ export default function Fees() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                );
+              })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
+                  <TableCell colSpan={8} className="h-24 text-center text-sidebar-foreground">
                     No transactions found.
                   </TableCell>
                 </TableRow>
