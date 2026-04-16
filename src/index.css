@@ -125,3 +125,36 @@
     @apply font-sans;
     }
 }
+
+@layer utilities {
+  @media print {
+    body {
+      background-color: white !important;
+      color: black !important;
+    }
+    
+    /* Hide everything except the dialog content when printing */
+    body > *:not([role="dialog"]) {
+      display: none !important;
+    }
+
+    /* Ensure the dialog takes full width and height */
+    [role="dialog"] {
+      position: static !important;
+      width: 100% !important;
+      max-width: none !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background-color: white !important;
+    }
+
+    /* Force background colors to print */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+  }
+}

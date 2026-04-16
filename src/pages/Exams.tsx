@@ -461,7 +461,7 @@ export default function Exams() {
                   Generate Reports
                 </Button>
               } />
-              <DialogContent className="bg-card border-border text-foreground sm:max-w-[600px] max-h-[80vh] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:shadow-none">
+              <DialogContent className="bg-card border-border text-foreground sm:max-w-[600px] max-h-[80vh] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:shadow-none print:max-w-none print:w-full print:p-8">
                 <DialogHeader className="print:hidden">
                   <DialogTitle className="text-white">Generate Exam Report</DialogTitle>
                   <DialogDescription className="text-sidebar-foreground">
@@ -513,27 +513,27 @@ export default function Exams() {
                   </Button>
 
                   {reportResults.length > 0 && (
-                    <div className="space-y-6 border-t border-border pt-6" id="printable-report">
-                      <div className="text-center space-y-1">
-                        <h2 className="text-xl font-bold text-white">Exam Performance Report</h2>
-                        <p className="text-sm text-sidebar-foreground">
+                    <div className="space-y-6 border-t border-border pt-6 print:border-none print:pt-0 print:w-full" id="printable-report">
+                      <div className="text-center space-y-1 print:mb-8">
+                        <h2 className="text-xl font-bold text-white print:text-black print:text-2xl">Exam Performance Report</h2>
+                        <p className="text-sm text-sidebar-foreground print:text-gray-600">
                           {reportExamType.replace('_', ' ').toUpperCase()} • {classes.find(c => c.id === reportClassId)?.name}
                         </p>
                       </div>
 
-                      <div className="rounded-md border border-border overflow-x-auto">
-                        <Table>
-                          <TableHeader className="bg-sidebar-accent/30">
-                            <TableRow className="border-border hover:bg-transparent">
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase min-w-[120px]">Student</TableHead>
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">Roll</TableHead>
+                      <div className="rounded-md border border-border overflow-x-auto print:border-none print:overflow-visible">
+                        <Table className="print:w-full print:text-black">
+                          <TableHeader className="bg-sidebar-accent/30 print:bg-gray-100">
+                            <TableRow className="border-border hover:bg-transparent print:border-gray-300">
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase min-w-[120px] print:text-black print:border print:border-gray-300">Student</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">Roll</TableHead>
                               {reportExams.map(exam => (
-                                <TableHead key={exam.id} className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">
+                                <TableHead key={exam.id} className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">
                                   {exam.subject}
                                 </TableHead>
                               ))}
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center">Total</TableHead>
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right">Avg</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">Total</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right print:text-black print:border print:border-gray-300">Avg</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -543,20 +543,20 @@ export default function Exams() {
                                 const studentResults = reportResults.filter(r => r.studentId === student.id);
                                 let total = 0;
                                 return (
-                                  <TableRow key={student.id} className="border-border hover:bg-transparent">
-                                    <TableCell className="text-sm text-white font-medium">{student.name}</TableCell>
-                                    <TableCell className="text-sm text-sidebar-foreground text-center">{student.rollNumber}</TableCell>
+                                  <TableRow key={student.id} className="border-border hover:bg-transparent print:border-gray-200">
+                                    <TableCell className="text-sm text-white font-medium print:text-black print:border print:border-gray-200">{student.name}</TableCell>
+                                    <TableCell className="text-sm text-sidebar-foreground text-center print:text-black print:border print:border-gray-200">{student.rollNumber}</TableCell>
                                     {reportExams.map(exam => {
                                       const result = studentResults.find(r => r.examId === exam.id);
                                       if (result) total += result.marksObtained;
                                       return (
-                                        <TableCell key={exam.id} className="text-sm text-sidebar-foreground text-center">
+                                        <TableCell key={exam.id} className="text-sm text-sidebar-foreground text-center print:text-black print:border print:border-gray-200">
                                           {result ? result.marksObtained : '-'}
                                         </TableCell>
                                       );
                                     })}
-                                    <TableCell className="text-sm text-white font-bold text-center">{total}</TableCell>
-                                    <TableCell className="text-sm text-primary font-bold text-right">
+                                    <TableCell className="text-sm text-white font-bold text-center print:text-black print:border print:border-gray-200">{total}</TableCell>
+                                    <TableCell className="text-sm text-primary font-bold text-right print:text-black print:border print:border-gray-200">
                                       {reportExams.length > 0 ? (total / reportExams.length).toFixed(1) : '0.0'}
                                     </TableCell>
                                   </TableRow>
