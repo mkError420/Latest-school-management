@@ -119,24 +119,46 @@ export default function Exams() {
     return () => document.body.classList.remove('report-printing');
   }, [isReportDialogOpen]);
   
+  const calculateGP = (marks: number) => {
+    if (marks >= 80) return { gp: 5.0, grade: 'A+' };
+    if (marks >= 70) return { gp: 4.0, grade: 'A' };
+    if (marks >= 60) return { gp: 3.5, grade: 'A-' };
+    if (marks >= 50) return { gp: 3.0, grade: 'B' };
+    if (marks >= 40) return { gp: 2.0, grade: 'C' };
+    if (marks >= 33) return { gp: 1.0, grade: 'D' };
+    return { gp: 0.0, grade: 'F' };
+  };
+
   const handleExportCSV = () => {
     if (reportResults.length === 0) return;
 
     const currentClass = classes.find(c => c.id === reportClassId);
-    const headers = ['Student', 'Roll', ...reportExams.map(e => e.subject), 'Total', 'Avg'];
+    const headers = ['Student', 'Roll', ...reportExams.map(e => e.subject), 'Total', 'GPA', 'Avg'];
     
     const rows = students
       .filter(s => s.classId === reportClassId)
       .map(student => {
         const studentResults = reportResults.filter(r => r.studentId === student.id);
         let total = 0;
+        let hasFail = false;
+        let totalGP = 0;
+
         const subjectMarks = reportExams.map(exam => {
           const result = studentResults.find(r => r.examId === exam.id);
-          if (result) total += result.marksObtained;
-          return result ? result.marksObtained : '-';
+          if (result) {
+            total += result.marksObtained;
+            const gpInfo = calculateGP(result.marksObtained);
+            totalGP += gpInfo.gp;
+            if (gpInfo.grade === 'F') hasFail = true;
+            return `${result.marksObtained} (${gpInfo.gp.toFixed(2)})${gpInfo.grade === 'F' ? ' FAIL' : ''}`;
+          }
+          hasFail = true; // Missing result counts as fail for GPA
+          return '-';
         });
+
+        const gpa = reportExams.length > 0 ? (hasFail ? '0.00 (F)' : (totalGP / reportExams.length).toFixed(2)) : '0.00';
         const avg = reportExams.length > 0 ? (total / reportExams.length).toFixed(1) : '0.0';
-        return [`"${student.name}"`, `"${student.rollNumber}"`, ...subjectMarks, total, `"${avg}"`];
+        return [`"${student.name}"`, `"${student.rollNumber}"`, ...subjectMarks.map(m => `"${m}"`), total, `"${gpa}"`, `"${avg}"`];
       });
 
     const csvContent = [
@@ -579,6 +601,7 @@ export default function Exams() {
                                 </TableHead>
                               ))}
                               <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">Total</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">GPA</TableHead>
                               <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right print:text-black print:border print:border-gray-300">Avg</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -595,13 +618,43 @@ export default function Exams() {
                                     {reportExams.map(exam => {
                                       const result = studentResults.find(r => r.examId === exam.id);
                                       if (result) total += result.marksObtained;
+                                      const gpInfo = result ? calculateGP(result.marksObtained) : null;
                                       return (
                                         <TableCell key={exam.id} className="text-sm text-sidebar-foreground text-center print:text-black print:border print:border-gray-200">
-                                          {result ? result.marksObtained : '-'}
+                                          {result ? (
+                                            <div className="flex flex-col items-center">
+                                              <span>{result.marksObtained}</span>
+                                              <span className={cn(
+                                                "text-[10px] font-bold",
+                                                gpInfo?.grade === 'F' ? "text-red-500" : "text-primary"
+                                              )}>
+                                                ({gpInfo?.gp.toFixed(2)}) {gpInfo?.grade === 'F' ? 'FAIL' : ''}
+                                              </span>
+                                            </div>
+                                          ) : '-'}
                                         </TableCell>
                                       );
                                     })}
                                     <TableCell className="text-sm text-white font-bold text-center print:text-black print:border print:border-gray-200">{total}</TableCell>
+                                    <TableCell className="text-sm text-center print:text-black print:border print:border-gray-200">
+                                      {(() => {
+                                        const gps = reportExams.map(exam => {
+                                          const result = studentResults.find(r => r.examId === exam.id);
+                                          return result ? calculateGP(result.marksObtained).gp : 0;
+                                        });
+                                        const hasFail = gps.some(gp => gp === 0);
+                                        const totalGP = gps.reduce((acc, curr) => acc + curr, 0);
+                                        const finalGPA = reportExams.length > 0 ? (totalGP / reportExams.length) : 0;
+                                        return (
+                                          <span className={cn(
+                                            "font-bold",
+                                            hasFail ? "text-red-500" : "text-primary"
+                                          )}>
+                                            {hasFail ? '0.00 (F)' : finalGPA.toFixed(2)}
+                                          </span>
+                                        );
+                                      })()}
+                                    </TableCell>
                                     <TableCell className="text-sm text-primary font-bold text-right print:text-black print:border print:border-gray-200">
                                       {reportExams.length > 0 ? (total / reportExams.length).toFixed(1) : '0.0'}
                                     </TableCell>
