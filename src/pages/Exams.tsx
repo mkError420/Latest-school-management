@@ -8,6 +8,7 @@ import {
   Clock,
   GraduationCap,
   FileText,
+  Download,
   MoreHorizontal,
   Edit,
   Trash2,
@@ -118,6 +119,42 @@ export default function Exams() {
     return () => document.body.classList.remove('report-printing');
   }, [isReportDialogOpen]);
   
+  const handleExportCSV = () => {
+    if (reportResults.length === 0) return;
+
+    const currentClass = classes.find(c => c.id === reportClassId);
+    const headers = ['Student', 'Roll', ...reportExams.map(e => e.subject), 'Total', 'Avg'];
+    
+    const rows = students
+      .filter(s => s.classId === reportClassId)
+      .map(student => {
+        const studentResults = reportResults.filter(r => r.studentId === student.id);
+        let total = 0;
+        const subjectMarks = reportExams.map(exam => {
+          const result = studentResults.find(r => r.examId === exam.id);
+          if (result) total += result.marksObtained;
+          return result ? result.marksObtained : '-';
+        });
+        const avg = reportExams.length > 0 ? (total / reportExams.length).toFixed(1) : '0.0';
+        return [`"${student.name}"`, `"${student.rollNumber}"`, ...subjectMarks, total, `"${avg}"`];
+      });
+
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Exam_Report_${currentClass?.name || 'Report'}_${reportExamType}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const [viewMode, setViewMode] = useState<'list' | 'grading'>('list');
   const [gradingExam, setGradingExam] = useState<Exam | null>(null);
   const [gradingResults, setGradingResults] = useState<Record<string, { marks: string, remarks: string }>>({});
@@ -578,8 +615,9 @@ export default function Exams() {
                   )}
                 </div>
                 <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
-                  <Button variant="outline" onClick={() => window.print()} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
-                    Print Report
+                  <Button variant="outline" onClick={handleExportCSV} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
                   </Button>
                   <Button onClick={() => {
                     setIsReportDialogOpen(false);
