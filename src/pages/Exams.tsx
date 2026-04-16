@@ -459,15 +459,15 @@ export default function Exams() {
                   Generate Reports
                 </Button>
               } />
-              <DialogContent className="bg-card border-border text-foreground sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
+              <DialogContent className="bg-card border-border text-foreground sm:max-w-[600px] max-h-[80vh] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:shadow-none">
+                <DialogHeader className="print:hidden">
                   <DialogTitle className="text-white">Generate Exam Report</DialogTitle>
                   <DialogDescription className="text-sidebar-foreground">
                     Select an exam to generate a detailed performance report.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 print:hidden">
                     <label className="text-sm font-medium text-sidebar-foreground">Select Exam</label>
                     <Select value={reportExamId || ''} onValueChange={setReportExamId}>
                       <SelectTrigger className="w-full bg-background border-border">
@@ -490,7 +490,7 @@ export default function Exams() {
                   <Button 
                     onClick={handleGenerateReport} 
                     disabled={!reportExamId || isGeneratingReport}
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
+                    className="w-full bg-primary hover:bg-primary/90 text-white print:hidden"
                   >
                     {isGeneratingReport ? "Generating..." : "Generate Report"}
                   </Button>
@@ -555,7 +555,7 @@ export default function Exams() {
                     </div>
                   )}
                 </div>
-                <DialogFooter className="flex sm:justify-between gap-2">
+                <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
                   <Button variant="outline" onClick={() => window.print()} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
                     Print Report
                   </Button>
