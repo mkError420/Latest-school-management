@@ -47,7 +47,10 @@ export default function Dashboard() {
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [stats, setStats] = useState({
-    feesCollected: 0,
+    totalRevenue: 0,
+    totalCost: 0,
+    monthlyRevenue: 0,
+    monthlyCost: 0,
     avgAttendance: 0,
     libraryIssues: 0,
     totalStudents: 0,
@@ -126,11 +129,30 @@ export default function Dashboard() {
       setStats(prev => ({ ...prev, totalClasses: snapshot.docs.length }));
     });
 
-    // Fees Collected
+    // Revenue (Fees Collected)
     const feesQ = query(collection(db, 'fees'), where('status', '==', 'paid'));
     const unsubscribeFees = onSnapshot(feesQ, (snapshot) => {
-      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
-      setStats(prev => ({ ...prev, feesCollected: total }));
+      const docs = snapshot.docs.map(doc => doc.data());
+      const total = docs.reduce((acc, d) => acc + (d.amount || 0), 0);
+      
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthly = docs.filter(d => d.date && new Date(d.date) >= monthStart).reduce((acc, d) => acc + (d.amount || 0), 0);
+      
+      setStats(prev => ({ ...prev, totalRevenue: total, monthlyRevenue: monthly }));
+    });
+
+    // Cost (Payroll)
+    const payrollQ = query(collection(db, 'payroll'), where('status', '==', 'paid'));
+    const unsubscribePayroll = onSnapshot(payrollQ, (snapshot) => {
+      const docs = snapshot.docs.map(doc => doc.data());
+      const total = docs.reduce((acc, d) => acc + (d.netSalary || 0), 0);
+      
+      const now = new Date();
+      const currentMonthStr = format(now, 'MMMM yyyy');
+      const monthly = docs.filter(d => d.month === currentMonthStr).reduce((acc, d) => acc + (d.netSalary || 0), 0);
+      
+      setStats(prev => ({ ...prev, totalCost: total, monthlyCost: monthly }));
     });
 
     // Library Issues
@@ -158,6 +180,7 @@ export default function Dashboard() {
       unsubscribeStaff();
       unsubscribeClasses();
       unsubscribeFees();
+      unsubscribePayroll();
       unsubscribeLibrary();
       unsubscribeAttendance();
     };
@@ -183,25 +206,66 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
+            title="Institutional Revenue" 
+            value={`৳${(stats.totalRevenue / 1000).toFixed(1)}k`} 
+            trend={`৳${(stats.monthlyRevenue / 1000).toFixed(1)}k this month`} 
+          />
+          <StatCard 
+            title="Institutional Cost" 
+            value={`৳${(stats.totalCost / 1000).toFixed(1)}k`} 
+            trend={`৳${(stats.monthlyCost / 1000).toFixed(1)}k this month`} 
+            trendDown
+          />
+          <StatCard 
+            title="Net Balance" 
+            value={`৳${((stats.totalRevenue - stats.totalCost) / 1000).toFixed(1)}k`} 
+            trend={stats.monthlyRevenue >= stats.monthlyCost ? "Monthly Surplus" : "Monthly Deficit"}
+            trendDown={stats.monthlyRevenue < stats.monthlyCost}
+          />
+          <StatCard 
             title="Total Students" 
             value={stats.totalStudents.toLocaleString()} 
             trend={`${stats.growthRate.toFixed(1)}% growth`}
           />
-          <StatCard 
-            title="Total Staff" 
-            value={stats.totalStaff} 
-            trend="Active Members" 
-          />
-          <StatCard 
-            title="Fees Collected" 
-            value={`৳${(stats.feesCollected / 1000).toFixed(1)}k`} 
-            trend="Total Revenue" 
-          />
-          <StatCard 
-            title="Total Classes" 
-            value={stats.totalClasses} 
-            trend="Academic Units" 
-          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
+            <div className="p-3 bg-primary/10 rounded-lg text-primary">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Staff</p>
+              <p className="text-xl font-bold text-white">{stats.totalStaff}</p>
+            </div>
+          </Card>
+          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
+            <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Avg Attendance</p>
+              <p className="text-xl font-bold text-white">{stats.avgAttendance.toFixed(1)}%</p>
+            </div>
+          </Card>
+          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
+            <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Library Issues</p>
+              <p className="text-xl font-bold text-white">{stats.libraryIssues}</p>
+            </div>
+          </Card>
+          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
+            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-500">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Classes</p>
+              <p className="text-xl font-bold text-white">{stats.totalClasses}</p>
+            </div>
+          </Card>
         </div>
 
         {/* Charts Section */}
