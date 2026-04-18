@@ -8,7 +8,8 @@ import {
   TrendingUp, 
   Calendar, 
   BookOpen,
-  AlertCircle
+  AlertCircle,
+  CalendarCheck
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -21,9 +22,8 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
-  Cell
+  AreaChart,
+  Area
 } from 'recharts';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
@@ -306,162 +306,321 @@ export default function Dashboard() {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
-            <div className="flex justify-between items-center mb-5">
-              <span className="text-sm font-semibold text-white">Financial Performance</span>
-              <span className="text-[11px] text-sidebar-foreground">Revenue vs Cost (Last 6 Months)</span>
+          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <TrendingUp className="w-24 h-24 text-primary" />
             </div>
-            <div className="h-[240px] w-full">
+            <div className="flex justify-between items-center mb-6 relative z-10">
+              <div>
+                <span className="text-sm font-semibold text-white">Financial Performance</span>
+                <p className="text-[11px] text-sidebar-foreground mt-0.5">Revenue vs Operational Cost</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Revenue</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Cost</span>
+                </div>
+              </div>
+            </div>
+            <div className="h-[260px] w-full relative z-10">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.financialTrend}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1A1D23" />
+                <AreaChart data={stats.financialTrend}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 10 }}
-                    dy={10}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    dy={12}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 10 }}
-                    tickFormatter={(value) => `৳${value > 1000 ? (value / 1000).toFixed(0) + 'k' : value}`}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    tickFormatter={(v) => `৳${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`}
                   />
                   <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid #2D3139', borderRadius: '8px' }}
-                    itemStyle={{ fontSize: '12px' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
+                            <p className="text-[11px] font-bold text-white mb-2 uppercase tracking-widest">{label}</p>
+                            <div className="space-y-1">
+                              <p className="text-[11px] flex justify-between gap-4">
+                                <span className="text-sidebar-foreground">Revenue:</span>
+                                <span className="text-primary font-bold">৳{payload[0].value?.toLocaleString()}</span>
+                              </p>
+                              <p className="text-[11px] flex justify-between gap-4">
+                                <span className="text-sidebar-foreground">Cost:</span>
+                                <span className="text-rose-500 font-bold">৳{payload[1].value?.toLocaleString()}</span>
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
                   />
-                  <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="cost" name="Cost" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorRev)" 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="cost" 
+                    stroke="#ef4444" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorCost)" 
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
-          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
-            <div className="flex justify-between items-center mb-5">
-              <span className="text-sm font-semibold text-white">Net Profit Trend</span>
-              <span className="text-[11px] text-sidebar-foreground">Monthly Surplus/Deficit</span>
+          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
+            <div className="flex justify-between items-center mb-6 relative z-10">
+              <div>
+                <span className="text-sm font-semibold text-white">Net Profit Trend</span>
+                <p className="text-[11px] text-sidebar-foreground mt-0.5">Institution Sustainability</p>
+              </div>
+              <div className="px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Health: Positive</span>
+              </div>
             </div>
-            <div className="h-[240px] w-full">
+            <div className="h-[260px] w-full relative z-10">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.financialTrend}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1A1D23" />
+                <AreaChart data={stats.financialTrend}>
+                  <defs>
+                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 10 }}
-                    dy={10}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    dy={12}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 10 }}
-                    tickFormatter={(value) => `৳${value > 1000 ? (value / 1000).toFixed(0) + 'k' : value}`}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    tickFormatter={(v) => `৳${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`}
                   />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid #2D3139', borderRadius: '8px' }}
-                    itemStyle={{ fontSize: '12px' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
+                            <p className="text-[11px] font-bold text-white mb-2 uppercase tracking-widest">{label}</p>
+                            <p className="text-[13px] font-bold text-emerald-500">
+                              ৳{payload[0].value?.toLocaleString()}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
                   />
-                  <Line 
+                  <Area 
                     type="monotone" 
                     dataKey="profit" 
-                    name="Profit" 
                     stroke="#10b981" 
-                    strokeWidth={3} 
-                    dot={{ fill: '#10b981', r: 4 }}
-                    activeDot={{ r: 6 }} 
+                    strokeWidth={4}
+                    fillOpacity={1} 
+                    fill="url(#colorProfit)" 
+                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4, stroke: '#111827' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
-          <Card className="lg:col-span-2 lg:row-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
-            <div className="flex justify-between items-center mb-5">
-              <span className="text-sm font-semibold text-white">Student Admission Trends</span>
-              <span className="text-[11px] text-sidebar-foreground">Last 6 Months</span>
+          <Card className="lg:col-span-2 lg:row-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
+            <div className="absolute -top-12 -left-12 p-8 opacity-5">
+              <Users className="w-48 h-48 text-primary" />
             </div>
-            <div className="flex-1 flex items-end gap-2 pt-2 min-h-[200px]">
-              {stats.admissionTrend.map((item, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                  <div 
-                    className={cn(
-                      "w-full rounded-t-md transition-all duration-300",
-                      i === stats.admissionTrend.length - 1 ? "bg-primary" : "bg-[#23262D] group-hover:bg-[#2D3139]"
-                    )}
-                    style={{ height: `${Math.max(10, (item.students / (stats.totalStudents || 100)) * 100)}%` }}
-                  />
-                  <span className="text-[9px] text-slate-600 font-bold uppercase">{item.name}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex gap-8">
+            <div className="flex justify-between items-center mb-6 relative z-10">
               <div>
-                <p className="text-[11px] text-sidebar-foreground">Total Students</p>
+                <span className="text-sm font-semibold text-white">Student Admission Trends</span>
+                <p className="text-[11px] text-sidebar-foreground mt-0.5">Last 6 Months Enrollment</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Growth</p>
+                  <p className={cn("text-xs font-bold", stats.growthRate >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                    {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex-1 min-h-[240px] w-full relative z-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.admissionTrend}>
+                  <defs>
+                    <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    dy={12}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
+                            <p className="text-[11px] font-bold text-white mb-1 uppercase tracking-widest">{label}</p>
+                            <p className="text-[13px] font-bold text-primary">
+                              {payload[0].value} Students
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area 
+                    type="stepAfter" 
+                    dataKey="students" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorStudents)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-6 flex gap-8 relative z-10 border-t border-border pt-4">
+              <div>
+                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Students</p>
                 <p className="text-2xl font-bold text-white">{stats.totalStudents.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-[11px] text-sidebar-foreground">Growth Rate</p>
-                <p className={cn("text-2xl font-bold", stats.growthRate >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                  {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate.toFixed(1)}%
-                </p>
+                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Active Enrollment</p>
+                <p className="text-2xl font-bold text-emerald-500">Live</p>
               </div>
             </div>
           </Card>
 
-          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
-            <div className="flex justify-between items-center mb-5">
-              <span className="text-sm font-semibold text-white">Upcoming Examinations</span>
+          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <CalendarCheck className="w-24 h-24 text-primary" />
             </div>
-            <div className="space-y-0">
+            <div className="flex justify-between items-center mb-5 relative z-10">
+              <span className="text-sm font-semibold text-white">Upcoming Examinations</span>
+              <div className="px-2 py-0.5 bg-primary/10 rounded text-[10px] text-primary font-bold uppercase tracking-wider border border-primary/20">
+                Academic Calendar
+              </div>
+            </div>
+            <div className="space-y-0 relative z-10">
               {upcomingExams.length > 0 ? upcomingExams.map((event, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                  <div>
-                    <h4 className="text-[13px] font-medium text-white">{event.subject}</h4>
-                    <p className="text-[11px] text-sidebar-foreground">{event.type} • {event.time}</p>
+                <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 group cursor-default hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-[#1A1D23] border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">{event.subject}</h4>
+                      <p className="text-[11px] text-sidebar-foreground">{event.type} • {event.time}</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[13px] text-white">
+                    <p className="text-[13px] font-bold text-white">
                       {formatDistanceToNow(new Date(event.date), { addSuffix: true })}
                     </p>
-                    <p className="text-[11px] text-sidebar-foreground">{format(new Date(event.date), 'MMM dd, yyyy')}</p>
+                    <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest opacity-60">
+                      {format(new Date(event.date), 'MMM dd, yyyy')}
+                    </p>
                   </div>
                 </div>
               )) : (
-                <div className="py-8 text-center text-sidebar-foreground text-sm">
-                  No upcoming exams scheduled.
+                <div className="py-12 text-center">
+                  <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
+                  <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No upcoming exams</p>
                 </div>
               )}
             </div>
           </Card>
 
-          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
-            <div className="flex justify-between items-center mb-5">
-              <span className="text-sm font-semibold text-white">Recent Transactions</span>
+          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-8 opacity-5">
+              <CreditCard className="w-24 h-24 text-emerald-500" />
             </div>
-            <div className="space-y-0">
+            <div className="flex justify-between items-center mb-5 relative z-10">
+              <span className="text-sm font-semibold text-white">Recent Transactions</span>
+              <div className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-500 font-bold uppercase tracking-wider border border-emerald-500/20">
+                Live Audit
+              </div>
+            </div>
+            <div className="space-y-0 relative z-10">
               {recentTransactions.length > 0 ? recentTransactions.map((tx, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                  <div>
-                    <h4 className="text-[13px] font-medium text-white">{tx.studentName}</h4>
-                    <p className="text-[11px] text-sidebar-foreground capitalize">{tx.type} Fee • ৳{tx.amount.toFixed(2)}</p>
+                <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full border flex items-center justify-center transition-all",
+                      tx.status === 'paid' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : 
+                      tx.status === 'pending' ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                      "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                    )}>
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-[13px] font-extrabold text-white uppercase tracking-tight">{tx.studentName}</h4>
+                      <p className="text-[11px] text-sidebar-foreground uppercase tracking-widest font-bold opacity-60">
+                        {tx.type} Fee • ৳{tx.amount.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
                   <div className={cn(
-                    "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                    tx.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" : 
-                    tx.status === 'pending' ? "bg-amber-500/10 text-amber-500" :
-                    "bg-rose-500/10 text-rose-500"
+                    "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                    tx.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : 
+                    tx.status === 'pending' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
+                    "bg-rose-500/10 text-rose-500 border border-rose-500/20"
                   )}>
                     {tx.status}
                   </div>
                 </div>
               )) : (
-                <div className="py-8 text-center text-sidebar-foreground text-sm">
-                  No recent transactions.
+                <div className="py-12 text-center text-sidebar-foreground text-sm">
+                   <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
+                   <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No recent transactions</p>
                 </div>
               )}
             </div>
