@@ -196,6 +196,10 @@
       "properties": {
         "schoolName": { "type": "string" },
         "academicYear": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "website": { "type": "string" },
         "lastBackup": { "type": "string", "format": "date-time" }
       },
       "required": ["schoolName", "academicYear"]

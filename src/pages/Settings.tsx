@@ -40,6 +40,10 @@ export default function Settings() {
   const [systemConfig, setSystemConfig] = useState({
     schoolName: 'EduFlow International School',
     academicYear: '2023-2024',
+    address: '123 Education Lane, Learning City',
+    phone: '+880 1234 567890',
+    email: 'info@school.edu',
+    website: 'www.school.edu',
     lastBackup: ''
   });
 
@@ -64,7 +68,16 @@ export default function Settings() {
     if (!isAdmin) return;
     const unsubscribe = onSnapshot(doc(db, 'config', 'system'), (doc) => {
       if (doc.exists()) {
-        setSystemConfig(doc.data() as any);
+        const data = doc.data();
+        setSystemConfig({
+          schoolName: data.schoolName || 'EduFlow International School',
+          academicYear: data.academicYear || '2023-2024',
+          address: data.address || '123 Education Lane, Learning City',
+          phone: data.phone || '+880 1234 567890',
+          email: data.email || 'info@school.edu',
+          website: data.website || 'www.school.edu',
+          lastBackup: data.lastBackup || ''
+        });
       }
     });
     return () => unsubscribe();
@@ -302,6 +315,43 @@ export default function Settings() {
                       <Input 
                         value={systemConfig.academicYear} 
                         onChange={(e) => setSystemConfig({...systemConfig, academicYear: e.target.value})}
+                        className="bg-white/5 border-border text-white h-11 focus:border-primary transition-all text-sm font-medium" 
+                      />
+                    </div>
+
+                    <div className="col-span-full pt-4 border-t border-white/5">
+                      <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-4">Official School Information</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest opacity-60">School Mailing Address</Label>
+                      <Input 
+                        value={systemConfig.address} 
+                        onChange={(e) => setSystemConfig({...systemConfig, address: e.target.value})}
+                        className="bg-white/5 border-border text-white h-11 focus:border-primary transition-all text-sm font-medium" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest opacity-60">Official Phone Number</Label>
+                      <Input 
+                        value={systemConfig.phone} 
+                        onChange={(e) => setSystemConfig({...systemConfig, phone: e.target.value})}
+                        className="bg-white/5 border-border text-white h-11 focus:border-primary transition-all text-sm font-medium" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest opacity-60">Admin Email Address</Label>
+                      <Input 
+                        value={systemConfig.email} 
+                        type="email"
+                        onChange={(e) => setSystemConfig({...systemConfig, email: e.target.value})}
+                        className="bg-white/5 border-border text-white h-11 focus:border-primary transition-all text-sm font-medium" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest opacity-60">Official Website URL</Label>
+                      <Input 
+                        value={systemConfig.website} 
+                        onChange={(e) => setSystemConfig({...systemConfig, website: e.target.value})}
                         className="bg-white/5 border-border text-white h-11 focus:border-primary transition-all text-sm font-medium" 
                       />
                     </div>

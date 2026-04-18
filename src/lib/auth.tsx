@@ -16,6 +16,10 @@ interface UserProfile {
 interface SystemConfig {
   schoolName: string;
   academicYear: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
   lastBackup?: string;
 }
 

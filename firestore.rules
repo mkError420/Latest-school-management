@@ -82,7 +82,11 @@ service cloud.firestore {
     function isValidSystemConfig(data) {
       return data.keys().hasAll(['schoolName', 'academicYear']) &&
              data.schoolName is string && data.schoolName.size() > 0 &&
-             data.academicYear is string && data.academicYear.size() > 0;
+             data.academicYear is string && data.academicYear.size() > 0 &&
+             (data.get('address', '') is string) &&
+             (data.get('phone', '') is string) &&
+             (data.get('email', '') is string) &&
+             (data.get('website', '') is string);
     }
 
     function isValidExam(data) {

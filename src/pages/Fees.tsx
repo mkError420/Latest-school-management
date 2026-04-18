@@ -51,6 +51,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
+import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -82,6 +83,7 @@ interface Class {
 }
 
 export default function Fees() {
+  const { systemConfig } = useAuth();
   const [fees, setFees] = useState<FeeRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -261,9 +263,12 @@ export default function Fees() {
             <div className="flex justify-between items-start border-b-2 border-black pb-6">
               <div className="space-y-1">
                 <h1 className="text-2xl font-bold uppercase tracking-tight">Payment Receipt</h1>
-                <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
-                <p className="text-sm text-gray-600">123 Education Lane, Learning City</p>
-                <p className="text-sm text-gray-600">Phone: +880 1234 567890 | Email: info@school.edu</p>
+                <h2 className="text-xl font-semibold text-gray-800">{systemConfig?.schoolName || 'School Management System'}</h2>
+                <p className="text-sm text-gray-600">{systemConfig?.address || '123 Education Lane, Learning City'}</p>
+                <p className="text-sm text-gray-600">
+                  Phone: {systemConfig?.phone || '+880 1234 567890'} | Email: {systemConfig?.email || 'info@school.edu'}
+                </p>
+                {systemConfig?.website && <p className="text-sm text-gray-600">Website: {systemConfig.website}</p>}
               </div>
               <div className="text-right space-y-1">
                 <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">OFFICIAL RECEIPT</div>
@@ -705,9 +710,12 @@ export default function Fees() {
                   <div className="flex justify-between items-start border-b-2 border-black pb-6">
                     <div className="space-y-1">
                       <h1 className="text-2xl font-bold uppercase tracking-tight">Payment Receipt</h1>
-                      <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
-                      <p className="text-sm text-gray-600">123 Education Lane, Learning City</p>
-                      <p className="text-sm text-gray-600">Phone: +880 1234 567890 | Email: info@school.edu</p>
+                      <h2 className="text-xl font-semibold text-gray-800">{systemConfig?.schoolName || 'School Management System'}</h2>
+                      <p className="text-sm text-gray-600">{systemConfig?.address || '123 Education Lane, Learning City'}</p>
+                      <p className="text-sm text-gray-600">
+                        Phone: {systemConfig?.phone || '+880 1234 567890'} | Email: {systemConfig?.email || 'info@school.edu'}
+                      </p>
+                      {systemConfig?.website && <p className="text-sm text-gray-600">Website: {systemConfig.website}</p>}
                     </div>
                     <div className="text-right space-y-1">
                       <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">OFFICIAL RECEIPT</div>
