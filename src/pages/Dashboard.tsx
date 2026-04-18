@@ -120,8 +120,9 @@ export default function Dashboard() {
         const monthEnd = new Date(year, m + 1, 0);
 
         const count = studentDocs.filter(s => {
-          if (!s.admittedAt && !s.createdAt) return false;
-          const date = new Date(s.admittedAt || s.createdAt);
+          const admissionDate = s.admissionDate || s.admittedAt || s.createdAt;
+          if (!admissionDate) return false;
+          const date = new Date(admissionDate);
           return date >= monthStart && date <= monthEnd;
         }).length;
 
@@ -139,8 +140,9 @@ export default function Dashboard() {
         const dayEnd = new Date(year, monthIndex, day, 23, 59, 59);
 
         const count = studentDocs.filter(s => {
-          if (!s.admittedAt && !s.createdAt) return false;
-          const date = new Date(s.admittedAt || s.createdAt);
+          const admissionDate = s.admissionDate || s.admittedAt || s.createdAt;
+          if (!admissionDate) return false;
+          const date = new Date(admissionDate);
           return date >= dayStart && date <= dayEnd;
         }).length;
 
@@ -184,7 +186,10 @@ export default function Dashboard() {
       const total = studentData.length;
       const now = new Date();
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const studentLastMonth = studentData.filter(s => (s.createdAt || s.admittedAt) && new Date(s.createdAt || s.admittedAt) < lastMonth).length;
+      const studentLastMonth = studentData.filter(s => {
+        const admissionDate = s.admissionDate || s.admittedAt || s.createdAt;
+        return admissionDate && new Date(admissionDate) < lastMonth;
+      }).length;
       const growth = studentLastMonth > 0 ? ((total - studentLastMonth) / studentLastMonth) * 100 : 100;
 
       setStats(prev => ({ 
@@ -550,34 +555,36 @@ export default function Dashboard() {
             
             <div className="flex-1 min-h-[240px] w-full relative z-10">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.admissionTrend}>
+                <AreaChart data={stats.admissionTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#1f2937" opacity={0.5} />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
-                    dy={12}
+                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
+                    dy={15}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
+                    dx={-10}
                   />
                   <Tooltip 
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
-                            <p className="text-[11px] font-bold text-white mb-1 uppercase tracking-widest">{label}</p>
-                            <p className="text-[13px] font-bold text-primary">
-                              {payload[0].value} Students
+                          <div className="bg-[#1A1D23]/95 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] scale-110 mb-8">
+                            <p className="text-[10px] font-black text-sidebar-foreground mb-1 uppercase tracking-[0.2em]">{label}</p>
+                            <p className="text-[18px] font-black text-white flex items-baseline gap-1">
+                              {payload[0].value}
+                              <span className="text-[10px] text-primary uppercase tracking-widest font-bold">Students</span>
                             </p>
                           </div>
                         );
@@ -586,12 +593,14 @@ export default function Dashboard() {
                     }}
                   />
                   <Area 
-                    type="stepAfter" 
+                    type="monotone" 
                     dataKey="students" 
                     stroke="#3b82f6" 
-                    strokeWidth={3}
+                    strokeWidth={4}
                     fillOpacity={1} 
                     fill="url(#colorStudents)" 
+                    dot={{ fill: '#1e293b', stroke: '#3b82f6', strokeWidth: 2, r: 4, fillOpacity: 1 }}
+                    activeDot={{ r: 7, strokeWidth: 0, fill: '#60a5fa' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
