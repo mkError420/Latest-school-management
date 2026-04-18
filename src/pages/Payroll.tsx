@@ -90,6 +90,8 @@ interface Staff {
   status: 'active' | 'inactive';
   phone?: string;
   nid?: string;
+  emergencyContact?: string;
+  bloodGroup?: string;
   address?: string;
   photoUrl?: string;
 }
@@ -126,6 +128,7 @@ export default function Payroll() {
   const [staffPhotoFile, setStaffPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [processPayrollRole, setProcessPayrollRole] = useState('all');
   const [processPayrollSearch, setProcessPayrollSearch] = useState('');
@@ -138,6 +141,8 @@ export default function Payroll() {
     joinDate: new Date().toISOString().split('T')[0],
     phone: '',
     nid: '',
+    emergencyContact: '',
+    bloodGroup: '',
     address: '',
     photoUrl: '',
     status: 'active' as const
@@ -188,35 +193,78 @@ export default function Payroll() {
     try {
       let finalPhotoUrl = '';
       
-      if (staffPhotoFile) {
+      // prioritize storage but fallback to base64
+      if (staffPhotoFile || photoPreview) {
         try {
-          const fileRef = ref(storage, `staff-photos/${Date.now()}-${staffPhotoFile.name}`);
-          const uploadResult = await uploadBytes(fileRef, staffPhotoFile);
-          finalPhotoUrl = await getDownloadURL(uploadResult.ref);
+          if (staffPhotoFile) {
+            const fileRef = ref(storage, `staff-photos/${Date.now()}-${staffPhotoFile.name}`);
+            
+            // 5 second timeout for upload
+            const uploadPromise = uploadBytes(fileRef, staffPhotoFile);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Storage upload timeout')), 5000)
+            );
+            
+            const uploadResult = (await Promise.race([uploadPromise, timeoutPromise])) as any;
+            finalPhotoUrl = await getDownloadURL(uploadResult.ref);
+          } else {
+            finalPhotoUrl = photoPreview || '';
+          }
         } catch (storageError: any) {
-          // CORS Fallback: If upload fails due to CORS/Permissions in preview, use Base64
-          console.warn('Storage upload failed (likely CORS), falling back to Base64:', storageError);
+          console.warn('Storage upload failed, falling back to Base64:', storageError);
           finalPhotoUrl = photoPreview || ''; 
         }
       }
 
-      // Automatic ID Generation: Year (from Join Date) + last 3 digits of NID
-      const year = new Date(newStaff.joinDate).getFullYear();
-      const lastThreeNid = newStaff.nid ? newStaff.nid.slice(-3) : '000';
-      const staffId = `${year}${lastThreeNid}`;
+      // Sanitize staffId generation
+      const joinYear = newStaff.joinDate ? new Date(newStaff.joinDate).getFullYear() : new Date().getFullYear();
+      const rawNid = String(newStaff.nid || '');
+      const lastThreeNid = rawNid.length >= 3 ? rawNid.slice(-3) : rawNid.padStart(3, '0');
+      const staffId = `${joinYear}${lastThreeNid}`;
 
-      await addDoc(collection(db, 'staff'), {
-        ...newStaff,
-        staffId,
-        salary: Number(newStaff.salary),
+      // sanitize data to avoid undefined in firestore
+      const staffDoc = {
+        name: newStaff.name?.trim() || 'Unnamed Staff',
+        role: newStaff.role || 'Teacher',
+        department: newStaff.department?.trim() || '',
+        salary: Number(newStaff.salary) || 0,
+        joinDate: newStaff.joinDate || new Date().toISOString().split('T')[0],
+        phone: newStaff.phone?.trim() || '',
+        nid: rawNid,
+        emergencyContact: newStaff.emergencyContact?.trim() || '',
+        bloodGroup: newStaff.bloodGroup?.trim() || '',
+        address: newStaff.address?.trim() || '',
         photoUrl: finalPhotoUrl,
+        status: newStaff.status || 'active',
+        staffId,
         createdAt: new Date().toISOString()
-      });
+      };
+
+      // Wrap addDoc in a timeout race to prevent infinite loading
+      const addDocPromise = addDoc(collection(db, 'staff'), staffDoc);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out. Please check your connection.')), 15000)
+      );
+
+      await Promise.race([addDocPromise, timeoutPromise]);
       setIsAddStaffOpen(false);
-      setNewStaff({ name: '', role: 'Teacher', department: '', salary: '', joinDate: new Date().toISOString().split('T')[0], phone: '', nid: '', address: '', photoUrl: '', status: 'active' });
+      setNewStaff({ 
+        name: '', 
+        role: 'Teacher', 
+        department: '', 
+        salary: '', 
+        joinDate: new Date().toISOString().split('T')[0], 
+        phone: '', 
+        nid: '', 
+        emergencyContact: '', 
+        bloodGroup: '', 
+        address: '', 
+        photoUrl: '', 
+        status: 'active' 
+      });
       setStaffPhotoFile(null);
       setPhotoPreview(null);
-      toast.success(`Staff member added successfully. ID: ${staffId}`);
+      toast.success(`Staff member added. ID: ${staffId}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'staff');
     } finally {
@@ -227,48 +275,61 @@ export default function Payroll() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsPhotoProcessing(true);
       const reader = new FileReader();
       reader.onloadend = () => {
         const img = new Image();
         img.onload = () => {
-          // Compress the image using canvas
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 400;
-          const MAX_HEIGHT = 400;
-          let width = img.width;
-          let height = img.height;
+          try {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 400;
+            const MAX_HEIGHT = 400;
+            let width = img.width;
+            let height = img.height;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
             }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            setPhotoPreview(dataUrl);
+            
+            // Manual conversion from dataURL to Blob (safer than fetch)
+            const parts = dataUrl.split(',');
+            const byteString = atob(parts[1]);
+            const mimeString = parts[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+              ia[i] = byteString.charCodeAt(i);
             }
+            const blob = new Blob([ab], { type: mimeString });
+            const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+            
+            setStaffPhotoFile(compressedFile);
+            setIsPhotoProcessing(false);
+          } catch (err) {
+            console.error('Image processing error:', err);
+            setIsPhotoProcessing(false);
           }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Get compressed Base64
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          setPhotoPreview(dataUrl);
-          
-          // Convert dataUrl back to a File for Storage upload attempt
-          fetch(dataUrl)
-            .then(res => res.blob())
-            .then(blob => {
-              const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
-              setStaffPhotoFile(compressedFile);
-            });
         };
+        img.onerror = () => setIsPhotoProcessing(false);
         img.src = reader.result as string;
       };
+      reader.onerror = () => setIsPhotoProcessing(false);
       reader.readAsDataURL(file);
     }
   };
@@ -337,35 +398,63 @@ export default function Payroll() {
     try {
       let finalPhotoUrl = editingStaff.photoUrl || '';
       
-      if (staffPhotoFile) {
+      if (staffPhotoFile || photoPreview) {
         try {
-          const fileRef = ref(storage, `staff-photos/${Date.now()}-${staffPhotoFile.name}`);
-          const uploadResult = await uploadBytes(fileRef, staffPhotoFile);
-          finalPhotoUrl = await getDownloadURL(uploadResult.ref);
+          if (staffPhotoFile) {
+            const fileRef = ref(storage, `staff-photos/${Date.now()}-${staffPhotoFile.name}`);
+            
+            // 5 second timeout for upload
+            const uploadPromise = uploadBytes(fileRef, staffPhotoFile);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Storage upload timeout')), 5000)
+            );
+            
+            const uploadResult = (await Promise.race([uploadPromise, timeoutPromise])) as any;
+            finalPhotoUrl = await getDownloadURL(uploadResult.ref);
+          } else if (photoPreview && photoPreview !== editingStaff.photoUrl) {
+            finalPhotoUrl = photoPreview;
+          }
         } catch (storageError) {
-          console.warn('Storage edit failed (likely CORS), falling back to Base64:', storageError);
+          console.warn('Storage edit failed, falling back to Base64:', storageError);
           finalPhotoUrl = photoPreview || finalPhotoUrl;
         }
       }
 
       const { id, ...data } = editingStaff;
-      
-      // Re-generate Staff ID based on NID (Year from Join Date + last 3 digits of NID)
       const joinYear = data.joinDate ? new Date(data.joinDate).getFullYear() : new Date().getFullYear();
-      const lastThreeNid = data.nid ? data.nid.slice(-3) : '000';
+      const rawNid = String(data.nid || '');
+      const lastThreeNid = rawNid.length >= 3 ? rawNid.slice(-3) : rawNid.padStart(3, '0');
       const updatedStaffId = `${joinYear}${lastThreeNid}`;
 
-      await updateDoc(doc(db, 'staff', id), {
-        ...data,
+      // sanitize update fields
+      const updateData = {
+        name: (data.name || '').trim(),
+        role: data.role || 'Teacher',
+        department: (data.department || '').trim(),
+        salary: Number(data.salary) || 0,
+        joinDate: data.joinDate || new Date().toISOString().split('T')[0],
+        phone: (data.phone || '').trim(),
+        nid: rawNid,
+        emergencyContact: (data.emergencyContact || '').trim(),
+        bloodGroup: (data.bloodGroup || '').trim(),
+        address: (data.address || '').trim(),
+        status: data.status || 'active',
         staffId: updatedStaffId,
         photoUrl: finalPhotoUrl,
-        salary: Number(data.salary)
-      });
+        updatedAt: new Date().toISOString()
+      };
+
+      const updateDocPromise = updateDoc(doc(db, 'staff', id), updateData);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Update request timed out.')), 15000)
+      );
+
+      await Promise.race([updateDocPromise, timeoutPromise]);
       setIsEditStaffOpen(false);
       setEditingStaff(null);
       setStaffPhotoFile(null);
       setPhotoPreview(null);
-      toast.success(`Staff details updated. ID synced: ${updatedStaffId}`);
+      toast.success(`Staff updated. ID: ${updatedStaffId}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `staff/${editingStaff.id}`);
     } finally {
@@ -697,6 +786,37 @@ export default function Payroll() {
                           className="bg-background border-border"
                         />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Emergency Contact</label>
+                        <Input 
+                          placeholder="017xxxxxxxx" 
+                          value={newStaff.emergencyContact || ''} 
+                          onChange={e => setNewStaff({...newStaff, emergencyContact: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                        <Select value={newStaff.bloodGroup || ''} onValueChange={val => setNewStaff({...newStaff, bloodGroup: val || ''})}>
+                          <SelectTrigger className="bg-background border-border text-foreground">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="A+">A+</SelectItem>
+                            <SelectItem value="A-">A-</SelectItem>
+                            <SelectItem value="B+">B+</SelectItem>
+                            <SelectItem value="B-">B-</SelectItem>
+                            <SelectItem value="O+">O+</SelectItem>
+                            <SelectItem value="O-">O-</SelectItem>
+                            <SelectItem value="AB+">AB+</SelectItem>
+                            <SelectItem value="AB-">AB-</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">NID Number</label>
                         <Input 
@@ -704,6 +824,17 @@ export default function Payroll() {
                           placeholder="19xxxxxxxx" 
                           value={newStaff.nid || ''} 
                           onChange={e => setNewStaff({...newStaff, nid: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Base Salary (৳)</label>
+                        <Input 
+                          type="number" 
+                          required 
+                          value={newStaff.salary} 
+                          onChange={e => setNewStaff({...newStaff, salary: e.target.value})}
+                          placeholder="25000" 
                           className="bg-background border-border"
                         />
                       </div>
@@ -719,17 +850,6 @@ export default function Payroll() {
                           className="bg-background border-border text-foreground"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Base Salary (৳)</label>
-                        <Input 
-                          type="number" 
-                          required 
-                          value={newStaff.salary} 
-                          onChange={e => setNewStaff({...newStaff, salary: e.target.value})}
-                          placeholder="25000" 
-                          className="bg-background border-border"
-                        />
-                      </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Address</label>
@@ -742,9 +862,9 @@ export default function Payroll() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading}>Cancel</Button>
-                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading}>
-                      {isUploading ? 'Adding...' : 'Add Staff'}
+                    <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading || isPhotoProcessing}>Cancel</Button>
+                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading || isPhotoProcessing}>
+                      {isUploading ? 'Adding...' : isPhotoProcessing ? 'Processing...' : 'Add Staff'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -1272,12 +1392,50 @@ export default function Payroll() {
                       />
                     </div>
                     <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Emergency Contact</label>
+                      <Input 
+                        value={editingStaff.emergencyContact || ''} 
+                        onChange={e => setEditingStaff({...editingStaff, emergencyContact: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                      <Select value={editingStaff.bloodGroup || ''} onValueChange={val => setEditingStaff({...editingStaff, bloodGroup: val || ''})}>
+                        <SelectTrigger className="bg-background border-border text-foreground">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="A+">A+</SelectItem>
+                          <SelectItem value="A-">A-</SelectItem>
+                          <SelectItem value="B+">B+</SelectItem>
+                          <SelectItem value="B-">B-</SelectItem>
+                          <SelectItem value="O+">O+</SelectItem>
+                          <SelectItem value="O-">O-</SelectItem>
+                          <SelectItem value="AB+">AB+</SelectItem>
+                          <SelectItem value="AB-">AB-</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">NID Number</label>
                       <Input 
                         required 
                         value={editingStaff.nid || ''} 
                         onChange={e => setEditingStaff({...editingStaff, nid: e.target.value})}
                         className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Joining Date</label>
+                      <Input 
+                        type="date" 
+                        required 
+                        value={editingStaff.joinDate || ''} 
+                        onChange={e => setEditingStaff({...editingStaff, joinDate: e.target.value})}
+                        className="bg-background border-border text-foreground"
                       />
                     </div>
                   </div>
@@ -1316,9 +1474,9 @@ export default function Payroll() {
                 </div>
               )}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading}>Cancel</Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading}>
-                  {isUploading ? 'Saving...' : 'Save Changes'}
+                <Button type="button" variant="outline" onClick={() => setIsEditStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading || isPhotoProcessing}>Cancel</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading || isPhotoProcessing}>
+                  {isUploading ? 'Saving...' : isPhotoProcessing ? 'Processing...' : 'Save Changes'}
                 </Button>
               </DialogFooter>
             </form>
@@ -1560,6 +1718,24 @@ export default function Payroll() {
                           <div>
                             <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>NID / ID Number</p>
                             <p className="text-sm font-semibold" style={{ color: '#374151' }}>{viewingStaff.nid || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Emergency Contact</p>
+                            <p className="text-sm font-semibold" style={{ color: '#374151' }}>{viewingStaff.emergencyContact || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <div className="text-[10px] font-bold">B+</div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Blood Group</p>
+                            <p className="text-sm font-semibold" style={{ color: '#374151' }}>{viewingStaff.bloodGroup || 'N/A'}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
