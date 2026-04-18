@@ -347,17 +347,11 @@ export default function Students() {
             />
           </div>
           <div className="w-full sm:w-48">
-            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+            <Select value={selectedClassId} onValueChange={(val) => setSelectedClassId(val || 'all')}>
               <SelectTrigger className="bg-background border-border text-foreground">
                 <div className="flex items-center">
                   <Filter className="w-4 h-4 mr-2 text-sidebar-foreground" />
-                  <SelectValue placeholder="Filter by Class">
-                    {selectedClassId === 'all' ? 'All Classes' : 
-                     selectedClassId === 'unassigned' ? 'Unassigned' :
-                     classes.find(c => c.id === selectedClassId) ? 
-                     `${classes.find(c => c.id === selectedClassId)?.name} - ${classes.find(c => c.id === selectedClassId)?.section}` : 
-                     undefined}
-                  </SelectValue>
+                  <SelectValue placeholder="Filter by Class" />
                 </div>
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
@@ -594,14 +588,10 @@ export default function Students() {
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
                         value={selectedStudent.classId || ''} 
-                        onValueChange={val => setSelectedStudent({...selectedStudent, classId: val})}
+                        onValueChange={val => setSelectedStudent({...selectedStudent, classId: val || ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Class">
-                            {selectedStudent.classId && classes.find(c => c.id === selectedStudent.classId) 
-                              ? `${classes.find(c => c.id === selectedStudent.classId)?.name} - ${classes.find(c => c.id === selectedStudent.classId)?.section}`
-                              : undefined}
-                          </SelectValue>
+                          <SelectValue placeholder="Select Class" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (

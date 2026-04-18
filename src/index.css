@@ -136,32 +136,42 @@
       min-height: 0 !important;
     }
     
-    /* When the report is open, hide the main application root */
+    /* Use visibility hidden to maintain layout but hide content, then explicitly show target */
     body.report-printing #root,
     body.report-printing [role="dialog"],
     body.report-printing [data-radix-portal] {
-      display: none !important;
+      visibility: hidden !important;
     }
 
-    body.report-printing .print-only {
-      display: block !important;
-      position: relative !important;
-      width: 100% !important;
-      background: white !important;
-      color: black !important;
-      padding: 0 !important;
-      margin: 0 !important;
-    }
+  }
+}
 
-    .print-only {
-      display: none;
-    }
+.print-only {
+  display: none !important;
+}
 
-    /* Reset dialog positioning for print if not using print-only */
-    body:not(.report-printing) .print-only {
-      display: none !important;
-    }
+@media print {
+  body.report-printing .print-only,
+  body.report-printing .print-only * {
+    visibility: visible !important;
+  }
 
+  body.report-printing .print-only {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+@layer utilities {
+  @media print {
     /* Hide interactive elements in the dialog during print */
     [data-slot="dialog-close"], 
     [data-slot="dialog-overlay"],

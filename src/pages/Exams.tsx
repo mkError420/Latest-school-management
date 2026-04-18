@@ -517,6 +517,87 @@ export default function Exams() {
 
   return (
     <DashboardLayout>
+      {/* Print Only Report Container */}
+      <div className="print-only p-8 bg-white text-black font-sans">
+        {reportResults.length > 0 && (
+          <div className="space-y-8">
+            <div className="text-center border-b-2 border-black pb-6">
+              <h1 className="text-2xl font-bold uppercase tracking-tight">Exam Performance Report</h1>
+              <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Class: {classes.find(c => c.id === reportClassId)?.name} - {classes.find(c => c.id === reportClassId)?.section}
+              </p>
+              <p className="text-sm text-gray-600">
+                Exam Type: {reportExamType.replace('_', ' ').toUpperCase()}
+              </p>
+            </div>
+
+            <div className="mt-8">
+              <table className="w-full border-collapse border border-black">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-black px-2 py-2 text-left text-xs font-bold uppercase">Student</th>
+                    <th className="border border-black px-2 py-2 text-center text-xs font-bold uppercase w-16">Roll</th>
+                    {reportExams.map(exam => (
+                      <th key={exam.id} className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase">
+                        {exam.subject}
+                      </th>
+                    ))}
+                    <th className="border border-black px-2 py-2 text-center text-xs font-bold uppercase w-20">Total</th>
+                    <th className="border border-black px-2 py-2 text-center text-xs font-bold uppercase w-20">GPA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students
+                    .filter(s => s.classId === reportClassId)
+                    .map(student => {
+                      const studentResults = reportResults.filter(r => r.studentId === student.id);
+                      let total = 0;
+                      const gps = reportExams.map(exam => {
+                        const result = studentResults.find(r => r.examId === exam.id);
+                        if (result) total += result.marksObtained;
+                        return result ? calculateGP(result.marksObtained).gp : 0;
+                      });
+                      const hasFail = gps.some(gp => gp === 0);
+                      const totalGP = gps.reduce((acc, curr) => acc + curr, 0);
+                      const finalGPA = reportExams.length > 0 ? (totalGP / reportExams.length) : 0;
+
+                      return (
+                        <tr key={student.id}>
+                          <td className="border border-black px-2 py-1 text-sm">{student.name}</td>
+                          <td className="border border-black px-2 py-1 text-sm text-center">{student.rollNumber}</td>
+                          {reportExams.map(exam => {
+                            const result = studentResults.find(r => r.examId === exam.id);
+                            return (
+                              <td key={exam.id} className="border border-black px-1 py-1 text-sm text-center">
+                                {result ? result.marksObtained : '-'}
+                              </td>
+                            );
+                          })}
+                          <td className="border border-black px-2 py-1 text-sm text-center font-bold">{total}</td>
+                          <td className="border border-black px-2 py-1 text-sm text-center font-bold">
+                            {hasFail ? '0.00 (F)' : finalGPA.toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-16 flex justify-between items-end">
+              <div className="space-y-4">
+                <div className="w-48 border-b border-black"></div>
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Principal Signature</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-gray-500">Report Date: {format(new Date(), 'yyyy-MM-dd')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -544,11 +625,7 @@ export default function Exams() {
                       <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
                       <Select value={reportClassId} onValueChange={setReportClassId}>
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Choose a class">
-                            {reportClassId && classes.find(c => c.id === reportClassId) 
-                              ? `${classes.find(c => c.id === reportClassId)?.name} - ${classes.find(c => c.id === reportClassId)?.section}`
-                              : null}
-                          </SelectValue>
+                          <SelectValue placeholder="Choose a class" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
@@ -669,11 +746,22 @@ export default function Exams() {
                     </div>
                   )}
                 </div>
-                <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
-                  <Button variant="outline" onClick={handleExportCSV} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export CSV
-                  </Button>
+                <DialogFooter className="flex sm:justify-between items-center gap-2 print:hidden">
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleExportCSV} disabled={reportResults.length === 0} className="border-border text-sidebar-foreground">
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => window.print()} 
+                      disabled={reportResults.length === 0} 
+                      className="border-border text-sidebar-foreground"
+                    >
+                      <FileText className="w-4 h-4 mr-2 text-primary" />
+                      Print PDF
+                    </Button>
+                  </div>
                   <Button onClick={() => {
                     setIsReportDialogOpen(false);
                     setReportResults([]);
@@ -716,11 +804,7 @@ export default function Exams() {
                           onValueChange={val => setNewExam({...newExam, classId: val})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
-                            <SelectValue placeholder="Select Class">
-                              {newExam.classId && classes.find(c => c.id === newExam.classId) 
-                                ? `${classes.find(c => c.id === newExam.classId)?.name}`
-                                : undefined}
-                            </SelectValue>
+                            <SelectValue placeholder="Select Class" />
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
                             {classes.map((cls) => (

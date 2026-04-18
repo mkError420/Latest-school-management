@@ -59,6 +59,7 @@ interface FeeRecord {
   id: string;
   studentId: string;
   studentName: string;
+  rollNumber?: string;
   classId: string;
   amount: number;
   type: string;
@@ -375,11 +376,7 @@ export default function Fees() {
                         onValueChange={val => setNewFee({...newFee, classId: val, studentId: '', studentName: ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Class">
-                            {newFee.classId && classes.find(c => c.id === newFee.classId) 
-                              ? `${classes.find(c => c.id === newFee.classId)?.name} - ${classes.find(c => c.id === newFee.classId)?.section}`
-                              : undefined}
-                          </SelectValue>
+                          <SelectValue placeholder="Select Class" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
@@ -401,9 +398,7 @@ export default function Fees() {
                         disabled={!newFee.classId}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Student">
-                            {newFee.studentName || undefined}
-                          </SelectValue>
+                          <SelectValue placeholder="Select Student" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {students
@@ -652,75 +647,108 @@ export default function Fees() {
 
         {/* Receipt Dialog */}
         <Dialog open={isReceiptDialogOpen} onOpenChange={setIsReceiptDialogOpen}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px] print:p-0 print:border-none print:shadow-none print:bg-white">
-            <div className="print:hidden">
-              <DialogHeader>
-                <DialogTitle className="text-white flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                  Payment Receipt
-                </DialogTitle>
-                <DialogDescription className="text-sidebar-foreground">
-                  Official payment confirmation for student fees.
-                </DialogDescription>
-              </DialogHeader>
+          <DialogContent className="bg-white text-black sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl">
+            <div className="p-8 font-sans relative">
+              {selectedFee && (
+                <div className="space-y-8">
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 border-black pb-6">
+                    <div className="space-y-1">
+                      <h1 className="text-2xl font-bold uppercase tracking-tight">Payment Receipt</h1>
+                      <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
+                      <p className="text-sm text-gray-600">123 Education Lane, Learning City</p>
+                      <p className="text-sm text-gray-600">Phone: +880 1234 567890 | Email: info@school.edu</p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">OFFICIAL RECEIPT</div>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Receipt Number</p>
+                      <p className="text-lg font-mono font-bold">#{selectedFee.id.slice(-8).toUpperCase()}</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Date Issued</p>
+                      <p className="text-sm font-semibold">{format(new Date(selectedFee.date), 'MMMM dd, yyyy')}</p>
+                    </div>
+                  </div>
+
+                  {/* Student Info */}
+                  <div className="grid grid-cols-2 gap-12 py-4">
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Student Details</h3>
+                      <div className="space-y-1">
+                        <p className="text-base font-bold">{selectedFee.studentName}</p>
+                        <p className="text-sm text-gray-700">Roll Number: <span className="font-semibold">{selectedFee.rollNumber || students.find(s => s.id === selectedFee.studentId)?.rollNumber}</span></p>
+                        <p className="text-sm text-gray-700">Class: <span className="font-semibold">{classes.find(c => c.id === selectedFee.classId)?.name}</span></p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Payment Summary</h3>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-700">Fee Type: <span className="font-semibold capitalize">{selectedFee.type} Fee</span></p>
+                        <p className="text-sm text-gray-700">Payment Status: <span className="font-bold text-emerald-600 uppercase">{selectedFee.status}</span></p>
+                        <p className="text-sm text-gray-700">Payment Method: <span className="font-semibold">Cash/Online</span></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="mt-8">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-4 py-2 text-left text-xs font-bold uppercase">Description</th>
+                          <th className="border border-gray-300 px-4 py-2 text-right text-xs font-bold uppercase w-32">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-6 text-sm">
+                            <p className="font-bold capitalize">{selectedFee.type} Fee Payment</p>
+                            <p className="text-xs text-gray-500 mt-1">Full payment for the specified academic period.</p>
+                          </td>
+                          <td className="border border-gray-300 px-4 py-6 text-right text-sm font-mono font-bold">
+                            ৳{selectedFee.amount.toFixed(2)}
+                          </td>
+                        </tr>
+                        <tr className="bg-gray-50">
+                          <td className="border border-gray-300 px-4 py-2 text-right text-sm font-bold">Subtotal</td>
+                          <td className="border border-gray-300 px-4 py-2 text-right text-sm font-mono font-bold">৳{selectedFee.amount.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-base font-bold uppercase">Total Paid</td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-xl font-mono font-bold bg-gray-100">৳{selectedFee.amount.toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="mt-16 flex justify-between items-end">
+                    <div className="space-y-4">
+                      <div className="w-48 border-b border-black"></div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Authorized Signature</p>
+                    </div>
+                    <div className="text-right space-y-2">
+                      <p className="text-[10px] text-gray-400 italic max-w-[250px]">
+                        This is a computer-generated document. No physical signature is required for its validity.
+                      </p>
+                      <p className="text-[10px] font-bold text-gray-500">Generated on: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
+                    </div>
+                  </div>
+
+                  {/* Paid Stamp */}
+                  {selectedFee.status === 'paid' && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-emerald-600/30 rounded-full px-8 py-4 rotate-[-25deg] pointer-events-none opacity-50">
+                      <span className="text-6xl font-black text-emerald-600/30 uppercase tracking-tighter">PAID</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            
-            {selectedFee && (
-              <div className="space-y-6 py-4 print:py-0 print:text-black">
-                <div className="flex justify-between items-start border-b border-border print:border-black pb-4">
-                  <div>
-                    <h4 className="text-lg font-bold text-white print:text-black">School Management System</h4>
-                    <p className="text-xs text-sidebar-foreground print:text-gray-600">123 Education Lane, Learning City</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Receipt No.</p>
-                    <p className="text-sm font-bold text-white print:text-black">#{selectedFee.id.slice(-8).toUpperCase()}</p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Student Name</p>
-                    <p className="text-sm font-semibold text-white print:text-black">{selectedFee.studentName}</p>
-                    <p className="text-xs text-sidebar-foreground print:text-gray-600">Roll: {selectedFee.rollNumber} | Class: {classes.find(c => c.id === selectedFee.classId)?.name}</p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Payment Date</p>
-                    <p className="text-sm font-semibold text-white print:text-black">{format(new Date(selectedFee.date), 'MMMM dd, yyyy')}</p>
-                  </div>
-                </div>
-
-                <div className="bg-sidebar-accent/20 print:bg-gray-100 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground print:text-gray-600">Fee Description</span>
-                    <span className="text-white print:text-black font-medium capitalize">{selectedFee.type} Fee</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground print:text-gray-600">Status</span>
-                    <span className={cn(
-                      "font-bold uppercase text-[10px]",
-                      selectedFee.status === 'paid' ? "text-emerald-500" : "text-amber-500"
-                    )}>{selectedFee.status}</span>
-                  </div>
-                  <div className="pt-3 border-t border-border print:border-gray-300 flex justify-between items-center">
-                    <span className="text-base font-bold text-white print:text-black">Total Amount</span>
-                    <span className="text-xl font-bold text-primary print:text-black">৳{selectedFee.amount.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <div className="text-center space-y-2">
-                  <p className="text-[10px] text-sidebar-foreground print:text-gray-500 italic">
-                    This is a computer-generated receipt and does not require a physical signature.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
-              <Button variant="outline" onClick={handlePrint} className="border-border text-sidebar-foreground">
-                Print Receipt
+            <DialogFooter className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-4 flex sm:justify-between gap-2">
+              <Button variant="outline" onClick={handlePrint} className="border-gray-300 text-gray-700 hover:bg-gray-100">
+                <Download className="w-4 h-4 mr-2" />
+                Print Receipt (PDF)
               </Button>
-              <Button onClick={() => setIsReceiptDialogOpen(false)}>Close</Button>
+              <Button onClick={() => setIsReceiptDialogOpen(false)} className="bg-gray-800 text-white hover:bg-gray-700">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -750,7 +778,7 @@ export default function Fees() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Fee Type</label>
-                      <Select value={selectedFee.type || ''} onValueChange={val => setSelectedFee({...selectedFee, type: val})}>
+                      <Select value={selectedFee.type as any || ''} onValueChange={val => setSelectedFee({...selectedFee, type: val || ''})}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue>
                             {selectedFee.type === 'tuition' && 'Tuition Fee'}

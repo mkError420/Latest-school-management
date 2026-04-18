@@ -447,9 +447,7 @@ export default function Payroll() {
                       <label className="text-sm font-medium text-sidebar-foreground">Select Staff</label>
                       <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val})}>
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Select Employee">
-                            {newPayroll.staffId ? staff.find(s => s.id === newPayroll.staffId)?.name : "Select Employee"}
-                          </SelectValue>
+                          <SelectValue placeholder="Select Employee" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {staff.filter(s => s.status === 'active').map(s => (
@@ -705,77 +703,113 @@ export default function Payroll() {
 
         {/* Payslip Dialog */}
         <Dialog open={isViewPayslipOpen} onOpenChange={setIsViewPayslipOpen}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px] print:p-0 print:border-none print:shadow-none print:bg-white">
-            <div className="print:hidden">
-              <DialogHeader>
-                <DialogTitle className="text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-primary" />
-                  Salary Payslip
-                </DialogTitle>
-                <DialogDescription className="text-sidebar-foreground">
-                  Official salary statement for the month of {selectedRecord?.month}.
-                </DialogDescription>
-              </DialogHeader>
+          <DialogContent className="bg-white text-black sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl">
+            <div className="p-8 font-sans relative">
+              {selectedRecord && (
+                <div className="space-y-8">
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 border-black pb-6">
+                    <div className="space-y-1">
+                      <h1 className="text-2xl font-bold uppercase tracking-tight">Salary Payslip</h1>
+                      <h2 className="text-xl font-semibold text-gray-800">School Management System</h2>
+                      <p className="text-sm text-gray-600">123 Education Lane, Learning City</p>
+                      <p className="text-sm text-gray-600">Phone: +880 1234 567890 | Email: hr@school.edu</p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">CONFIDENTIAL</div>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Payslip ID</p>
+                      <p className="text-lg font-mono font-bold">#{selectedRecord.id.slice(-8).toUpperCase()}</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Pay Period</p>
+                      <p className="text-sm font-semibold">{selectedRecord.month}</p>
+                    </div>
+                  </div>
+
+                  {/* Employee Info */}
+                  <div className="grid grid-cols-2 gap-12 py-4">
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Employee Details</h3>
+                      <div className="space-y-1">
+                        <p className="text-base font-bold">{selectedRecord.staffName}</p>
+                        <p className="text-sm text-gray-700">Designation: <span className="font-semibold">{selectedRecord.role}</span></p>
+                        <p className="text-sm text-gray-700">Payment Date: <span className="font-semibold">{format(new Date(selectedRecord.paymentDate), 'MMMM dd, yyyy')}</span></p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Payment Summary</h3>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-700">Payment Method: <span className="font-semibold">{selectedRecord.paymentMethod}</span></p>
+                        <p className="text-sm text-gray-700">Status: <span className="font-bold text-emerald-600 uppercase">{selectedRecord.status}</span></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* earnings & deductions */}
+                  <div className="mt-8 border border-black overflow-hidden">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-black">
+                          <th className="px-4 py-2 text-left text-xs font-bold uppercase">Transaction Details</th>
+                          <th className="px-4 py-2 text-right text-xs font-bold uppercase w-32 border-l border-black">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-black">
+                          <td className="px-4 py-3 text-sm flex justify-between">
+                            <span>Basic Salary</span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-mono border-l border-black">
+                            +৳{selectedRecord.amount.toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-black">
+                          <td className="px-4 py-3 text-sm flex justify-between">
+                            <span>Performance Bonus</span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-mono border-l border-black text-emerald-600">
+                            +৳{selectedRecord.bonus.toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-black">
+                          <td className="px-4 py-3 text-sm flex justify-between">
+                            <span>Statutory Deductions</span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-mono border-l border-black text-rose-600">
+                            -৳{selectedRecord.deductions.toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr className="bg-gray-50">
+                          <td className="px-4 py-4 text-right text-base font-bold uppercase">Net Amount Payable</td>
+                          <td className="px-4 py-4 text-right text-lg font-mono font-bold border-l border-black bg-gray-100">
+                            ৳{selectedRecord.netSalary.toLocaleString()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="mt-16 flex justify-between items-end">
+                    <div className="space-y-4">
+                      <div className="w-48 border-b border-black"></div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Authorized Signature</p>
+                    </div>
+                    <div className="text-right space-y-2">
+                      <p className="text-[10px] text-gray-400 italic max-w-[250px]">
+                        This is a computer-generated payslip. No physical signature is required for its validity.
+                      </p>
+                      <p className="text-[10px] font-bold text-gray-500">Generated on: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            {selectedRecord && (
-              <div className="space-y-6 py-4 print:py-0 print:text-black">
-                <div className="flex justify-between items-start border-b border-border print:border-black pb-4">
-                  <div>
-                    <h4 className="text-lg font-bold text-white print:text-black">School Management System</h4>
-                    <p className="text-xs text-sidebar-foreground print:text-gray-600">123 Education Lane, Learning City</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Payslip No.</p>
-                    <p className="text-sm font-bold text-white print:text-black">#{selectedRecord.id.slice(-8).toUpperCase()}</p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Employee Name</p>
-                    <p className="text-sm font-semibold text-white print:text-black">{selectedRecord.staffName}</p>
-                    <p className="text-xs text-sidebar-foreground print:text-gray-600">{selectedRecord.role}</p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-xs font-medium text-sidebar-foreground print:text-gray-600 uppercase tracking-wider">Payment Date</p>
-                    <p className="text-sm font-semibold text-white print:text-black">{format(new Date(selectedRecord.paymentDate), 'MMMM dd, yyyy')}</p>
-                    <p className="text-xs text-sidebar-foreground print:text-gray-600">Method: {selectedRecord.paymentMethod}</p>
-                  </div>
-                </div>
-
-                <div className="bg-sidebar-accent/20 print:bg-gray-100 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground print:text-gray-600">Base Salary</span>
-                    <span className="text-white print:text-black font-medium">৳{selectedRecord.amount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground print:text-gray-600">Bonus</span>
-                    <span className="text-emerald-500 font-medium">+৳{selectedRecord.bonus.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-sidebar-foreground print:text-gray-600">Deductions</span>
-                    <span className="text-rose-500 font-medium">-৳{selectedRecord.deductions.toLocaleString()}</span>
-                  </div>
-                  <div className="pt-3 border-t border-border print:border-gray-300 flex justify-between items-center">
-                    <span className="text-base font-bold text-white print:text-black">Net Salary</span>
-                    <span className="text-xl font-bold text-primary print:text-black">৳{selectedRecord.netSalary.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="text-center space-y-2">
-                  <p className="text-[10px] text-sidebar-foreground print:text-gray-500 italic">
-                    This is a computer-generated payslip and does not require a physical signature.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="flex sm:justify-between gap-2 print:hidden">
-              <Button variant="outline" onClick={handlePrint} className="border-border text-sidebar-foreground">
-                Print Payslip
+            <DialogFooter className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-4 flex sm:justify-between gap-2">
+              <Button variant="outline" onClick={handlePrint} className="border-gray-300 text-gray-700 hover:bg-gray-100">
+                <Download className="w-4 h-4 mr-2" />
+                Print Payslip (PDF)
               </Button>
-              <Button onClick={() => setIsViewPayslipOpen(false)}>Close</Button>
+              <Button onClick={() => setIsViewPayslipOpen(false)} className="bg-gray-800 text-white hover:bg-gray-700">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

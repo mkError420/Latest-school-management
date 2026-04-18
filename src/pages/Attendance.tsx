@@ -169,7 +169,7 @@ export default function Attendance() {
               </PopoverContent>
             </Popover>
             
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
+            <Select value={selectedClass} onValueChange={(val) => setSelectedClass(val || '')}>
               <SelectTrigger className="w-[200px] bg-card border-border text-sidebar-foreground">
                 <SelectValue placeholder="Select Class">
                   {selectedClass && classes.find(c => c.id === selectedClass)
