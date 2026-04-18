@@ -65,6 +65,7 @@ interface FeeRecord {
   type: string;
   status: 'paid' | 'pending' | 'overdue';
   date: string;
+  paymentMethod?: string;
 }
 
 interface Student {
@@ -99,6 +100,7 @@ export default function Fees() {
     amount: '',
     type: 'tuition',
     status: 'paid' as 'paid' | 'pending' | 'overdue',
+    paymentMethod: 'Cash',
     date: new Date().toISOString().split('T')[0]
   });
 
@@ -148,7 +150,7 @@ export default function Fees() {
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
-      setNewFee({ studentId: '', studentName: '', classId: '', amount: '', type: 'tuition', status: 'paid', date: new Date().toISOString().split('T')[0] });
+      setNewFee({ studentId: '', studentName: '', classId: '', amount: '', type: 'tuition', status: 'paid', paymentMethod: 'Cash', date: new Date().toISOString().split('T')[0] });
       toast.success('Fee record added successfully');
     } catch (error) {
       console.error('Error adding fee:', error);
@@ -278,7 +280,7 @@ export default function Fees() {
                 <div className="space-y-1">
                   <p className="text-sm text-gray-700">Fee Type: <span className="font-semibold capitalize">{selectedFee.type} Fee</span></p>
                   <p className="text-sm text-gray-700">Payment Status: <span className="font-bold text-emerald-600 uppercase">{selectedFee.status}</span></p>
-                  <p className="text-sm text-gray-700">Payment Method: <span className="font-semibold">Cash/Online</span></p>
+                  <p className="text-sm text-gray-700">Payment Method: <span className="font-semibold">{selectedFee.paymentMethod || 'Cash'}</span></p>
                 </div>
               </div>
             </div>
@@ -376,7 +378,11 @@ export default function Fees() {
                         onValueChange={val => setNewFee({...newFee, classId: val || '', studentId: '', studentName: ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Class" />
+                          <SelectValue placeholder="Select Class">
+                            {newFee.classId && classes.find(c => c.id === newFee.classId) 
+                              ? classes.find(c => c.id === newFee.classId)?.name 
+                              : "Select Class"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
@@ -398,7 +404,11 @@ export default function Fees() {
                         disabled={!newFee.classId}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Student" />
+                          <SelectValue placeholder="Select Student">
+                            {newFee.studentId && students.find(s => s.id === newFee.studentId)
+                              ? students.find(s => s.id === newFee.studentId)?.name
+                              : "Select Student"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {students
@@ -474,6 +484,24 @@ export default function Fees() {
                           <SelectItem value="overdue">Overdue</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Payment Method</label>
+                      <Select value={newFee.paymentMethod || 'Cash'} onValueChange={val => setNewFee({...newFee, paymentMethod: val || 'Cash'})}>
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="Mobile Banking">Mobile Banking</SelectItem>
+                          <SelectItem value="Cheque">Cheque</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
                     </div>
                   </div>
                 </div>
@@ -555,6 +583,7 @@ export default function Fees() {
                 <TableHead className="font-semibold text-sidebar-foreground">Student</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Class</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Roll</TableHead>
+                <TableHead className="font-semibold text-sidebar-foreground">Method</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Fee Type</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Amount</TableHead>
                 <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
@@ -572,6 +601,7 @@ export default function Fees() {
                       <TableCell className="font-semibold text-white">{fee.studentName}</TableCell>
                       <TableCell className="text-sidebar-foreground">{className}</TableCell>
                       <TableCell className="text-sidebar-foreground">{student?.rollNumber || 'N/A'}</TableCell>
+                      <TableCell className="text-xs text-sidebar-foreground">{fee.paymentMethod || 'Cash'}</TableCell>
                       <TableCell className="capitalize text-sidebar-foreground">{fee.type}</TableCell>
                       <TableCell className="font-medium text-white">৳{fee.amount.toFixed(2)}</TableCell>
                       <TableCell>
