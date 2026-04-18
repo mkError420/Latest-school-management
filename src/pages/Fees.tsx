@@ -93,6 +93,7 @@ export default function Fees() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
   const [newFee, setNewFee] = useState({
     studentId: '',
     studentName: '',
@@ -196,15 +197,20 @@ export default function Fees() {
       return;
     }
 
-    const headers = ['Date', 'Student Name', 'Fee Type', 'Amount (৳)', 'Status'];
+    const headers = ['Date', 'Student Name', 'Class', 'Roll', 'Method', 'Fee Type', 'Amount (tk.)', 'Status'];
     const csvData = filteredFees.map(fee => {
+      const student = students.find(s => s.id === fee.studentId);
+      const clsName = classes.find(c => c.id === fee.classId)?.name || 'N/A';
       return [
         format(new Date(fee.date), 'yyyy-MM-dd'),
         fee.studentName,
+        clsName,
+        student?.rollNumber || 'N/A',
+        fee.paymentMethod || 'Cash',
         fee.type,
         fee.amount.toFixed(2),
         fee.status
-      ].map(field => `"${field}"`).join(',');
+      ].map(field => `"${field ?? ''}"`).join(',');
     });
 
     const csvContent = [headers.join(','), ...csvData].join('\n');
@@ -225,8 +231,11 @@ export default function Fees() {
                          fee.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'all' || fee.type === selectedType;
     const matchesClass = classFilter === 'all' || fee.classId === classFilter;
-    return matchesSearch && matchesType && matchesClass;
+    const matchesMonth = monthFilter === 'all' || format(new Date(fee.date), 'MMMM yyyy') === monthFilter;
+    return matchesSearch && matchesType && matchesClass && matchesMonth;
   });
+
+  const availableMonths = Array.from(new Set(fees.map(f => format(new Date(f.date), 'MMMM yyyy'))));
 
   const stats = {
     totalCollected: fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0),
@@ -491,7 +500,7 @@ export default function Fees() {
                       <label className="text-sm font-medium text-sidebar-foreground">Payment Method</label>
                       <Select value={newFee.paymentMethod || 'Cash'} onValueChange={val => setNewFee({...newFee, paymentMethod: val || 'Cash'})}>
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue />
+                          <SelectValue placeholder="Select Method" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           <SelectItem value="Cash">Cash</SelectItem>
@@ -540,6 +549,17 @@ export default function Fees() {
               Recent Transactions
             </h3>
             <div className="flex items-center gap-3">
+              <Select value={monthFilter || ''} onValueChange={val => setMonthFilter(val || '')}>
+                <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
+                  <SelectValue placeholder="All Months" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="all">All Months</SelectItem>
+                  {availableMonths.map(month => (
+                    <SelectItem key={month} value={month}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={classFilter || ''} onValueChange={val => setClassFilter(val || '')}>
                 <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
                   <SelectValue placeholder="All Classes">
