@@ -93,6 +93,8 @@ export default function Attendance() {
   const saveAttendance = async () => {
     setIsSaving(true);
     try {
+      const selectedCls = classes.find(c => c.id === selectedClass);
+      const className = selectedCls ? `${selectedCls.name} - ${selectedCls.section}` : selectedClass;
       const dateStr = format(date, 'yyyy-MM-dd');
       const batch = Object.entries(attendance).map(([studentId, status]) => {
         return addDoc(collection(db, 'attendance'), {
@@ -105,7 +107,7 @@ export default function Attendance() {
       });
       
       await Promise.all(batch);
-      toast.success(`Attendance for ${selectedClass} on ${dateStr} saved successfully`);
+      toast.success(`Attendance for ${className} on ${dateStr} saved successfully`);
     } catch (error) {
       console.error('Error saving attendance:', error);
       toast.error('Failed to save attendance');
@@ -174,7 +176,7 @@ export default function Attendance() {
                 <SelectValue placeholder="Select Class">
                   {selectedClass && classes.find(c => c.id === selectedClass)
                     ? `${classes.find(c => c.id === selectedClass)?.name} - ${classes.find(c => c.id === selectedClass)?.section}`
-                    : undefined}
+                    : "Select Class"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
