@@ -1,23 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
 import { 
-  Plus, 
-  Search, 
-  MoreHorizontal, 
-  UserPlus,
-  Filter,
-  Download,
-  Eye,
-  Edit,
-  Trash2,
+  Activity,
+  Award,
+  Calendar,
   Camera,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Edit,
+  Eye,
+  Filter,
+  MoreHorizontal,
+  Plus,
+  Printer,
+  Search,
+  Trash2,
+  TrendingUp,
   Upload,
   User as UserIcon,
-  X,
-  TrendingUp,
   UserCheck,
-  Award
+  UserPlus,
+  X
 } from 'lucide-react';
+import { format, subMonths } from 'date-fns';
 import { 
   Table, 
   TableBody, 
@@ -70,6 +76,15 @@ interface Student {
   admissionDate: string;
 }
 
+interface ResultData {
+  id: string;
+  studentId: string;
+  examId: string;
+  marksObtained: number;
+  grade: string;
+  [key: string]: any;
+}
+
 interface Class {
   id: string;
   name: string;
@@ -86,12 +101,14 @@ export default function Students() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [studentPerformance, setStudentPerformance] = useState<{
-    attendanceRate: number;
-    totalExams: number;
-    averageMarks: number;
-    recentGrade: string;
+  const [performanceData, setPerformanceData] = useState<{
+    attendance: any[];
+    results: any[];
   } | null>(null);
+  const [performanceFilters, setPerformanceFilters] = useState({
+    attendanceMonth: format(new Date(), 'yyyy-MM'),
+    examType: 'all',
+  });
   const [loadingPerformance, setLoadingPerformance] = useState(false);
   const [newStudent, setNewStudent] = useState({
     name: '',
@@ -107,7 +124,7 @@ export default function Students() {
     if (isViewDialogOpen && selectedStudent) {
       fetchStudentPerformance(selectedStudent.id);
     } else {
-      setStudentPerformance(null);
+      setPerformanceData(null);
     }
   }, [isViewDialogOpen, selectedStudent]);
 
@@ -117,30 +134,155 @@ export default function Students() {
       // Fetch attendance
       const attQuery = query(collection(db, 'attendance'), where('studentId', '==', studentId));
       const attSnap = await getDocs(attQuery);
-      const totalDays = attSnap.size;
-      const presentDays = attSnap.docs.filter(d => d.data().status === 'present').length;
-      const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+      const attendance = attSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Fetch results
+      // Fetch results and join with exams
       const resQuery = query(collection(db, 'results'), where('studentId', '==', studentId));
       const resSnap = await getDocs(resQuery);
-      const results = resSnap.docs.map(d => d.data());
-      const totalExams = resSnap.size;
-      const totalMarks = results.reduce((sum, r) => sum + (r.marksObtained || 0), 0);
-      const averageMarks = totalExams > 0 ? Math.round(totalMarks / totalExams) : 0;
-      const recentGrade = results.length > 0 ? results[0].grade : 'N/A';
+      const resultsData = resSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ResultData[];
 
-      setStudentPerformance({
-        attendanceRate,
-        totalExams,
-        averageMarks,
-        recentGrade
+      // Get exam details for these results
+      const examIds = [...new Set(resultsData.map(r => r.examId))];
+      const examsData: Record<string, any> = {};
+      
+      if (examIds.length > 0) {
+        // Simple fetch for exams (could be optimized with chunked queries if many)
+        const examsSnap = await getDocs(collection(db, 'exams'));
+        examsSnap.docs.forEach(doc => {
+          if (examIds.includes(doc.id)) {
+            examsData[doc.id] = { id: doc.id, ...doc.data() };
+          }
+        });
+      }
+
+      const resultsWithExams = resultsData.map(r => ({
+        ...r,
+        exam: examsData[r.examId] || null
+      }));
+
+      setPerformanceData({
+        attendance,
+        results: resultsWithExams
       });
     } catch (error) {
       console.error('Error fetching performance:', error);
     } finally {
       setLoadingPerformance(false);
     }
+  };
+
+  const filteredStats = React.useMemo(() => {
+    if (!performanceData) return null;
+
+    // Filter Attendance
+    const [year, month] = performanceFilters.attendanceMonth.split('-').map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
+
+    const filteredAtt = performanceData.attendance.filter(a => {
+      const d = new Date(a.date);
+      return d >= start && d <= end;
+    });
+
+    const attTotal = filteredAtt.length;
+    const attPresent = filteredAtt.filter(a => a.status === 'present').length;
+    const attendanceRate = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 0;
+
+    // Filter Results
+    const filteredRes = performanceData.results.filter(r => {
+      if (performanceFilters.examType !== 'all') {
+        return r.exam?.type === performanceFilters.examType;
+      }
+      return true;
+    });
+
+    const resTotal = filteredRes.length;
+    const resMarksSum = filteredRes.reduce((sum, r) => sum + (r.marksObtained || 0), 0);
+    const averageMarks = resTotal > 0 ? Math.round(resMarksSum / resTotal) : 0;
+    const recentGrade = filteredRes.length > 0 ? filteredRes[0].grade : 'N/A';
+
+    return {
+      attendanceRate,
+      averageMarks,
+      recentGrade,
+      totalExams: resTotal,
+      totalAttendanceDays: attTotal
+    };
+  }, [performanceData, performanceFilters]);
+
+  const handlePrintProfile = () => {
+    if (!selectedStudent) return;
+    const printContent = document.querySelector('.print-profile-content');
+    if (!printContent) return;
+
+    const win = window.open('', '', 'height=600,width=800');
+    if (!win) return;
+
+    const classInfo = classes.find(c => c.id === selectedStudent.classId);
+    const className = classInfo ? `${classInfo.name} - ${classInfo.section}` : 'N/A';
+
+    const monthLabel = format(new Date(performanceFilters.attendanceMonth + '-01'), 'MMMM yyyy');
+    const examTypeLabel = performanceFilters.examType === 'all' 
+      ? 'All Exams' 
+      : performanceFilters.examType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Student Profile - ${selectedStudent.name}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+            .profile { display: flex; gap: 40px; }
+            .photo { width: 150px; height: 150px; border-radius: 10px; border: 1px solid #ddd; object-fit: cover; }
+            .details { flex: 1; }
+            .row { display: grid; grid-template-columns: 150px 1fr; margin-bottom: 10px; border-bottom: 1px solid #f9f9f9; padding-bottom: 10px; }
+            .label { font-weight: bold; color: #666; text-transform: uppercase; font-size: 12px; }
+            .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; }
+            .stat-card { padding: 20px; border: 1px solid #eee; border-radius: 10px; text-align: center; }
+            .stat-sub { font-size: 10px; color: #999; text-transform: uppercase; font-weight: bold; margin-bottom: 4px; display: block; }
+            .stat-val { font-size: 24px; font-weight: 900; color: #000; margin-top: 5px; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>STUDENT OFFICIAL RECORD</h1>
+            <p>Academic Year: 2024-2025</p>
+          </div>
+          <div class="profile">
+            ${selectedStudent.imageUrl ? `<img src="${selectedStudent.imageUrl}" class="photo" />` : '<div class="photo" style="background:#eee; display:flex; align-items:center; justify-content:center;">No Photo</div>'}
+            <div class="details">
+              <div class="row"><div class="label">Student ID</div><div>${selectedStudent.studentId}</div></div>
+              <div class="row"><div class="label">Full Name</div><div>${selectedStudent.name}</div></div>
+              <div class="row"><div class="label">Roll Number</div><div>${selectedStudent.rollNumber}</div></div>
+              <div class="row"><div class="label">Class</div><div>${className}</div></div>
+              <div class="row"><div class="label">Guardian Phone</div><div>${selectedStudent.guardianPhone}</div></div>
+              <div class="row"><div class="label">Admission Date</div><div>${selectedStudent.admissionDate}</div></div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat-card">
+              <span class="stat-sub">${monthLabel}</span>
+              <div class="label">Attendance rate</div>
+              <div class="stat-val">${filteredStats?.attendanceRate || 0}%</div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-sub">${examTypeLabel}</span>
+              <div class="label">Result (Avg)</div>
+              <div class="stat-val">${filteredStats?.averageMarks || 0} PTS</div>
+            </div>
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    win.document.close();
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
@@ -665,7 +807,7 @@ export default function Students() {
               </DialogDescription>
             </DialogHeader>
             {selectedStudent && (
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4 print-profile-content">
                 <div className="flex flex-col items-center mb-6">
                   <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-primary/20 shadow-xl mb-3">
                     {selectedStudent.imageUrl ? (
@@ -702,50 +844,107 @@ export default function Students() {
                   <div className="text-sm font-medium text-sidebar-foreground">Admission Date:</div>
                   <div className="col-span-2 text-white">{selectedStudent.admissionDate}</div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/5">
-                  <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 flex flex-col items-center text-center">
-                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500 mb-2">
-                      <UserCheck className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] text-sidebar-foreground uppercase font-black tracking-widest mb-1">Attendance</span>
-                    {loadingPerformance ? (
-                      <div className="h-6 w-12 bg-white/5 animate-pulse rounded" />
-                    ) : (
-                      <div className="text-xl font-black text-emerald-500">
-                        {studentPerformance?.attendanceRate}%
-                      </div>
-                    )}
-                  </div>
-                  <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex flex-col items-center text-center">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary mb-2">
-                      <Award className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] text-sidebar-foreground uppercase font-black tracking-widest mb-1">Result (Avg)</span>
-                    {loadingPerformance ? (
-                      <div className="h-6 w-12 bg-white/5 animate-pulse rounded" />
-                    ) : (
-                      <div className="text-xl font-black text-primary">
-                        {studentPerformance?.averageMarks || 0} <span className="text-[10px] font-bold text-sidebar-foreground">PTS</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <div className="space-y-6 mt-6 pt-6 border-t border-white/5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Performance Analytics</h4>
+                    <div className="flex gap-2">
+                      <Select 
+                        value={performanceFilters.attendanceMonth} 
+                        onValueChange={(val: string | null) => val && setPerformanceFilters(prev => ({ ...prev, attendanceMonth: val }))}
+                      >
+                        <SelectTrigger className="h-7 text-[9px] uppercase font-bold tracking-widest bg-white/5 border-white/10 w-32">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {Array.from({ length: 12 }).map((_, i) => {
+                            const d = subMonths(new Date(), i);
+                            const val = format(d, 'yyyy-MM');
+                            const label = format(d, 'MMMM yyyy');
+                            return <SelectItem key={val} value={val} className="text-[10px] uppercase font-bold">{label}</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
 
-                {studentPerformance && studentPerformance.totalExams > 0 && (
-                  <div className="mt-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <TrendingUp className="w-4 h-4 text-emerald-500" />
-                      <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Recent Performance</span>
+                      <Select 
+                        value={performanceFilters.examType} 
+                        onValueChange={(val: string | null) => val && setPerformanceFilters(prev => ({ ...prev, examType: val }))}
+                      >
+                        <SelectTrigger className="h-7 text-[9px] uppercase font-bold tracking-widest bg-white/5 border-white/10 w-32">
+                          <SelectValue placeholder="Exam Type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="all" className="text-[10px] uppercase font-bold">All Exams</SelectItem>
+                          <SelectItem value="class_test" className="text-[10px] uppercase font-bold">Class Test</SelectItem>
+                          <SelectItem value="midterm" className="text-[10px] uppercase font-bold">Midterm</SelectItem>
+                          <SelectItem value="final" className="text-[10px] uppercase font-bold">Final</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Badge variant="outline" className="border-primary/20 text-primary uppercase text-[10px] font-black">
-                      Grade: {studentPerformance.recentGrade}
-                    </Badge>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 flex flex-col items-center text-center group hover:bg-emerald-500/10 transition-colors">
+                      <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500 mb-1.5">
+                        <UserCheck className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[9px] text-sidebar-foreground uppercase font-black tracking-widest mb-0.5">Attendance</span>
+                      {loadingPerformance ? (
+                        <div className="h-5 w-10 bg-white/5 animate-pulse rounded" />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <div className="text-lg font-black text-emerald-500 leading-none">
+                            {filteredStats?.attendanceRate}%
+                          </div>
+                          <span className="text-[8px] text-sidebar-foreground font-medium uppercase opacity-60">
+                            {filteredStats?.totalAttendanceDays} Days
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 flex flex-col items-center text-center group hover:bg-primary/10 transition-colors">
+                      <div className="p-1.5 bg-primary/10 rounded-lg text-primary mb-1.5">
+                        <Award className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[9px] text-sidebar-foreground uppercase font-black tracking-widest mb-0.5">Result (Avg)</span>
+                      {loadingPerformance ? (
+                        <div className="h-5 w-10 bg-white/5 animate-pulse rounded" />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <div className="text-lg font-black text-primary leading-none">
+                            {filteredStats?.averageMarks || 0} <span className="text-[9px] font-bold text-sidebar-foreground">PTS</span>
+                          </div>
+                          <span className="text-[8px] text-sidebar-foreground font-medium uppercase opacity-60">
+                            {filteredStats?.totalExams} Exams
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {filteredStats && filteredStats.totalExams > 0 && (
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Performance Context</span>
+                      </div>
+                      <Badge variant="outline" className="border-primary/20 text-primary uppercase text-[10px] font-black">
+                        Recent Grade: {filteredStats.recentGrade}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
-            <DialogFooter>
-              <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+            <DialogFooter className="flex sm:justify-between items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handlePrintProfile}
+                className="border-primary/20 text-primary hover:bg-primary/10 h-9 px-4 uppercase text-[10px] font-black tracking-widest gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                Print Profile
+              </Button>
+              <Button onClick={() => setIsViewDialogOpen(false)} className="h-9 px-4">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
