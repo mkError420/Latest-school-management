@@ -30,6 +30,7 @@
       "properties": {
         "id": { "type": "string" },
         "studentId": { "type": "string", "description": "Custom ID (Year + Roll Number)" },
+        "imageUrl": { "type": "string", "description": "Student photo URL or Base64" },
         "name": { "type": "string" },
         "rollNumber": { "type": "string" },
         "classId": { "type": "string" },

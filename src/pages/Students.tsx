@@ -9,7 +9,11 @@ import {
   Download,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  Camera,
+  Upload,
+  User as UserIcon,
+  X
 } from 'lucide-react';
 import { 
   Table, 
@@ -54,6 +58,7 @@ import { cn } from '@/lib/utils';
 interface Student {
   id: string;
   studentId: string;
+  imageUrl?: string;
   name: string;
   rollNumber: string;
   classId: string;
@@ -84,8 +89,25 @@ export default function Students() {
     classId: '',
     guardianPhone: '',
     admissionDate: new Date().toISOString().split('T')[0],
-    status: 'active' as const
+    status: 'active' as const,
+    imageUrl: ''
   });
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      if (isEdit && selectedStudent) {
+        setSelectedStudent({ ...selectedStudent, imageUrl: base64String });
+      } else {
+        setNewStudent({ ...newStudent, imageUrl: base64String });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'students'), orderBy('name'));
@@ -118,7 +140,7 @@ export default function Students() {
       const year = new Date(newStudent.admissionDate).getFullYear();
       const studentId = `${year}${newStudent.rollNumber}`;
 
-      await addDoc(collection(db, 'students'), {
+      await addDoc(collection(db, 'students'), { 
         ...newStudent,
         studentId,
         createdAt: new Date().toISOString()
@@ -130,7 +152,8 @@ export default function Students() {
         classId: '', 
         guardianPhone: '', 
         admissionDate: new Date().toISOString().split('T')[0],
-        status: 'active' 
+        status: 'active',
+        imageUrl: ''
       });
       toast.success('Student added successfully');
     } catch (error) {
@@ -155,6 +178,7 @@ export default function Students() {
         name: selectedStudent.name,
         rollNumber: selectedStudent.rollNumber,
         studentId,
+        imageUrl: selectedStudent.imageUrl || '',
         classId: selectedStudent.classId,
         guardianPhone: selectedStudent.guardianPhone,
         admissionDate: selectedStudent.admissionDate,
@@ -287,6 +311,32 @@ export default function Students() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
+                    <div className="flex flex-col items-center justify-center gap-4 mb-2">
+                      <div className="relative group">
+                        <div className="w-24 h-24 rounded-full bg-sidebar-accent/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                          {newStudent.imageUrl ? (
+                            <img src={newStudent.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <UserIcon className="w-10 h-10 text-sidebar-foreground opacity-30" />
+                          )}
+                        </div>
+                        <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                          <Camera className="w-3.5 h-3.5" />
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e)} />
+                        </label>
+                        {newStudent.imageUrl && (
+                          <button 
+                            type="button"
+                            onClick={() => setNewStudent({...newStudent, imageUrl: ''})}
+                            className="absolute -top-1 -right-1 p-1 bg-card border border-border text-rose-500 rounded-full hover:bg-sidebar-accent transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Student Photograph</span>
+                    </div>
+
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
                       <Input 
@@ -447,9 +497,20 @@ export default function Students() {
                             <TableCell className="text-sidebar-foreground font-mono text-xs">{index + 1}</TableCell>
                             <TableCell className="font-bold text-primary tracking-tighter">{student.studentId || 'N/A'}</TableCell>
                             <TableCell>
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-white group-hover:text-primary transition-colors">{student.name}</span>
-                                <span className="text-[10px] text-sidebar-foreground uppercase tracking-wider">Roll: {student.rollNumber}</span>
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-sidebar-accent/50 border border-border flex-shrink-0 overflow-hidden">
+                                  {student.imageUrl ? (
+                                    <img src={student.imageUrl} alt={student.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center text-sidebar-foreground/50 text-xs font-bold">
+                                      {student.name.charAt(0)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-white group-hover:text-primary transition-colors">{student.name}</span>
+                                  <span className="text-[10px] text-sidebar-foreground uppercase tracking-wider">Roll: {student.rollNumber}</span>
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell className="text-sidebar-foreground">{student.guardianPhone}</TableCell>
@@ -555,10 +616,20 @@ export default function Students() {
             </DialogHeader>
             {selectedStudent && (
               <div className="space-y-4 py-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-sm font-medium text-sidebar-foreground">Student ID:</div>
-                  <div className="col-span-2 text-primary font-bold">{selectedStudent.studentId}</div>
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-primary/20 shadow-xl mb-3">
+                    {selectedStudent.imageUrl ? (
+                      <img src={selectedStudent.imageUrl} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-sidebar-accent flex items-center justify-center text-primary text-2xl font-black">
+                        {selectedStudent.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-white font-bold">{selectedStudent.name}</h3>
+                  <span className="text-[10px] text-primary uppercase font-black tracking-widest">{selectedStudent.studentId}</span>
                 </div>
+
                 <div className="grid grid-cols-3 gap-4 border-t border-white/5 pt-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Name:</div>
                   <div className="col-span-2 text-white">{selectedStudent.name}</div>
@@ -609,6 +680,32 @@ export default function Students() {
               </DialogHeader>
               {selectedStudent && (
                 <div className="grid gap-4 py-4">
+                  <div className="flex flex-col items-center justify-center gap-4 mb-2">
+                    <div className="relative group">
+                      <div className="w-24 h-24 rounded-full bg-sidebar-accent/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                        {selectedStudent.imageUrl ? (
+                          <img src={selectedStudent.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserIcon className="w-10 h-10 text-sidebar-foreground opacity-30" />
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                        <Camera className="w-3.5 h-3.5" />
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
+                      </label>
+                      {selectedStudent.imageUrl && (
+                        <button 
+                          type="button"
+                          onClick={() => setSelectedStudent({...selectedStudent, imageUrl: ''})}
+                          className="absolute -top-1 -right-1 p-1 bg-card border border-border text-rose-500 rounded-full hover:bg-sidebar-accent transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Update Photograph</span>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
                     <Input 
