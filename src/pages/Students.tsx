@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils';
 
 interface Student {
   id: string;
+  studentId: string;
   name: string;
   rollNumber: string;
   classId: string;
@@ -114,8 +115,12 @@ export default function Students() {
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const year = new Date(newStudent.admissionDate).getFullYear();
+      const studentId = `${year}${newStudent.rollNumber}`;
+
       await addDoc(collection(db, 'students'), {
         ...newStudent,
+        studentId,
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
@@ -142,10 +147,14 @@ export default function Students() {
     e.preventDefault();
     if (!selectedStudent) return;
     try {
+      const year = new Date(selectedStudent.admissionDate).getFullYear();
+      const studentId = `${year}${selectedStudent.rollNumber}`;
+
       const studentRef = doc(db, 'students', selectedStudent.id);
       await updateDoc(studentRef, {
         name: selectedStudent.name,
         rollNumber: selectedStudent.rollNumber,
+        studentId,
         classId: selectedStudent.classId,
         guardianPhone: selectedStudent.guardianPhone,
         admissionDate: selectedStudent.admissionDate,
@@ -186,11 +195,12 @@ export default function Students() {
       return;
     }
 
-    const headers = ['Roll Number', 'Name', 'Class', 'Guardian Phone', 'Status'];
+    const headers = ['Student ID', 'Roll Number', 'Name', 'Class', 'Guardian Phone', 'Status'];
     const csvData = filteredStudents.map(student => {
       const cls = classes.find(c => c.id === student.classId);
       const classInfo = cls ? `${cls.name} - ${cls.section}` : student.classId;
       return [
+        student.studentId || '',
         student.rollNumber,
         student.name,
         classInfo,
@@ -423,7 +433,7 @@ export default function Students() {
                     <TableHeader className="bg-sidebar-accent/30">
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="w-16 font-semibold text-sidebar-foreground">SL</TableHead>
-                        <TableHead className="w-24 font-semibold text-sidebar-foreground">Roll No.</TableHead>
+                        <TableHead className="w-32 font-semibold text-sidebar-foreground">Student ID</TableHead>
                         <TableHead className="font-semibold text-sidebar-foreground">Student Name</TableHead>
                         <TableHead className="font-semibold text-sidebar-foreground">Guardian Phone</TableHead>
                         <TableHead className="w-32 font-semibold text-sidebar-foreground">Status</TableHead>
@@ -435,11 +445,11 @@ export default function Students() {
                         group.students.map((student, index) => (
                           <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors group">
                             <TableCell className="text-sidebar-foreground font-mono text-xs">{index + 1}</TableCell>
-                            <TableCell className="font-medium text-sidebar-foreground">{student.rollNumber}</TableCell>
+                            <TableCell className="font-bold text-primary tracking-tighter">{student.studentId || 'N/A'}</TableCell>
                             <TableCell>
                               <div className="flex flex-col">
                                 <span className="font-semibold text-white group-hover:text-primary transition-colors">{student.name}</span>
-                                <span className="text-[10px] text-sidebar-foreground uppercase tracking-wider">ID: {student.id.slice(-6)}</span>
+                                <span className="text-[10px] text-sidebar-foreground uppercase tracking-wider">Roll: {student.rollNumber}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-sidebar-foreground">{student.guardianPhone}</TableCell>
@@ -546,6 +556,10 @@ export default function Students() {
             {selectedStudent && (
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Student ID:</div>
+                  <div className="col-span-2 text-primary font-bold">{selectedStudent.studentId}</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 border-t border-white/5 pt-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Name:</div>
                   <div className="col-span-2 text-white">{selectedStudent.name}</div>
                 </div>

@@ -13,7 +13,9 @@ import {
   Edit,
   Info,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Wrench,
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +43,7 @@ import {
 import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
-import { doc, onSnapshot, updateDoc, setDoc, collection, query, orderBy, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, collection, query, orderBy, addDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -189,6 +191,47 @@ export default function Settings() {
       toast.success('Cloud backup initiated successfully');
     } catch (error) {
       toast.error('Backup failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSyncStudentIds = async () => {
+    if (!isAdmin) return;
+    setIsSaving(true);
+    const toastId = toast.loading('Architecting legacy student IDs...');
+    
+    try {
+      const studentsSnap = await getDocs(collection(db, 'students'));
+      const batch = writeBatch(db);
+      let updateCount = 0;
+
+      studentsSnap.docs.forEach(studentDoc => {
+        const data = studentDoc.data();
+        // If studentId is missing or "N/A"
+        if (!data.studentId || data.studentId === 'N/A') {
+          const admissionDate = data.admissionDate || new Date().toISOString();
+          const year = new Date(admissionDate).getFullYear();
+          const rollNumber = data.rollNumber || '000';
+          const newStudentId = `${year}${rollNumber}`;
+          
+          batch.update(studentDoc.ref, { 
+            studentId: newStudentId,
+            updatedAt: new Date().toISOString()
+          });
+          updateCount++;
+        }
+      });
+
+      if (updateCount > 0) {
+        await batch.commit();
+        toast.success(`Infrastructure updated: ${updateCount} student records patched`, { id: toastId });
+      } else {
+        toast.info('Data integrity verified: No inconsistent IDs found', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Migration failed:', error);
+      toast.error('Data migration failed', { id: toastId });
     } finally {
       setIsSaving(false);
     }
@@ -465,6 +508,39 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  <div className="col-span-full pt-8 border-t border-white/5 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-1">Administrative Maintenance</h3>
+                        <p className="text-[10px] text-sidebar-foreground font-medium uppercase tracking-widest opacity-60">System health and database integrity synchronization tools.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col justify-between hover:border-primary/20 transition-all group">
+                        <div className="flex items-start gap-4 mb-6">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            <Wrench className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">Sync Student Identifiers</h4>
+                            <p className="text-[10px] text-sidebar-foreground font-medium mt-1 leading-relaxed opacity-60">
+                              Detects records with incomplete or legacy "N/A" identifiers and reconstructs them using the [Year][Roll] logic.
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={handleSyncStudentIds}
+                          disabled={isSaving}
+                          className="w-full bg-white/5 hover:bg-white/10 text-white uppercase font-black text-[10px] tracking-widest h-9 border border-white/5"
+                        >
+                          <Activity className={cn("w-3 h-3 mr-2", isSaving && "animate-pulse")} />
+                          Synchronize IDs
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="col-span-full pt-8 border-t border-white/5 space-y-6">
                     <div className="flex items-center justify-between">
                       <div>

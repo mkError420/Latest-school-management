@@ -29,6 +29,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "studentId": { "type": "string", "description": "Custom ID (Year + Roll Number)" },
         "name": { "type": "string" },
         "rollNumber": { "type": "string" },
         "classId": { "type": "string" },
