@@ -13,7 +13,8 @@ import {
   MoreHorizontal,
   Trash2,
   Eye,
-  FileText
+  FileText,
+  Edit
 } from 'lucide-react';
 import { 
   Table, 
@@ -69,7 +70,10 @@ interface Staff {
   role: string;
   salary: number;
   joinDate: string;
+  department: string;
   status: 'active' | 'inactive';
+  phone?: string;
+  nid?: string;
 }
 
 interface PayrollRecord {
@@ -92,15 +96,20 @@ export default function Payroll() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
+  const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
   const [isProcessPayrollOpen, setIsProcessPayrollOpen] = useState(false);
   const [isViewPayslipOpen, setIsViewPayslipOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
 
   const [newStaff, setNewStaff] = useState({
     name: '',
     role: 'Teacher',
+    department: '',
     salary: '',
     joinDate: new Date().toISOString().split('T')[0],
+    phone: '',
+    nid: '',
     status: 'active' as const
   });
 
@@ -151,7 +160,7 @@ export default function Payroll() {
         createdAt: new Date().toISOString()
       });
       setIsAddStaffOpen(false);
-      setNewStaff({ name: '', role: 'Teacher', salary: '', joinDate: new Date().toISOString().split('T')[0], status: 'active' });
+      setNewStaff({ name: '', role: 'Teacher', department: '', salary: '', joinDate: new Date().toISOString().split('T')[0], phone: '', nid: '', status: 'active' });
       toast.success('Staff member added successfully');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'staff');
@@ -209,6 +218,23 @@ export default function Payroll() {
       toast.success('Staff member removed');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `staff/${id}`);
+    }
+  };
+
+  const handleEditStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    try {
+      const { id, ...data } = editingStaff;
+      await updateDoc(doc(db, 'staff', id), {
+        ...data,
+        salary: Number(data.salary)
+      });
+      setIsEditStaffOpen(false);
+      setEditingStaff(null);
+      toast.success('Staff details updated');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `staff/${editingStaff.id}`);
     }
   };
 
@@ -395,8 +421,8 @@ export default function Payroll() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Role</label>
-                        <Select value={newStaff.role} onValueChange={val => setNewStaff({...newStaff, role: val})}>
-                          <SelectTrigger className="bg-background border-border">
+                        <Select value={newStaff.role} onValueChange={val => setNewStaff({...newStaff, role: val || 'Teacher'})}>
+                          <SelectTrigger className="bg-background border-border text-foreground">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
@@ -407,6 +433,50 @@ export default function Payroll() {
                             <SelectItem value="Support Staff">Support Staff</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Department</label>
+                        <Input 
+                          required 
+                          value={newStaff.department} 
+                          onChange={e => setNewStaff({...newStaff, department: e.target.value})}
+                          placeholder="Science / Admin" 
+                          className="bg-background border-border"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Phone Number</label>
+                        <Input 
+                          required 
+                          placeholder="01712xxxxxx" 
+                          value={newStaff.phone || ''} 
+                          onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">NID Number</label>
+                        <Input 
+                          required 
+                          placeholder="19xxxxxxxx" 
+                          value={newStaff.nid || ''} 
+                          onChange={e => setNewStaff({...newStaff, nid: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Joining Date</label>
+                        <Input 
+                          type="date" 
+                          required 
+                          value={newStaff.joinDate} 
+                          onChange={e => setNewStaff({...newStaff, joinDate: e.target.value})}
+                          className="bg-background border-border text-foreground"
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Base Salary (৳)</label>
@@ -445,7 +515,7 @@ export default function Payroll() {
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Select Staff</label>
-                      <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val})}>
+                      <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val || ''})}>
                         <SelectTrigger className="bg-background border-border">
                           <SelectValue placeholder="Select Employee" />
                         </SelectTrigger>
@@ -479,7 +549,7 @@ export default function Payroll() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Payment Method</label>
-                        <Select value={newPayroll.paymentMethod} onValueChange={val => setNewPayroll({...newPayroll, paymentMethod: val})}>
+                        <Select value={newPayroll.paymentMethod} onValueChange={val => setNewPayroll({...newPayroll, paymentMethod: val || 'Bank Transfer'})}>
                           <SelectTrigger className="bg-background border-border">
                             <SelectValue />
                           </SelectTrigger>
@@ -493,7 +563,7 @@ export default function Payroll() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Status</label>
-                        <Select value={newPayroll.status} onValueChange={(val: any) => setNewPayroll({...newPayroll, status: val})}>
+                        <Select value={newPayroll.status} onValueChange={(val: any) => setNewPayroll({...newPayroll, status: val || 'paid'})}>
                           <SelectTrigger className="bg-background border-border">
                             <SelectValue />
                           </SelectTrigger>
@@ -657,6 +727,8 @@ export default function Payroll() {
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="font-semibold text-sidebar-foreground">Name</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Role</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Department</TableHead>
+                    <TableHead className="font-semibold text-sidebar-foreground">Phone</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Base Salary</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Join Date</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Status</TableHead>
@@ -668,7 +740,9 @@ export default function Payroll() {
                     staff.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
                       <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                         <TableCell className="font-semibold text-white">{s.name}</TableCell>
-                        <TableCell className="capitalize text-sidebar-foreground">{s.role}</TableCell>
+                        <TableCell className="capitalize text-sidebar-foreground font-medium">{s.role}</TableCell>
+                        <TableCell className="text-sidebar-foreground italic">{s.department || 'N/A'}</TableCell>
+                        <TableCell className="text-sidebar-foreground">{s.phone || 'N/A'}</TableCell>
                         <TableCell className="font-medium text-white">৳{s.salary.toLocaleString()}</TableCell>
                         <TableCell className="text-sidebar-foreground">{format(new Date(s.joinDate), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>
@@ -677,20 +751,33 @@ export default function Payroll() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
-                            onClick={() => handleDeleteStaff(s.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-primary hover:bg-primary/10 h-8 w-8"
+                              onClick={() => {
+                                setEditingStaff(s);
+                                setIsEditStaffOpen(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
+                              onClick={() => handleDeleteStaff(s.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-sidebar-foreground">
+                      <TableCell colSpan={7} className="h-24 text-center text-sidebar-foreground">
                         No staff members found.
                       </TableCell>
                     </TableRow>
@@ -700,6 +787,105 @@ export default function Payroll() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Staff Dialog */}
+        <Dialog open={isEditStaffOpen} onOpenChange={setIsEditStaffOpen}>
+          <DialogContent className="bg-card border-border text-foreground">
+            <form onSubmit={handleEditStaff}>
+              <DialogHeader>
+                <DialogTitle className="text-white">Edit Staff Details</DialogTitle>
+                <DialogDescription className="text-sidebar-foreground">Update employee information.</DialogDescription>
+              </DialogHeader>
+              {editingStaff && (
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
+                    <Input 
+                      required 
+                      value={editingStaff.name || ''} 
+                      onChange={e => setEditingStaff({...editingStaff, name: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Role</label>
+                      <Select value={editingStaff.role} onValueChange={val => setEditingStaff({...editingStaff, role: val || ''})}>
+                        <SelectTrigger className="bg-background border-border text-foreground">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Teacher">Teacher</SelectItem>
+                          <SelectItem value="Admin">Administrator</SelectItem>
+                          <SelectItem value="Accountant">Accountant</SelectItem>
+                          <SelectItem value="Librarian">Librarian</SelectItem>
+                          <SelectItem value="Support Staff">Support Staff</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Department</label>
+                      <Input 
+                        required 
+                        value={editingStaff.department || ''} 
+                        onChange={e => setEditingStaff({...editingStaff, department: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Phone Number</label>
+                      <Input 
+                        required 
+                        value={editingStaff.phone || ''} 
+                        onChange={e => setEditingStaff({...editingStaff, phone: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">NID Number</label>
+                      <Input 
+                        required 
+                        value={editingStaff.nid || ''} 
+                        onChange={e => setEditingStaff({...editingStaff, nid: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Status</label>
+                      <Select value={editingStaff.status} onValueChange={(val: any) => setEditingStaff({...editingStaff, status: val || 'active'})}>
+                        <SelectTrigger className="bg-background border-border text-foreground">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Base Salary (৳)</label>
+                      <Input 
+                        type="number" 
+                        required 
+                        value={editingStaff.salary ?? ''} 
+                        onChange={e => setEditingStaff({...editingStaff, salary: Number(e.target.value)})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditStaffOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Payslip Dialog */}
         <Dialog open={isViewPayslipOpen} onOpenChange={setIsViewPayslipOpen}>

@@ -292,7 +292,7 @@ export default function Students() {
                         <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                         <Select 
                           value={newStudent.classId || ''} 
-                          onValueChange={val => setNewStudent({...newStudent, classId: val})}
+                          onValueChange={val => setNewStudent({...newStudent, classId: val || ''})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
                             <SelectValue placeholder="Select Class">

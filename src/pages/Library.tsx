@@ -497,7 +497,7 @@ export default function Library() {
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Select Book</label>
-                      <Select value={newIssue.bookId} onValueChange={val => setNewIssue({...newIssue, bookId: val})}>
+                      <Select value={newIssue.bookId || ''} onValueChange={val => setNewIssue({...newIssue, bookId: val || ''})}>
                         <SelectTrigger className="bg-background border-border">
                           <SelectValue placeholder="Choose a book">
                             {newIssue.bookId && books.find(b => b.id === newIssue.bookId)?.title}
@@ -524,8 +524,8 @@ export default function Library() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
-                      <Select value={issueSelectedClassId} onValueChange={val => {
-                        setIssueSelectedClassId(val);
+                      <Select value={issueSelectedClassId || ''} onValueChange={val => {
+                        setIssueSelectedClassId(val || '');
                         setNewIssue({...newIssue, studentId: ''});
                       }}>
                         <SelectTrigger className="bg-background border-border">
@@ -556,8 +556,8 @@ export default function Library() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Select Student</label>
                       <Select 
-                        value={newIssue.studentId} 
-                        onValueChange={val => setNewIssue({...newIssue, studentId: val})}
+                        value={newIssue.studentId || ''} 
+                        onValueChange={val => setNewIssue({...newIssue, studentId: val || ''})}
                         disabled={!issueSelectedClassId}
                       >
                         <SelectTrigger className="bg-background border-border">
@@ -588,7 +588,7 @@ export default function Library() {
                       <label className="text-sm font-medium text-sidebar-foreground">Duration (Days)</label>
                       <Input 
                         type="number" 
-                        value={newIssue.days} 
+                        value={newIssue.days ?? ''} 
                         onChange={e => setNewIssue({...newIssue, days: Number(e.target.value)})}
                         className="bg-background border-border"
                       />
@@ -620,7 +620,7 @@ export default function Library() {
                       <label className="text-sm font-medium text-sidebar-foreground">Title</label>
                       <Input 
                         required 
-                        value={newBook.title} 
+                        value={newBook.title || ''} 
                         onChange={e => setNewBook({...newBook, title: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -630,7 +630,7 @@ export default function Library() {
                         <label className="text-sm font-medium text-sidebar-foreground">Author</label>
                         <Input 
                           required 
-                          value={newBook.author} 
+                          value={newBook.author || ''} 
                           onChange={e => setNewBook({...newBook, author: e.target.value})}
                           className="bg-background border-border"
                         />
@@ -639,7 +639,7 @@ export default function Library() {
                         <label className="text-sm font-medium text-sidebar-foreground">ISBN</label>
                         <Input 
                           required 
-                          value={newBook.isbn} 
+                          value={newBook.isbn || ''} 
                           onChange={e => setNewBook({...newBook, isbn: e.target.value})}
                           className="bg-background border-border"
                         />
@@ -650,7 +650,7 @@ export default function Library() {
                         <label className="text-sm font-medium text-sidebar-foreground">Category</label>
                         <Input 
                           required 
-                          value={newBook.category} 
+                          value={newBook.category || ''} 
                           onChange={e => setNewBook({...newBook, category: e.target.value})}
                           className="bg-background border-border"
                         />
@@ -660,7 +660,7 @@ export default function Library() {
                         <Input 
                           type="number" 
                           required 
-                          value={newBook.total} 
+                          value={newBook.total ?? ''} 
                           onChange={e => setNewBook({...newBook, total: Number(e.target.value)})}
                           className="bg-background border-border"
                         />
@@ -713,7 +713,7 @@ export default function Library() {
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select value={selectedCategory || ''} onValueChange={val => setSelectedCategory(val || '')}>
                 <SelectTrigger className="w-[180px] bg-background border-border">
                   <SelectValue placeholder="Category">
                     {selectedCategory === 'all' ? 'All Categories' : selectedCategory}
@@ -983,7 +983,7 @@ export default function Library() {
                     <label className="text-sm font-medium text-sidebar-foreground">Title</label>
                     <Input 
                       required 
-                      value={selectedBook.title} 
+                      value={selectedBook.title || ''} 
                       onChange={e => setSelectedBook({...selectedBook, title: e.target.value})}
                       className="bg-background border-border"
                     />
@@ -993,7 +993,7 @@ export default function Library() {
                       <label className="text-sm font-medium text-sidebar-foreground">Author</label>
                       <Input 
                         required 
-                        value={selectedBook.author} 
+                        value={selectedBook.author || ''} 
                         onChange={e => setSelectedBook({...selectedBook, author: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -1002,7 +1002,7 @@ export default function Library() {
                       <label className="text-sm font-medium text-sidebar-foreground">ISBN</label>
                       <Input 
                         required 
-                        value={selectedBook.isbn} 
+                        value={selectedBook.isbn || ''} 
                         onChange={e => setSelectedBook({...selectedBook, isbn: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -1013,7 +1013,7 @@ export default function Library() {
                       <label className="text-sm font-medium text-sidebar-foreground">Category</label>
                       <Input 
                         required 
-                        value={selectedBook.category} 
+                        value={selectedBook.category || ''} 
                         onChange={e => setSelectedBook({...selectedBook, category: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -1023,7 +1023,7 @@ export default function Library() {
                       <Input 
                         type="number" 
                         required 
-                        value={selectedBook.total} 
+                        value={selectedBook.total ?? ''} 
                         onChange={e => setSelectedBook({...selectedBook, total: Number(e.target.value)})}
                         className="bg-background border-border"
                       />
@@ -1067,7 +1067,7 @@ export default function Library() {
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Book</label>
-                    <Select value={selectedIssue.bookId} onValueChange={val => setSelectedIssue({...selectedIssue, bookId: val})}>
+                    <Select value={selectedIssue.bookId || ''} onValueChange={val => setSelectedIssue({...selectedIssue, bookId: val || ''})}>
                       <SelectTrigger className="bg-background border-border">
                         <SelectValue placeholder="Choose a book">
                           {selectedIssue.bookId && books.find(b => b.id === selectedIssue.bookId)?.title}
@@ -1093,8 +1093,8 @@ export default function Library() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Class</label>
-                    <Select value={editIssueSelectedClassId} onValueChange={val => {
-                      setEditIssueSelectedClassId(val);
+                    <Select value={editIssueSelectedClassId || ''} onValueChange={val => {
+                      setEditIssueSelectedClassId(val || '');
                       setSelectedIssue({...selectedIssue, studentId: ''});
                     }}>
                       <SelectTrigger className="bg-background border-border">
@@ -1125,8 +1125,8 @@ export default function Library() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Student</label>
                     <Select 
-                      value={selectedIssue.studentId} 
-                      onValueChange={val => setSelectedIssue({...selectedIssue, studentId: val})}
+                      value={selectedIssue.studentId || ''} 
+                      onValueChange={val => setSelectedIssue({...selectedIssue, studentId: val || ''})}
                       disabled={!editIssueSelectedClassId}
                     >
                       <SelectTrigger className="bg-background border-border">
@@ -1157,14 +1157,14 @@ export default function Library() {
                     <label className="text-sm font-medium text-sidebar-foreground">Due Date</label>
                     <Input 
                       type="date" 
-                      value={selectedIssue.dueDate.split('T')[0]} 
+                      value={(selectedIssue.dueDate || '').split('T')[0]} 
                       onChange={e => setSelectedIssue({...selectedIssue, dueDate: new Date(e.target.value).toISOString()})}
                       className="bg-background border-border"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Status</label>
-                    <Select value={selectedIssue.status} onValueChange={(val: 'issued' | 'returned') => setSelectedIssue({...selectedIssue, status: val})}>
+                    <Select value={selectedIssue.status || ''} onValueChange={(val) => setSelectedIssue({...selectedIssue, status: (val as any) || 'issued'})}>
                       <SelectTrigger className="bg-background border-border">
                         <SelectValue placeholder="Status">
                           {selectedIssue.status === 'issued' ? 'Issued' : 'Returned'}

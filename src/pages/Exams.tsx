@@ -188,8 +188,8 @@ export default function Exams() {
     classId: '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
-    type: 'class_test' as const,
-    status: 'scheduled' as const,
+    type: 'class_test' as 'class_test' | 'midterm' | 'final',
+    status: 'scheduled' as 'scheduled' | 'completed' | 'ongoing',
     totalMarks: 100
   });
 
@@ -242,7 +242,7 @@ export default function Exams() {
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
-      setNewExam({ subject: '', classId: '', date: new Date().toISOString().split('T')[0], time: '09:00', type: 'midterm', status: 'scheduled', totalMarks: 100 });
+      setNewExam({ subject: '', classId: '', date: new Date().toISOString().split('T')[0], time: '09:00', type: 'midterm' as const, status: 'scheduled' as const, totalMarks: 100 });
       toast.success('Exam scheduled successfully');
     } catch (error) {
       console.error('Error adding exam:', error);
@@ -623,7 +623,7 @@ export default function Exams() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:hidden">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
-                      <Select value={reportClassId} onValueChange={setReportClassId}>
+                      <Select value={reportClassId || ''} onValueChange={val => setReportClassId(val || '')}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue placeholder="Choose a class" />
                         </SelectTrigger>
@@ -801,7 +801,7 @@ export default function Exams() {
                         <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                         <Select 
                           value={newExam.classId || ''} 
-                          onValueChange={val => setNewExam({...newExam, classId: val})}
+                          onValueChange={val => setNewExam({...newExam, classId: val || ''})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
                             <SelectValue placeholder="Select Class" />
@@ -1044,7 +1044,7 @@ export default function Exams() {
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="w-full md:w-64">
                 <label className="text-xs font-medium text-sidebar-foreground mb-1.5 block">Filter by Class</label>
-                <Select value={resultsClassFilter} onValueChange={setResultsClassFilter}>
+                <Select value={resultsClassFilter || ''} onValueChange={val => setResultsClassFilter(val || '')}>
                   <SelectTrigger className="bg-card border-border">
                     <SelectValue placeholder="All Classes">
                       {resultsClassFilter === 'all' ? 'All Classes' : classes.find(c => c.id === resultsClassFilter)?.name}
@@ -1060,7 +1060,7 @@ export default function Exams() {
               </div>
               <div className="w-full md:w-64">
                 <label className="text-xs font-medium text-sidebar-foreground mb-1.5 block">Filter by Exam Type</label>
-                <Select value={resultsTypeFilter} onValueChange={setResultsTypeFilter}>
+                <Select value={resultsTypeFilter || ''} onValueChange={val => setResultsTypeFilter(val || '')}>
                   <SelectTrigger className="bg-card border-border">
                     <SelectValue placeholder="All Types">
                       {resultsTypeFilter === 'all' ? 'All Types' : 
@@ -1182,7 +1182,7 @@ export default function Exams() {
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
                         value={selectedExam.classId || ''} 
-                        onValueChange={val => setSelectedExam({...selectedExam, classId: val})}
+                        onValueChange={val => setSelectedExam({...selectedExam, classId: val || ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue>

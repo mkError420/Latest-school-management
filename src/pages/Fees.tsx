@@ -98,7 +98,7 @@ export default function Fees() {
     classId: '',
     amount: '',
     type: 'tuition',
-    status: 'paid' as const,
+    status: 'paid' as 'paid' | 'pending' | 'overdue',
     date: new Date().toISOString().split('T')[0]
   });
 
@@ -373,7 +373,7 @@ export default function Fees() {
                       <label className="text-sm font-medium text-sidebar-foreground">Class</label>
                       <Select 
                         value={newFee.classId || ''} 
-                        onValueChange={val => setNewFee({...newFee, classId: val, studentId: '', studentName: ''})}
+                        onValueChange={val => setNewFee({...newFee, classId: val || '', studentId: '', studentName: ''})}
                       >
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue placeholder="Select Class" />
@@ -393,7 +393,7 @@ export default function Fees() {
                         value={newFee.studentId || ''} 
                         onValueChange={val => {
                           const student = students.find(s => s.id === val);
-                          setNewFee({...newFee, studentId: val, studentName: student?.name || ''});
+                          setNewFee({...newFee, studentId: val || '', studentName: student?.name || ''});
                         }}
                         disabled={!newFee.classId}
                       >
@@ -429,7 +429,7 @@ export default function Fees() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Fee Type</label>
-                      <Select value={newFee.type || ''} onValueChange={val => setNewFee({...newFee, type: val})}>
+                      <Select value={newFee.type || ''} onValueChange={val => setNewFee({...newFee, type: val || ''})}>
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue placeholder="Select Type">
                             {newFee.type === 'tuition' && 'Tuition Fee'}
@@ -512,7 +512,7 @@ export default function Fees() {
               Recent Transactions
             </h3>
             <div className="flex items-center gap-3">
-              <Select value={classFilter} onValueChange={setClassFilter}>
+              <Select value={classFilter || ''} onValueChange={val => setClassFilter(val || '')}>
                 <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
                   <SelectValue placeholder="All Classes">
                     {classFilter === 'all' ? 'All Classes' : classes.find(c => c.id === classFilter)?.name}
@@ -525,7 +525,7 @@ export default function Fees() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedType} onValueChange={setSelectedType}>
+              <Select value={selectedType || ''} onValueChange={val => setSelectedType(val || '')}>
                 <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>

@@ -315,7 +315,7 @@ export default function Classes() {
                       <label className="text-sm font-medium text-sidebar-foreground">Class Name</label>
                       <Input 
                         required 
-                        value={selectedClass.name} 
+                        value={selectedClass.name || ''} 
                         onChange={e => setSelectedClass({...selectedClass, name: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -324,7 +324,7 @@ export default function Classes() {
                       <label className="text-sm font-medium text-sidebar-foreground">Section</label>
                       <Input 
                         required 
-                        value={selectedClass.section} 
+                        value={selectedClass.section || ''} 
                         onChange={e => setSelectedClass({...selectedClass, section: e.target.value})}
                         className="bg-background border-border"
                       />
@@ -334,7 +334,7 @@ export default function Classes() {
                     <label className="text-sm font-medium text-sidebar-foreground">Class Teacher</label>
                     <Input 
                       required 
-                      value={selectedClass.teacher} 
+                      value={selectedClass.teacher || ''} 
                       onChange={e => setSelectedClass({...selectedClass, teacher: e.target.value})}
                       className="bg-background border-border"
                     />
@@ -342,7 +342,7 @@ export default function Classes() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Room Number</label>
                     <Input 
-                      value={selectedClass.roomNumber} 
+                      value={selectedClass.roomNumber || ''} 
                       onChange={e => setSelectedClass({...selectedClass, roomNumber: e.target.value})}
                       className="bg-background border-border"
                     />
