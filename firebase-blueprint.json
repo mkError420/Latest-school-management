@@ -38,10 +38,12 @@
         "dateOfBirth": { "type": "string", "format": "date" },
         "address": { "type": "string" },
         "admissionDate": { "type": "string", "format": "date" },
+        "guardianName": { "type": "string" },
+        "guardianRelation": { "type": "string" },
         "guardianPhone": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "inactive", "graduated"] }
       },
-      "required": ["name", "rollNumber", "classId", "guardianPhone", "admissionDate"]
+      "required": ["name", "rollNumber", "classId", "guardianPhone", "admissionDate", "guardianName", "guardianRelation"]
     },
     "Attendance": {
       "title": "Attendance",

@@ -90,11 +90,13 @@ service cloud.firestore {
     }
 
     function isValidStudent(data) {
-      return data.keys().hasAll(['name', 'rollNumber', 'classId', 'guardianPhone', 'admissionDate', 'studentId']) &&
+      return data.keys().hasAll(['name', 'rollNumber', 'classId', 'guardianPhone', 'admissionDate', 'studentId', 'guardianName', 'guardianRelation']) &&
              data.name is string && data.name.size() > 0 &&
              data.rollNumber is string && data.rollNumber.size() > 0 &&
              data.admissionDate is string && data.admissionDate.size() > 0 &&
              data.studentId is string && data.studentId.size() > 0 &&
+             data.guardianName is string && data.guardianName.size() > 0 &&
+             data.guardianRelation is string && data.guardianRelation.size() > 0 &&
              (!data.keys().contains('imageUrl') || data.imageUrl is string);
     }
 

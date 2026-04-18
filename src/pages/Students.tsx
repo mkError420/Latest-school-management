@@ -72,6 +72,8 @@ interface Student {
   rollNumber: string;
   classId: string;
   status: 'active' | 'inactive';
+  guardianName: string;
+  guardianRelation: string;
   guardianPhone: string;
   admissionDate: string;
 }
@@ -114,6 +116,8 @@ export default function Students() {
     name: '',
     rollNumber: '',
     classId: '',
+    guardianName: '',
+    guardianRelation: '',
     guardianPhone: '',
     admissionDate: new Date().toISOString().split('T')[0],
     status: 'active' as const,
@@ -255,6 +259,7 @@ export default function Students() {
             <div class="details">
               <div class="row"><div class="label">Student ID</div><div>${selectedStudent.studentId}</div></div>
               <div class="row"><div class="label">Full Name</div><div>${selectedStudent.name}</div></div>
+              <div class="row"><div class="label">Guardian</div><div>${selectedStudent.guardianName} (${selectedStudent.guardianRelation})</div></div>
               <div class="row"><div class="label">Roll Number</div><div>${selectedStudent.rollNumber}</div></div>
               <div class="row"><div class="label">Class</div><div>${className}</div></div>
               <div class="row"><div class="label">Guardian Phone</div><div>${selectedStudent.guardianPhone}</div></div>
@@ -342,6 +347,8 @@ export default function Students() {
         name: '', 
         rollNumber: '', 
         classId: '', 
+        guardianName: '',
+        guardianRelation: '',
         guardianPhone: '', 
         admissionDate: new Date().toISOString().split('T')[0],
         status: 'active',
@@ -372,6 +379,8 @@ export default function Students() {
         studentId,
         imageUrl: selectedStudent.imageUrl || '',
         classId: selectedStudent.classId,
+        guardianName: selectedStudent.guardianName,
+        guardianRelation: selectedStudent.guardianRelation,
         guardianPhone: selectedStudent.guardianPhone,
         admissionDate: selectedStudent.admissionDate,
         status: selectedStudent.status
@@ -411,7 +420,7 @@ export default function Students() {
       return;
     }
 
-    const headers = ['Student ID', 'Roll Number', 'Name', 'Class', 'Guardian Phone', 'Status'];
+    const headers = ['Student ID', 'Roll Number', 'Name', 'Class', 'Guardian Name', 'Relation', 'Guardian Phone', 'Status'];
     const csvData = filteredStudents.map(student => {
       const cls = classes.find(c => c.id === student.classId);
       const classInfo = cls ? `${cls.name} - ${cls.section}` : student.classId;
@@ -420,6 +429,8 @@ export default function Students() {
         student.rollNumber,
         student.name,
         classInfo,
+        student.guardianName || '',
+        student.guardianRelation || '',
         student.guardianPhone,
         student.status
       ].map(field => `"${field}"`).join(',');
@@ -572,6 +583,38 @@ export default function Students() {
                             {classes.length === 0 && (
                               <SelectItem value="none" disabled>No classes available</SelectItem>
                             )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Guardian Name</label>
+                        <Input 
+                          required 
+                          value={newStudent.guardianName || ''} 
+                          onChange={e => setNewStudent({...newStudent, guardianName: e.target.value})}
+                          placeholder="Parent Name" 
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Relation</label>
+                        <Select 
+                          value={newStudent.guardianRelation || ''} 
+                          onValueChange={val => setNewStudent({...newStudent, guardianRelation: val || ''})}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border">
+                            <SelectValue placeholder="Relation" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="Father">Father</SelectItem>
+                            <SelectItem value="Mother">Mother</SelectItem>
+                            <SelectItem value="Brother">Brother</SelectItem>
+                            <SelectItem value="Sister">Sister</SelectItem>
+                            <SelectItem value="Uncle">Uncle</SelectItem>
+                            <SelectItem value="Aunt">Aunt</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -837,6 +880,12 @@ export default function Students() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Guardian:</div>
+                  <div className="col-span-2 text-white">
+                    {selectedStudent.guardianName} ({selectedStudent.guardianRelation})
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Guardian Phone:</div>
                   <div className="col-span-2 text-white">{selectedStudent.guardianPhone}</div>
                 </div>
@@ -1025,6 +1074,37 @@ export default function Students() {
                               {cls.name} - {cls.section}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Guardian Name</label>
+                      <Input 
+                        required 
+                        value={selectedStudent.guardianName || ''} 
+                        onChange={e => setSelectedStudent({...selectedStudent, guardianName: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Relation</label>
+                      <Select 
+                        value={selectedStudent.guardianRelation || ''} 
+                        onValueChange={val => setSelectedStudent({...selectedStudent, guardianRelation: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Relation" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Father">Father</SelectItem>
+                          <SelectItem value="Mother">Mother</SelectItem>
+                          <SelectItem value="Brother">Brother</SelectItem>
+                          <SelectItem value="Sister">Sister</SelectItem>
+                          <SelectItem value="Uncle">Uncle</SelectItem>
+                          <SelectItem value="Aunt">Aunt</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
