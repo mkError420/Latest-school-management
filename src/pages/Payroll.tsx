@@ -70,6 +70,7 @@ import { cn } from '@/lib/utils';
 
 interface Staff {
   id: string;
+  staffId: string;
   name: string;
   role: string;
   salary: number;
@@ -164,14 +165,20 @@ export default function Payroll() {
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Automatic ID Generation: Year (from Join Date) + last 3 digits of NID
+      const year = new Date(newStaff.joinDate).getFullYear();
+      const lastThreeNid = newStaff.nid ? newStaff.nid.slice(-3) : '000';
+      const staffId = `${year}${lastThreeNid}`;
+
       await addDoc(collection(db, 'staff'), {
         ...newStaff,
+        staffId,
         salary: Number(newStaff.salary),
         createdAt: new Date().toISOString()
       });
       setIsAddStaffOpen(false);
       setNewStaff({ name: '', role: 'Teacher', department: '', salary: '', joinDate: new Date().toISOString().split('T')[0], phone: '', nid: '', status: 'active' });
-      toast.success('Staff member added successfully');
+      toast.success(`Staff member added successfully. ID: ${staffId}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'staff');
     }
@@ -239,13 +246,20 @@ export default function Payroll() {
     if (!editingStaff) return;
     try {
       const { id, ...data } = editingStaff;
+      
+      // Re-generate Staff ID based on NID (Year from Join Date + last 3 digits of NID)
+      const joinYear = data.joinDate ? new Date(data.joinDate).getFullYear() : new Date().getFullYear();
+      const lastThreeNid = data.nid ? data.nid.slice(-3) : '000';
+      const updatedStaffId = `${joinYear}${lastThreeNid}`;
+
       await updateDoc(doc(db, 'staff', id), {
         ...data,
+        staffId: updatedStaffId,
         salary: Number(data.salary)
       });
       setIsEditStaffOpen(false);
       setEditingStaff(null);
-      toast.success('Staff details updated');
+      toast.success(`Staff details updated. ID synced: ${updatedStaffId}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `staff/${editingStaff.id}`);
     }
@@ -287,8 +301,9 @@ export default function Payroll() {
       return;
     }
     
-    const headers = ['Name', 'Role', 'Department', 'Phone', 'NID', 'Salary', 'Join Date', 'Status'];
+    const headers = ['Staff ID', 'Name', 'Role', 'Department', 'Phone', 'NID', 'Salary', 'Join Date', 'Status'];
     const rows = filteredStaffList.map(s => [
+      `"${s.staffId || 'N/A'}"`,
       `"${s.name}"`,
       `"${s.role}"`,
       `"${s.department || ''}"`,
@@ -902,6 +917,7 @@ export default function Payroll() {
               <Table>
                 <TableHeader className="bg-sidebar-accent/30">
                   <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="font-semibold text-sidebar-foreground">Staff ID</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Name</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Role</TableHead>
                     <TableHead className="font-semibold text-sidebar-foreground">Department</TableHead>
@@ -931,6 +947,7 @@ export default function Payroll() {
                         </TableRow>
                         {staffByRole[role].map((s) => (
                           <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                            <TableCell className="font-mono text-[10px] text-white/70">{s.staffId || 'N/A'}</TableCell>
                             <TableCell className="font-semibold text-white pl-8">{s.name}</TableCell>
                             <TableCell className="capitalize text-sidebar-foreground font-medium">{s.role}</TableCell>
                             <TableCell className="text-sidebar-foreground italic">{s.department || 'N/A'}</TableCell>
@@ -992,14 +1009,24 @@ export default function Payroll() {
               </DialogHeader>
               {editingStaff && (
                 <div className="grid gap-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
-                    <Input 
-                      required 
-                      value={editingStaff.name || ''} 
-                      onChange={e => setEditingStaff({...editingStaff, name: e.target.value})}
-                      className="bg-background border-border"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
+                      <Input 
+                        required 
+                        value={editingStaff.name || ''} 
+                        onChange={e => setEditingStaff({...editingStaff, name: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground italic">Staff ID (Auto)</label>
+                      <Input 
+                        disabled
+                        value={editingStaff.staffId || 'N/A'} 
+                        className="bg-sidebar-accent/30 border-border opacity-70 cursor-not-allowed"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">

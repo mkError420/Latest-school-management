@@ -159,13 +159,17 @@
       "description": "School staff members.",
       "type": "object",
       "properties": {
+        "staffId": { "type": "string" },
         "name": { "type": "string" },
         "role": { "type": "string" },
+        "department": { "type": "string" },
+        "phone": { "type": "string" },
+        "nid": { "type": "string" },
         "salary": { "type": "number" },
         "joinDate": { "type": "string", "format": "date" },
         "status": { "type": "string", "enum": ["active", "inactive"] }
       },
-      "required": ["name", "role", "salary", "status"]
+      "required": ["staffId", "name", "role", "salary", "status"]
     },
     "Notification": {
       "title": "Notification",

@@ -113,7 +113,8 @@ service cloud.firestore {
     }
 
     function isValidStaff(data) {
-      return data.keys().hasAll(['name', 'role', 'salary', 'status']) &&
+      return data.keys().hasAll(['staffId', 'name', 'role', 'salary', 'status']) &&
+             data.staffId is string && data.staffId.size() > 0 &&
              data.salary is number &&
              data.status in ['active', 'inactive'];
     }
