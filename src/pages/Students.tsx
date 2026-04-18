@@ -58,6 +58,7 @@ interface Student {
   classId: string;
   status: 'active' | 'inactive';
   guardianPhone: string;
+  admissionDate: string;
 }
 
 interface Class {
@@ -81,6 +82,7 @@ export default function Students() {
     rollNumber: '',
     classId: '',
     guardianPhone: '',
+    admissionDate: new Date().toISOString().split('T')[0],
     status: 'active' as const
   });
 
@@ -117,7 +119,14 @@ export default function Students() {
         createdAt: new Date().toISOString()
       });
       setIsAddDialogOpen(false);
-      setNewStudent({ name: '', rollNumber: '', classId: '', guardianPhone: '', status: 'active' });
+      setNewStudent({ 
+        name: '', 
+        rollNumber: '', 
+        classId: '', 
+        guardianPhone: '', 
+        admissionDate: new Date().toISOString().split('T')[0],
+        status: 'active' 
+      });
       toast.success('Student added successfully');
     } catch (error) {
       console.error('Error adding student:', error);
@@ -139,6 +148,7 @@ export default function Students() {
         rollNumber: selectedStudent.rollNumber,
         classId: selectedStudent.classId,
         guardianPhone: selectedStudent.guardianPhone,
+        admissionDate: selectedStudent.admissionDate,
         status: selectedStudent.status
       });
       setIsEditDialogOpen(false);
@@ -322,6 +332,16 @@ export default function Students() {
                         value={newStudent.guardianPhone || ''} 
                         onChange={e => setNewStudent({...newStudent, guardianPhone: e.target.value})}
                         placeholder="+880 1XXX XXXXXX" 
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
+                      <Input 
+                        type="date" 
+                        required 
+                        value={newStudent.admissionDate || ''} 
+                        onChange={e => setNewStudent({...newStudent, admissionDate: e.target.value})}
                         className="bg-background border-border"
                       />
                     </div>
@@ -544,6 +564,10 @@ export default function Students() {
                   <div className="col-span-2 text-white">{selectedStudent.guardianPhone}</div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Admission Date:</div>
+                  <div className="col-span-2 text-white">{selectedStudent.admissionDate}</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Status:</div>
                   <div className="col-span-2">
                     <Badge variant={selectedStudent.status === 'active' ? 'default' : 'secondary'} className="capitalize">
@@ -620,6 +644,16 @@ export default function Students() {
                       required 
                       value={selectedStudent.guardianPhone || ''} 
                       onChange={e => setSelectedStudent({...selectedStudent, guardianPhone: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
+                    <Input 
+                      type="date"
+                      required 
+                      value={selectedStudent.admissionDate || ''} 
+                      onChange={e => setSelectedStudent({...selectedStudent, admissionDate: e.target.value})}
                       className="bg-background border-border"
                     />
                   </div>

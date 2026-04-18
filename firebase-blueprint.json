@@ -39,7 +39,7 @@
         "guardianPhone": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "inactive", "graduated"] }
       },
-      "required": ["name", "rollNumber", "classId", "guardianPhone"]
+      "required": ["name", "rollNumber", "classId", "guardianPhone", "admissionDate"]
     },
     "Attendance": {
       "title": "Attendance",
