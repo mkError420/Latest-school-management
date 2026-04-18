@@ -125,14 +125,14 @@ export default function Attendance() {
 
     fetchHistory();
     
-    // Fetch Audit Logs (Recent submissions)
-    const fetchAudit = async () => {
-      const q = query(
-        collection(db, 'attendance'),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-      const snapshot = await getDocs(q);
+    // Real-time Audit Logs (Recent submissions)
+    const auditQ = query(
+      collection(db, 'attendance'),
+      orderBy('createdAt', 'desc'),
+      limit(200) // Increased limit for better grouping context
+    );
+
+    const unsubscribeAudit = onSnapshot(auditQ, (snapshot) => {
       const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       // Group by Date & ClassId for the audit log view
@@ -142,7 +142,7 @@ export default function Attendance() {
           const cls = classes.find(c => c.id === log.classId);
           acc[key] = {
             date: log.date,
-            className: cls ? `${cls.name} - ${cls.section}` : 'Unknown Class',
+            className: cls ? `${cls.name} - ${cls.section}` : 'Loading...',
             createdAt: log.createdAt,
             records: 0,
             present: 0
@@ -154,8 +154,11 @@ export default function Attendance() {
       }, {});
 
       setAuditLogs(Object.values(grouped));
+    });
+
+    return () => {
+      unsubscribeAudit();
     };
-    fetchAudit();
   }, [selectedClass, classes]);
 
   useEffect(() => {
