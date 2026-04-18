@@ -203,6 +203,31 @@
         "lastBackup": { "type": "string", "format": "date-time" }
       },
       "required": ["schoolName", "academicYear"]
+    },
+    "Role": {
+      "title": "Role",
+      "description": "Staff role definitions and their granular permissions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "students": { "type": "string", "enum": ["none", "view", "full"] },
+            "attendance": { "type": "string", "enum": ["none", "view", "full"] },
+            "fees": { "type": "string", "enum": ["none", "view", "full"] },
+            "exams": { "type": "string", "enum": ["none", "view", "full"] },
+            "library": { "type": "string", "enum": ["none", "view", "full"] },
+            "staff": { "type": "string", "enum": ["none", "view", "full"] },
+            "payroll": { "type": "string", "enum": ["none", "view", "full"] },
+            "settings": { "type": "string", "enum": ["none", "view", "full"] }
+          }
+        },
+        "isSystem": { "type": "boolean", "description": "Whether this is a protected system role" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "permissions"]
     }
   },
   "firestore": {
@@ -218,6 +243,7 @@
     "/library_issues/{issueId}": { "schema": "LibraryIssue", "description": "Book issue records" },
     "/staff/{staffId}": { "schema": "Staff", "description": "Staff records" },
     "/payroll/{payrollId}": { "schema": "Payroll", "description": "Staff payroll" },
-    "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" }
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" },
+    "/roles/{roleId}": { "schema": "Role", "description": "Staff role definitions" }
   }
 }

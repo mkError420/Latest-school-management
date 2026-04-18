@@ -118,6 +118,11 @@ service cloud.firestore {
              data.status in ['paid', 'pending'];
     }
 
+    function isValidRole(data) {
+      return data.keys().hasAll(['name', 'permissions']) &&
+             data.name is string && data.name.size() > 0;
+    }
+
     // Rules
     match /users/{uid} {
       allow read: if isAuthenticated();
@@ -186,6 +191,11 @@ service cloud.firestore {
     match /config/system {
       allow read: if isAuthenticated();
       allow write: if isAdmin() && isValidSystemConfig(request.resource.data);
+    }
+
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidRole(request.resource.data);
     }
   }
 }
