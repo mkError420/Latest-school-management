@@ -25,6 +25,13 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -48,6 +55,9 @@ export default function Dashboard() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [feeDocs, setFeeDocs] = useState<any[]>([]);
   const [payrollDocs, setPayrollDocs] = useState<any[]>([]);
+  const [studentDocs, setStudentDocs] = useState<any[]>([]);
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+  const [filterMonth, setFilterMonth] = useState('all');
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalCost: 0,
@@ -63,8 +73,8 @@ export default function Dashboard() {
     financialTrend: [] as any[]
   });
 
+  // Derived Financial Trend
   useEffect(() => {
-    // Generate Financial Trend whenever feeDocs or payrollDocs change
     const now = new Date();
     const trend: any[] = [];
     
@@ -94,6 +104,53 @@ export default function Dashboard() {
     setStats(prev => ({ ...prev, financialTrend: trend }));
   }, [feeDocs, payrollDocs]);
 
+  // Derived Admission Trend with Filter
+  useEffect(() => {
+    if (studentDocs.length === 0) return;
+
+    const filteredTrend: any[] = [];
+    const year = parseInt(filterYear);
+
+    if (filterMonth === 'all') {
+      // Show 12 months for the selected year
+      for (let m = 0; m < 12; m++) {
+        const d = new Date(year, m, 1);
+        const monthLabel = format(d, 'MMM');
+        const monthStart = d;
+        const monthEnd = new Date(year, m + 1, 0);
+
+        const count = studentDocs.filter(s => {
+          if (!s.admittedAt && !s.createdAt) return false;
+          const date = new Date(s.admittedAt || s.createdAt);
+          return date >= monthStart && date <= monthEnd;
+        }).length;
+
+        filteredTrend.push({ name: monthLabel, students: count });
+      }
+    } else {
+      // Show days for the selected month
+      const monthIndex = parseInt(filterMonth);
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(year, monthIndex, day);
+        const dayLabel = format(d, 'dd');
+        const dayStart = new Date(year, monthIndex, day, 0, 0, 0);
+        const dayEnd = new Date(year, monthIndex, day, 23, 59, 59);
+
+        const count = studentDocs.filter(s => {
+          if (!s.admittedAt && !s.createdAt) return false;
+          const date = new Date(s.admittedAt || s.createdAt);
+          return date >= dayStart && date <= dayEnd;
+        }).length;
+
+        filteredTrend.push({ name: dayLabel, students: count });
+      }
+    }
+
+    setStats(prev => ({ ...prev, admissionTrend: filteredTrend }));
+  }, [studentDocs, filterYear, filterMonth]);
+
   useEffect(() => {
     // Upcoming Exams
     const examsQ = query(
@@ -121,33 +178,19 @@ export default function Dashboard() {
     // Total Students & Trends
     const studentsQ = query(collection(db, 'students'));
     const unsubscribeStudents = onSnapshot(studentsQ, (snapshot) => {
-      const studentDocs = snapshot.docs.map(doc => doc.data());
-      const total = studentDocs.length;
+      const studentData = snapshot.docs.map(doc => doc.data());
+      setStudentDocs(studentData);
       
+      const total = studentData.length;
       const now = new Date();
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const studentLastMonth = studentDocs.filter(s => s.createdAt && new Date(s.createdAt) < lastMonth).length;
+      const studentLastMonth = studentData.filter(s => (s.createdAt || s.admittedAt) && new Date(s.createdAt || s.admittedAt) < lastMonth).length;
       const growth = studentLastMonth > 0 ? ((total - studentLastMonth) / studentLastMonth) * 100 : 100;
-
-      const months: any[] = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = format(d, 'MMM');
-        const monthStart = d;
-        const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-        const count = studentDocs.filter(s => {
-          if (!s.createdAt) return false;
-          const date = new Date(s.createdAt);
-          return date >= monthStart && date <= monthEnd;
-        }).length;
-        months.push({ name: monthName, students: Math.max(5, count), revenue: 0 }); 
-      }
 
       setStats(prev => ({ 
         ...prev, 
         totalStudents: total, 
-        growthRate: growth,
-        admissionTrend: months
+        growthRate: growth
       }));
     });
 
@@ -466,14 +509,41 @@ export default function Dashboard() {
             <div className="flex justify-between items-center mb-6 relative z-10">
               <div>
                 <span className="text-sm font-semibold text-white">Student Admission Trends</span>
-                <p className="text-[11px] text-sidebar-foreground mt-0.5">Last 6 Months Enrollment</p>
+                <p className="text-[11px] text-sidebar-foreground mt-0.5">
+                  {filterMonth === 'all' ? `${filterYear} Enrollment` : `${format(new Date(2000, parseInt(filterMonth)), 'MMMM')} ${filterYear} Daily`}
+                </p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-right">
+                <div className="text-right hidden sm:block">
                   <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Growth</p>
                   <p className={cn("text-xs font-bold", stats.growthRate >= 0 ? "text-emerald-500" : "text-rose-500")}>
                     {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate.toFixed(1)}%
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                   <Select value={filterYear} onValueChange={(val) => val && setFilterYear(val)}>
+                      <SelectTrigger className="h-7 w-20 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-wider">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['2024', '2025', '2026'].map(year => (
+                          <SelectItem key={year} value={year} className="text-[10px] uppercase font-bold tracking-wider">{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
+                   <Select value={filterMonth} onValueChange={(val) => val && setFilterMonth(val)}>
+                      <SelectTrigger className="h-7 w-24 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-wider">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-[10px] uppercase font-bold tracking-wider">All Months</SelectItem>
+                        {Array.from({ length: 12 }).map((_, i) => (
+                          <SelectItem key={i} value={i.toString()} className="text-[10px] uppercase font-bold tracking-wider">
+                            {format(new Date(2000, i), 'MMMM')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                   </Select>
                 </div>
               </div>
             </div>
