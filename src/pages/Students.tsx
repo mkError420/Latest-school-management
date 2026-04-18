@@ -76,6 +76,7 @@ interface Student {
   guardianRelation: string;
   guardianPhone: string;
   admissionDate: string;
+  bloodGroup?: string;
 }
 
 interface ResultData {
@@ -122,7 +123,8 @@ export default function Students() {
     guardianPhone: '',
     admissionDate: new Date().toISOString().split('T')[0],
     status: 'active' as const,
-    imageUrl: ''
+    imageUrl: '',
+    bloodGroup: ''
   });
 
   useEffect(() => {
@@ -293,6 +295,7 @@ export default function Students() {
               <div class="row"><div class="label">Student ID</div><div>${selectedStudent.studentId}</div></div>
               <div class="row"><div class="label">Full Name</div><div>${selectedStudent.name}</div></div>
               <div class="row"><div class="label">Guardian</div><div>${selectedStudent.guardianName} (${selectedStudent.guardianRelation})</div></div>
+              <div class="row"><div class="label">Blood Group</div><div>${selectedStudent.bloodGroup || 'Not Specified'}</div></div>
               <div class="row"><div class="label">Roll Number</div><div>${selectedStudent.rollNumber}</div></div>
               <div class="row"><div class="label">Class</div><div>${className}</div></div>
               <div class="row"><div class="label">Guardian Phone</div><div>${selectedStudent.guardianPhone}</div></div>
@@ -392,7 +395,8 @@ export default function Students() {
         guardianPhone: '', 
         admissionDate: new Date().toISOString().split('T')[0],
         status: 'active',
-        imageUrl: ''
+        imageUrl: '',
+        bloodGroup: ''
       });
       toast.success('Student added successfully');
     } catch (error) {
@@ -423,7 +427,8 @@ export default function Students() {
         guardianRelation: selectedStudent.guardianRelation,
         guardianPhone: selectedStudent.guardianPhone,
         admissionDate: selectedStudent.admissionDate,
-        status: selectedStudent.status
+        status: selectedStudent.status,
+        bloodGroup: selectedStudent.bloodGroup || ''
       });
       setIsEditDialogOpen(false);
       toast.success('Student updated successfully');
@@ -460,7 +465,7 @@ export default function Students() {
       return;
     }
 
-    const headers = ['Student ID', 'Roll Number', 'Name', 'Class', 'Guardian Name', 'Relation', 'Guardian Phone', 'Status'];
+    const headers = ['Student ID', 'Roll Number', 'Name', 'Class', 'Guardian Name', 'Relation', 'Guardian Phone', 'Blood Group', 'Status'];
     const csvData = filteredStudents.map(student => {
       const cls = classes.find(c => c.id === student.classId);
       const classInfo = cls ? `${cls.name} - ${cls.section}` : student.classId;
@@ -472,6 +477,7 @@ export default function Students() {
         student.guardianName || '',
         student.guardianRelation || '',
         student.guardianPhone,
+        student.bloodGroup || '',
         student.status
       ].map(field => `"${field}"`).join(',');
     });
@@ -670,15 +676,38 @@ export default function Students() {
                         className="bg-background border-border"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
-                      <Input 
-                        type="date" 
-                        required 
-                        value={newStudent.admissionDate || ''} 
-                        onChange={e => setNewStudent({...newStudent, admissionDate: e.target.value})}
-                        className="bg-background border-border"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
+                        <Input 
+                          type="date" 
+                          required 
+                          value={newStudent.admissionDate || ''} 
+                          onChange={e => setNewStudent({...newStudent, admissionDate: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                        <Select 
+                          value={newStudent.bloodGroup || ''} 
+                          onValueChange={val => setNewStudent({...newStudent, bloodGroup: val || ''})}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border">
+                            <SelectValue placeholder="Group" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="A+">A+</SelectItem>
+                            <SelectItem value="A-">A-</SelectItem>
+                            <SelectItem value="B+">B+</SelectItem>
+                            <SelectItem value="B-">B-</SelectItem>
+                            <SelectItem value="AB+">AB+</SelectItem>
+                            <SelectItem value="AB-">AB-</SelectItem>
+                            <SelectItem value="O+">O+</SelectItem>
+                            <SelectItem value="O-">O-</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
@@ -930,6 +959,17 @@ export default function Students() {
                   <div className="col-span-2 text-white">{selectedStudent.guardianPhone}</div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Blood Group:</div>
+                  <div className="col-span-2">
+                    <Badge variant="outline" className={cn(
+                      "uppercase text-[10px] font-bold tracking-widest px-2 py-0.5",
+                      selectedStudent.bloodGroup ? "border-rose-500/30 text-rose-500 bg-rose-500/5" : "border-white/10 text-white/40"
+                    )}>
+                      {selectedStudent.bloodGroup || 'Not Defined'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Admission Date:</div>
                   <div className="col-span-2 text-white">{selectedStudent.admissionDate}</div>
                 </div>
@@ -1159,15 +1199,38 @@ export default function Students() {
                       className="bg-background border-border"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
-                    <Input 
-                      type="date"
-                      required 
-                      value={selectedStudent.admissionDate || ''} 
-                      onChange={e => setSelectedStudent({...selectedStudent, admissionDate: e.target.value})}
-                      className="bg-background border-border"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
+                      <Input 
+                        type="date"
+                        required 
+                        value={selectedStudent.admissionDate || ''} 
+                        onChange={e => setSelectedStudent({...selectedStudent, admissionDate: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                      <Select 
+                        value={selectedStudent.bloodGroup || ''} 
+                        onValueChange={val => setSelectedStudent({...selectedStudent, bloodGroup: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Group" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="A+">A+</SelectItem>
+                          <SelectItem value="A-">A-</SelectItem>
+                          <SelectItem value="B+">B+</SelectItem>
+                          <SelectItem value="B-">B-</SelectItem>
+                          <SelectItem value="AB+">AB+</SelectItem>
+                          <SelectItem value="AB-">AB-</SelectItem>
+                          <SelectItem value="O+">O+</SelectItem>
+                          <SelectItem value="O-">O-</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Status</label>

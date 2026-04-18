@@ -98,7 +98,8 @@ service cloud.firestore {
              data.studentId is string && data.studentId.size() > 0 &&
              data.guardianName is string && data.guardianName.size() > 0 &&
              data.guardianRelation is string && data.guardianRelation.size() > 0 &&
-             (!data.keys().contains('imageUrl') || data.imageUrl is string);
+             (!data.keys().contains('imageUrl') || data.imageUrl is string) &&
+             (!data.keys().contains('bloodGroup') || data.bloodGroup in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]);
     }
 
     function isValidExam(data) {

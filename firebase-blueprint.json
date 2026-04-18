@@ -41,6 +41,7 @@
         "guardianName": { "type": "string" },
         "guardianRelation": { "type": "string" },
         "guardianPhone": { "type": "string" },
+        "bloodGroup": { "type": "string", "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
         "status": { "type": "string", "enum": ["active", "inactive", "graduated"] }
       },
       "required": ["name", "rollNumber", "classId", "guardianPhone", "admissionDate", "guardianName", "guardianRelation"]
