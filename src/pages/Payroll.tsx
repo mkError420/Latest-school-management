@@ -40,7 +40,10 @@ import {
 import { 
   Select, 
   SelectContent, 
+  SelectGroup,
   SelectItem, 
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
@@ -316,6 +319,29 @@ export default function Payroll() {
     pendingCount: payroll.filter(r => r.status === 'pending').length,
     totalDeductions: payroll.reduce((acc, curr) => acc + curr.deductions, 0)
   };
+
+  const filteredStaffData = staff.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const staffByRole = filteredStaffData.reduce((acc, s) => {
+    const role = s.role;
+    if (!acc[role]) acc[role] = [];
+    acc[role].push(s);
+    return acc;
+  }, {} as Record<string, Staff[]>);
+
+  const roleOrder = ['Admin', 'Teacher', 'Accountant', 'Librarian', 'Support Staff'];
+  const sortedRoles = Object.keys(staffByRole).sort((a, b) => {
+    const indexA = roleOrder.indexOf(a);
+    const indexB = roleOrder.indexOf(b);
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.localeCompare(b);
+  });
 
   const handlePrint = () => {
     document.body.classList.add('report-printing');
@@ -609,18 +635,25 @@ export default function Payroll() {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
-                          {staff
-                            .filter(s => s.status === 'active')
-                            .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
-                            .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase()))
-                            .map(s => (
-                              <SelectItem key={s.id} value={s.id}>{s.name} ({s.role})</SelectItem>
-                            ))
-                          }
-                          {staff
-                            .filter(s => s.status === 'active')
-                            .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
-                            .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase())).length === 0 && (
+                          {sortedRoles.map((role) => {
+                            const roleStaff = staffByRole[role]
+                              .filter(s => s.status === 'active')
+                              .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
+                              .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase()));
+                            
+                            if (roleStaff.length === 0) return null;
+
+                            return (
+                              <SelectGroup key={role}>
+                                <SelectLabel className="bg-sidebar-accent/30 text-primary font-bold uppercase text-[10px] tracking-widest">{role}</SelectLabel>
+                                {roleStaff.map(s => (
+                                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                ))}
+                                <SelectSeparator className="opacity-50" />
+                              </SelectGroup>
+                            );
+                          })}
+                          {Object.keys(staffByRole).length === 0 && (
                             <div className="p-2 text-center text-xs text-sidebar-foreground">No matching staff found</div>
                           )}
                         </SelectContent>
@@ -880,56 +913,65 @@ export default function Payroll() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staff.filter(s => {
-                    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
-                    return matchesSearch && matchesRole;
-                  }).length > 0 ? (
-                    staff.filter(s => {
-                      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-                      const matchesRole = roleFilter === 'all' || s.role === roleFilter;
-                      return matchesSearch && matchesRole;
-                    }).map((s) => (
-                      <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
-                        <TableCell className="font-semibold text-white">{s.name}</TableCell>
-                        <TableCell className="capitalize text-sidebar-foreground font-medium">{s.role}</TableCell>
-                        <TableCell className="text-sidebar-foreground italic">{s.department || 'N/A'}</TableCell>
-                        <TableCell className="text-sidebar-foreground">{s.phone || 'N/A'}</TableCell>
-                        <TableCell className="font-medium text-white">৳{s.salary.toLocaleString()}</TableCell>
-                        <TableCell className="text-sidebar-foreground">{format(new Date(s.joinDate), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Badge variant={s.status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                            {s.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-primary hover:bg-primary/10 h-8 w-8"
-                              onClick={() => {
-                                setEditingStaff(s);
-                                setIsEditStaffOpen(true);
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
-                              onClick={() => handleDeleteStaff(s.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                  {sortedRoles.length > 0 ? (
+                    sortedRoles.map((role) => (
+                      <React.Fragment key={role}>
+                        <TableRow className="bg-sidebar-accent/5 hover:bg-sidebar-accent/5 border-border">
+                          <TableCell colSpan={8} className="py-2.5 px-4 font-semibold text-white">
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 uppercase text-[10px] font-bold tracking-widest px-2.5 py-1">
+                                {role === 'Admin' ? 'Administration' : role}
+                              </Badge>
+                              <div className="h-px flex-1 bg-border/50"></div>
+                              <span className="text-[10px] text-sidebar-foreground font-semibold uppercase tracking-wider bg-background px-2 py-0.5 rounded border border-border/50">
+                                {staffByRole[role].length} {staffByRole[role].length === 1 ? 'Member' : 'Members'}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {staffByRole[role].map((s) => (
+                          <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                            <TableCell className="font-semibold text-white pl-8">{s.name}</TableCell>
+                            <TableCell className="capitalize text-sidebar-foreground font-medium">{s.role}</TableCell>
+                            <TableCell className="text-sidebar-foreground italic">{s.department || 'N/A'}</TableCell>
+                            <TableCell className="text-sidebar-foreground">{s.phone || 'N/A'}</TableCell>
+                            <TableCell className="font-medium text-white">৳{s.salary.toLocaleString()}</TableCell>
+                            <TableCell className="text-sidebar-foreground">{format(new Date(s.joinDate), 'MMM dd, yyyy')}</TableCell>
+                            <TableCell>
+                              <Badge variant={s.status === 'active' ? 'default' : 'secondary'} className="capitalize">
+                                {s.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-primary hover:bg-primary/10 h-8 w-8"
+                                  onClick={() => {
+                                    setEditingStaff(s);
+                                    setIsEditStaffOpen(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
+                                  onClick={() => handleDeleteStaff(s.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </React.Fragment>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-sidebar-foreground">
+                      <TableCell colSpan={8} className="h-24 text-center text-sidebar-foreground">
                         No staff members found.
                       </TableCell>
                     </TableRow>
