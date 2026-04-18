@@ -84,6 +84,7 @@ interface PayrollRecord {
   month: string;
   amount: number;
   bonus: number;
+  bonusType?: string;
   deductions: number;
   netSalary: number;
   status: 'paid' | 'pending';
@@ -101,6 +102,9 @@ export default function Payroll() {
   const [isViewPayslipOpen, setIsViewPayslipOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [processPayrollRole, setProcessPayrollRole] = useState('all');
+  const [processPayrollSearch, setProcessPayrollSearch] = useState('');
 
   const [newStaff, setNewStaff] = useState({
     name: '',
@@ -117,6 +121,7 @@ export default function Payroll() {
     staffId: '',
     month: format(new Date(), 'MMMM yyyy'),
     bonus: '0',
+    bonusType: 'Performance Bonus',
     deductions: '0',
     status: 'paid' as const,
     paymentMethod: 'Bank Transfer'
@@ -185,6 +190,7 @@ export default function Payroll() {
         month: newPayroll.month,
         amount,
         bonus,
+        bonusType: newPayroll.bonusType,
         deductions,
         netSalary,
         status: newPayroll.status,
@@ -194,7 +200,9 @@ export default function Payroll() {
       });
 
       setIsProcessPayrollOpen(false);
-      setNewPayroll({ staffId: '', month: format(new Date(), 'MMMM yyyy'), bonus: '0', deductions: '0', status: 'paid', paymentMethod: 'Bank Transfer' });
+      setNewPayroll({ staffId: '', month: format(new Date(), 'MMMM yyyy'), bonus: '0', bonusType: 'Performance Bonus', deductions: '0', status: 'paid', paymentMethod: 'Bank Transfer' });
+      setProcessPayrollRole('all');
+      setProcessPayrollSearch('');
       toast.success('Payroll processed successfully');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'payroll');
@@ -259,6 +267,39 @@ export default function Payroll() {
     const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', `Payroll_Report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.click();
+  };
+
+  const handleExportStaffCSV = () => {
+    const filteredStaffList = staff.filter(s => {
+      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+
+    if (filteredStaffList.length === 0) {
+      toast.error('No staff records found to export');
+      return;
+    }
+    
+    const headers = ['Name', 'Role', 'Department', 'Phone', 'NID', 'Salary', 'Join Date', 'Status'];
+    const rows = filteredStaffList.map(s => [
+      `"${s.name}"`,
+      `"${s.role}"`,
+      `"${s.department || ''}"`,
+      `"${s.phone || ''}"`,
+      `"${s.nid || ''}"`,
+      s.salary,
+      `"${s.joinDate}"`,
+      `"${s.status}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Staff_Directory_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     link.click();
   };
 
@@ -499,7 +540,13 @@ export default function Payroll() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isProcessPayrollOpen} onOpenChange={setIsProcessPayrollOpen}>
+            <Dialog open={isProcessPayrollOpen} onOpenChange={(open) => {
+              setIsProcessPayrollOpen(open);
+              if (!open) {
+                setProcessPayrollRole('all');
+                setProcessPayrollSearch('');
+              }
+            }}>
               <DialogTrigger render={
                 <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
                   <Plus className="w-4 h-4 mr-2" />
@@ -513,22 +560,83 @@ export default function Payroll() {
                     <DialogDescription className="text-sidebar-foreground">Record a salary payment for an employee.</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Filter by Role</label>
+                        <Select value={processPayrollRole} onValueChange={val => {
+                          setProcessPayrollRole(val || 'all');
+                          setNewPayroll({...newPayroll, staffId: ''});
+                        }}>
+                          <SelectTrigger className="bg-background border-border">
+                            <SelectValue placeholder="All Roles" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="all">All Roles</SelectItem>
+                            <SelectItem value="Teacher">Teacher</SelectItem>
+                            <SelectItem value="Admin">Administrator</SelectItem>
+                            <SelectItem value="Accountant">Accountant</SelectItem>
+                            <SelectItem value="Librarian">Librarian</SelectItem>
+                            <SelectItem value="Support Staff">Support Staff</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Search Staff</label>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-sidebar-foreground" />
+                          <Input
+                            placeholder="Type to search..."
+                            value={processPayrollSearch}
+                            onChange={e => setProcessPayrollSearch(e.target.value)}
+                            className="bg-background border-border pl-9"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Select Staff</label>
                       <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val || ''})}>
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Select Employee" />
+                          <SelectValue placeholder="Select Employee">
+                            {newPayroll.staffId && staff.find(s => s.id === newPayroll.staffId) 
+                              ? staff.find(s => s.id === newPayroll.staffId)?.name 
+                              : undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
-                          {staff.filter(s => s.status === 'active').map(s => (
-                            <SelectItem key={s.id} value={s.id}>{s.name} ({s.role})</SelectItem>
-                          ))}
+                          {staff
+                            .filter(s => s.status === 'active')
+                            .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
+                            .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase()))
+                            .map(s => (
+                              <SelectItem key={s.id} value={s.id}>{s.name} ({s.role})</SelectItem>
+                            ))
+                          }
+                          {staff
+                            .filter(s => s.status === 'active')
+                            .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
+                            .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase())).length === 0 && (
+                            <div className="p-2 text-center text-xs text-sidebar-foreground">No matching staff found</div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Bonus (৳)</label>
+                        <label className="text-sm font-medium text-sidebar-foreground">Bonus Type</label>
+                        <Select value={newPayroll.bonusType} onValueChange={val => setNewPayroll({...newPayroll, bonusType: val || 'Performance Bonus'})}>
+                          <SelectTrigger className="bg-background border-border">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="Performance Bonus">Performance Bonus</SelectItem>
+                            <SelectItem value="Festival Bonus">Festival Bonus</SelectItem>
+                            <SelectItem value="Others">Others</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Bonus Amount (৳)</label>
                         <Input 
                           type="number" 
                           value={newPayroll.bonus} 
@@ -536,6 +644,8 @@ export default function Payroll() {
                           className="bg-background border-border"
                         />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-sidebar-foreground">Deductions (৳)</label>
                         <Input 
@@ -711,15 +821,44 @@ export default function Payroll() {
           <TabsContent value="staff" className="space-y-6">
             <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
               <div className="p-4 border-b border-border flex items-center justify-between">
-                <h3 className="font-semibold text-white">Staff Directory</h3>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
-                  <Input 
-                    placeholder="Search staff..." 
-                    className="pl-10 h-9 bg-background border-border text-foreground" 
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                  />
+                <div className="flex items-center gap-4">
+                  <h3 className="font-semibold text-white">Staff Directory</h3>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-sidebar-accent/50 rounded-lg border border-border">
+                    <span className="text-xs font-medium text-sidebar-foreground">Role:</span>
+                    <Select value={roleFilter || 'all'} onValueChange={val => setRoleFilter(val || 'all')}>
+                      <SelectTrigger className="h-7 w-[130px] bg-transparent border-none text-xs text-white focus:ring-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="Teacher">Teacher</SelectItem>
+                        <SelectItem value="Admin">Administrator</SelectItem>
+                        <SelectItem value="Accountant">Accountant</SelectItem>
+                        <SelectItem value="Librarian">Librarian</SelectItem>
+                        <SelectItem value="Support Staff">Support Staff</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
+                    <Input 
+                      placeholder="Search staff..." 
+                      className="pl-10 h-9 bg-background border-border text-foreground" 
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleExportStaffCSV}
+                    className="border-border text-sidebar-foreground hover:bg-sidebar-accent"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </Button>
                 </div>
               </div>
               <Table>
@@ -736,8 +875,16 @@ export default function Payroll() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staff.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).length > 0 ? (
-                    staff.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
+                  {staff.filter(s => {
+                    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+                    return matchesSearch && matchesRole;
+                  }).length > 0 ? (
+                    staff.filter(s => {
+                      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+                      return matchesSearch && matchesRole;
+                    }).map((s) => (
                       <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                         <TableCell className="font-semibold text-white">{s.name}</TableCell>
                         <TableCell className="capitalize text-sidebar-foreground font-medium">{s.role}</TableCell>
@@ -949,7 +1096,7 @@ export default function Payroll() {
                         </tr>
                         <tr className="border-b border-black">
                           <td className="px-4 py-3 text-sm flex justify-between">
-                            <span>Performance Bonus</span>
+                            <span>{selectedRecord.bonusType || 'Performance Bonus'}</span>
                           </td>
                           <td className="px-4 py-3 text-right text-sm font-mono border-l border-black text-emerald-600">
                             +৳{selectedRecord.bonus.toLocaleString()}
