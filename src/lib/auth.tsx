@@ -13,9 +13,16 @@ interface UserProfile {
   photoURL?: string;
 }
 
+interface SystemConfig {
+  schoolName: string;
+  academicYear: string;
+  lastBackup?: string;
+}
+
 interface AuthContextType {
   user: FirebaseUser | null;
   profile: UserProfile | null;
+  systemConfig: SystemConfig | null;
   loading: boolean;
   isAdmin: boolean;
   isTeacher: boolean;
@@ -28,9 +35,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initial static config fallback
+    setSystemConfig({
+      schoolName: 'EduFlow International School',
+      academicYear: '2023-2024'
+    });
+
+    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'system'), (doc) => {
+      if (doc.exists()) {
+        setSystemConfig(doc.data() as SystemConfig);
+      }
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       if (!firebaseUser) {
@@ -39,7 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeConfig();
+    };
   }, []);
 
   useEffect(() => {
@@ -63,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     profile,
+    systemConfig,
     loading,
     isAdmin: profile?.role === 'admin',
     isTeacher: profile?.role === 'teacher',

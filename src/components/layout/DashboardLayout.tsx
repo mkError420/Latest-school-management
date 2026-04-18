@@ -35,7 +35,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { profile } = useAuth();
+  const { profile, systemConfig } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
@@ -64,8 +64,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const NavContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="px-6 py-8 mb-4">
-        <h1 className="text-lg font-bold tracking-widest text-primary uppercase">EduFlow</h1>
-        <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">Management System</p>
+        <h1 className="text-lg font-bold tracking-widest text-primary uppercase">{systemConfig?.schoolName.split(' ')[0] || 'EduFlow'}</h1>
+        <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{systemConfig?.schoolName.split(' ').slice(1).join(' ') || 'Management System'}</p>
       </div>
       <nav className="flex-1 space-y-1">
         <div className="px-6 mb-4">
@@ -127,9 +127,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Sheet>
             <div className="page-title">
               <h2 className="text-xl font-semibold text-white capitalize">
-                {location.pathname === '/' ? 'Institutional Overview' : location.pathname.substring(1).replace('-', ' ')}
+                {location.pathname === '/' ? (systemConfig?.schoolName || 'Institutional Overview') : location.pathname.substring(1).replace('-', ' ')}
               </h2>
-              <p className="text-xs text-sidebar-foreground">Welcome back, {profile?.displayName}. System status: Healthy.</p>
+              <p className="text-xs text-sidebar-foreground">Academic Year: {systemConfig?.academicYear || '2023-2024'} • System status: Healthy.</p>
             </div>
           </div>
 

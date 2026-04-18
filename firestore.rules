@@ -79,6 +79,12 @@ service cloud.firestore {
              data.role in ['admin', 'teacher', 'parent', 'student'];
     }
 
+    function isValidSystemConfig(data) {
+      return data.keys().hasAll(['schoolName', 'academicYear']) &&
+             data.schoolName is string && data.schoolName.size() > 0 &&
+             data.academicYear is string && data.academicYear.size() > 0;
+    }
+
     function isValidExam(data) {
       return data.keys().hasAll(['subject', 'classId', 'date', 'time', 'type', 'status', 'totalMarks']) &&
              data.totalMarks is number && data.totalMarks > 0;
@@ -162,6 +168,11 @@ service cloud.firestore {
       allow read: if isOwner(resource.data.recipientId);
       allow create: if isAdmin() || isTeacher();
       allow update: if isOwner(resource.data.recipientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+
+    match /config/system {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidSystemConfig(request.resource.data);
     }
   }
 }

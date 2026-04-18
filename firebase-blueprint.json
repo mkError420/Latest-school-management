@@ -10,6 +10,15 @@
         "displayName": { "type": "string" },
         "role": { "type": "string", "enum": ["admin", "teacher", "parent", "student"] },
         "photoURL": { "type": "string", "format": "uri" },
+        "phone": { "type": "string" },
+        "notificationPreferences": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "boolean" },
+            "push": { "type": "boolean" },
+            "attendance": { "type": "boolean" }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
@@ -179,10 +188,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "section", "teacher"]
+    },
+    "SystemConfig": {
+      "title": "SystemConfig",
+      "description": "Global school settings and configurations.",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "lastBackup": { "type": "string", "format": "date-time" }
+      },
+      "required": ["schoolName", "academicYear"]
     }
   },
   "firestore": {
     "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/config/system": { "schema": "SystemConfig", "description": "Global settings" },
     "/students/{studentId}": { "schema": "Student", "description": "Student records" },
     "/classes/{classId}": { "schema": "Class", "description": "Class definitions" },
     "/attendance/{attendanceId}": { "schema": "Attendance", "description": "Daily attendance" },
