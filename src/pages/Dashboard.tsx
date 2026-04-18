@@ -46,6 +46,8 @@ export default function Dashboard() {
   const { profile } = useAuth();
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [feeDocs, setFeeDocs] = useState<any[]>([]);
+  const [payrollDocs, setPayrollDocs] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalCost: 0,
@@ -57,8 +59,40 @@ export default function Dashboard() {
     totalStaff: 0,
     totalClasses: 0,
     growthRate: 0,
-    admissionTrend: data
+    admissionTrend: data,
+    financialTrend: [] as any[]
   });
+
+  useEffect(() => {
+    // Generate Financial Trend whenever feeDocs or payrollDocs change
+    const now = new Date();
+    const trend: any[] = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = format(d, 'MMM');
+      const monthStart = d;
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const monthYearStr = format(d, 'MMMM yyyy');
+
+      const revenue = feeDocs
+        .filter(f => f.date && new Date(f.date) >= monthStart && new Date(f.date) <= monthEnd)
+        .reduce((acc, f) => acc + (f.amount || 0), 0);
+
+      const cost = payrollDocs
+        .filter(p => p.month === monthYearStr)
+        .reduce((acc, p) => acc + (p.netSalary || 0), 0);
+
+      trend.push({
+        name: monthLabel,
+        revenue,
+        cost,
+        profit: revenue - cost
+      });
+    }
+
+    setStats(prev => ({ ...prev, financialTrend: trend }));
+  }, [feeDocs, payrollDocs]);
 
   useEffect(() => {
     // Upcoming Exams
@@ -133,6 +167,7 @@ export default function Dashboard() {
     const feesQ = query(collection(db, 'fees'), where('status', '==', 'paid'));
     const unsubscribeFees = onSnapshot(feesQ, (snapshot) => {
       const docs = snapshot.docs.map(doc => doc.data());
+      setFeeDocs(docs);
       const total = docs.reduce((acc, d) => acc + (d.amount || 0), 0);
       
       const now = new Date();
@@ -146,6 +181,7 @@ export default function Dashboard() {
     const payrollQ = query(collection(db, 'payroll'), where('status', '==', 'paid'));
     const unsubscribePayroll = onSnapshot(payrollQ, (snapshot) => {
       const docs = snapshot.docs.map(doc => doc.data());
+      setPayrollDocs(docs);
       const total = docs.reduce((acc, d) => acc + (d.netSalary || 0), 0);
       
       const now = new Date();
@@ -270,6 +306,80 @@ export default function Dashboard() {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
+            <div className="flex justify-between items-center mb-5">
+              <span className="text-sm font-semibold text-white">Financial Performance</span>
+              <span className="text-[11px] text-sidebar-foreground">Revenue vs Cost (Last 6 Months)</span>
+            </div>
+            <div className="h-[240px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.financialTrend}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1A1D23" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    tickFormatter={(value) => `৳${value > 1000 ? (value / 1000).toFixed(0) + 'k' : value}`}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid #2D3139', borderRadius: '8px' }}
+                    itemStyle={{ fontSize: '12px' }}
+                  />
+                  <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="cost" name="Cost" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
+            <div className="flex justify-between items-center mb-5">
+              <span className="text-sm font-semibold text-white">Net Profit Trend</span>
+              <span className="text-[11px] text-sidebar-foreground">Monthly Surplus/Deficit</span>
+            </div>
+            <div className="h-[240px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.financialTrend}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1A1D23" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    tickFormatter={(value) => `৳${value > 1000 ? (value / 1000).toFixed(0) + 'k' : value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid #2D3139', borderRadius: '8px' }}
+                    itemStyle={{ fontSize: '12px' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="profit" 
+                    name="Profit" 
+                    stroke="#10b981" 
+                    strokeWidth={3} 
+                    dot={{ fill: '#10b981', r: 4 }}
+                    activeDot={{ r: 6 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
           <Card className="lg:col-span-2 lg:row-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
             <div className="flex justify-between items-center mb-5">
               <span className="text-sm font-semibold text-white">Student Admission Trends</span>
