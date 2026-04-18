@@ -86,7 +86,8 @@ service cloud.firestore {
              (data.get('address', '') is string) &&
              (data.get('phone', '') is string) &&
              (data.get('email', '') is string) &&
-             (data.get('website', '') is string);
+             (data.get('website', '') is string) &&
+             (data.get('schoolLogoUrl', '') is string);
     }
 
     function isValidStudent(data) {

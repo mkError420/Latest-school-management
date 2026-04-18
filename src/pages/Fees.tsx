@@ -256,19 +256,34 @@ export default function Fees() {
   return (
     <DashboardLayout>
       {/* Print Only Receipt Container */}
-      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans">
+      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans relative overflow-hidden">
         {selectedFee && (
-          <div className="space-y-8">
+          <div className="space-y-8 relative z-10">
+            {/* Watermarks */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -z-10 rotate-[-45deg]">
+               <span className="text-[120px] font-black uppercase whitespace-nowrap">{systemConfig?.schoolName || 'EDUFLOW'}</span>
+            </div>
+            {systemConfig?.schoolLogoUrl && (
+              <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none -z-20">
+                <img src={systemConfig.schoolLogoUrl} alt="Watermark" className="w-[500px] h-[500px] object-contain" />
+              </div>
+            )}
+
             {/* Header */}
             <div className="flex justify-between items-start border-b-2 border-black pb-6">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold uppercase tracking-tight">Payment Receipt</h1>
-                <h2 className="text-xl font-semibold text-gray-800">{systemConfig?.schoolName || 'School Management System'}</h2>
-                <p className="text-sm text-gray-600">{systemConfig?.address || '123 Education Lane, Learning City'}</p>
-                <p className="text-sm text-gray-600">
-                  Phone: {systemConfig?.phone || '+880 1234 567890'} | Email: {systemConfig?.email || 'info@school.edu'}
-                </p>
-                {systemConfig?.website && <p className="text-sm text-gray-600">Website: {systemConfig.website}</p>}
+              <div className="flex gap-4">
+                {systemConfig?.schoolLogoUrl && (
+                  <img src={systemConfig.schoolLogoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+                )}
+                <div className="space-y-1">
+                  <h1 className="text-2xl font-bold uppercase tracking-tight">Payment Receipt</h1>
+                  <h2 className="text-xl font-semibold text-gray-800">{systemConfig?.schoolName || 'School Management System'}</h2>
+                  <p className="text-sm text-gray-600">{systemConfig?.address || '123 Education Lane, Learning City'}</p>
+                  <p className="text-sm text-gray-600">
+                    Phone: {systemConfig?.phone || '+880 1234 567890'} | Email: {systemConfig?.email || 'info@school.edu'}
+                  </p>
+                  {systemConfig?.website && <p className="text-sm text-gray-600">Website: {systemConfig.website}</p>}
+                </div>
               </div>
               <div className="text-right space-y-1">
                 <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2">OFFICIAL RECEIPT</div>

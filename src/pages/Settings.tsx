@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { 
   Dialog, 
   DialogContent, 
@@ -99,6 +100,7 @@ export default function Settings() {
     phone: '+880 1234 567890',
     email: 'info@school.edu',
     website: 'www.school.edu',
+    schoolLogoUrl: '',
     lastBackup: ''
   });
 
@@ -131,6 +133,7 @@ export default function Settings() {
           phone: data.phone || '+880 1234 567890',
           email: data.email || 'info@school.edu',
           website: data.website || 'www.school.edu',
+          schoolLogoUrl: data.schoolLogoUrl || '',
           lastBackup: data.lastBackup || ''
         });
       }
@@ -151,6 +154,23 @@ export default function Settings() {
     });
     return () => unsubscribe();
   }, [isAdmin]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo file must be smaller than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setSystemConfig(prev => ({ ...prev, schoolLogoUrl: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -468,6 +488,47 @@ export default function Settings() {
                         onChange={(e) => setSystemConfig({...systemConfig, academicYear: e.target.value})}
                         className="bg-white/5 border-border text-white h-11 focus:border-primary transition-all text-sm font-medium" 
                       />
+                    </div>
+
+                    <div className="col-span-full pt-4 border-t border-white/5">
+                      <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-4">Institution Branding</h3>
+                      <div className="flex items-center gap-8 p-6 bg-white/[0.02] rounded-2xl border border-white/5">
+                        <div className="relative group">
+                          <div className="w-32 h-32 rounded-2xl bg-white/5 border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden">
+                            {systemConfig.schoolLogoUrl ? (
+                              <img src={systemConfig.schoolLogoUrl} alt="School Logo" className="w-full h-full object-contain p-2" />
+                            ) : (
+                              <div className="text-center p-4">
+                                <Database className="w-8 h-8 text-sidebar-foreground opacity-20 mx-auto mb-2" />
+                                <span className="text-[8px] text-sidebar-foreground font-black uppercase tracking-tighter">No Logo</span>
+                              </div>
+                            )}
+                          </div>
+                          <label className="absolute -bottom-2 -right-2 p-2 bg-primary text-white rounded-xl cursor-pointer shadow-xl hover:scale-110 transition-all border-4 border-card">
+                            <Camera className="w-4 h-4" />
+                            <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                          </label>
+                          {systemConfig.schoolLogoUrl && (
+                            <button 
+                              type="button"
+                              onClick={() => setSystemConfig({...systemConfig, schoolLogoUrl: ''})}
+                              className="absolute -top-2 -right-2 p-1.5 bg-card border border-border text-rose-500 rounded-lg hover:bg-sidebar-accent transition-colors shadow-lg"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white font-bold text-sm tracking-tight mb-1">Institutional Logo</p>
+                          <p className="text-[10px] text-sidebar-foreground font-medium uppercase tracking-widest leading-relaxed opacity-60">
+                            Upload a high-resolution logo for your institution. This logo will be used in all official documents, reports, and watermarks.
+                          </p>
+                          <div className="mt-4 flex gap-2">
+                             <Badge variant="outline" className="border-white/10 text-white/40 text-[8px] font-black uppercase">PNG / JPG</Badge>
+                             <Badge variant="outline" className="border-white/10 text-white/40 text-[8px] font-black uppercase">MAX 2MB</Badge>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="col-span-full pt-4 border-t border-white/5">

@@ -96,6 +96,7 @@ interface Class {
 export default function Students() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [systemConfig, setSystemConfig] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -230,29 +231,61 @@ export default function Students() {
       ? 'All Exams' 
       : performanceFilters.examType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+    const schoolLogo = systemConfig?.schoolLogoUrl;
+    const schoolName = systemConfig?.schoolName || 'EDUFLOW MANAGEMENT SYSTEM';
+
     win.document.write(`
       <html>
         <head>
           <title>Student Profile - ${selectedStudent.name}</title>
           <style>
-            body { font-family: sans-serif; padding: 40px; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+            body { font-family: sans-serif; padding: 40px; color: #333; position: relative; }
+            .watermark {
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(-45deg);
+              opacity: 0.05;
+              font-size: 80px;
+              color: #000;
+              z-index: -1;
+              pointer-events: none;
+              text-transform: uppercase;
+              font-weight: 900;
+              width: 100%;
+              text-align: center;
+            }
+            .logo-watermark {
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              opacity: 0.03;
+              width: 500px;
+              z-index: -2;
+              pointer-events: none;
+            }
+            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; position: relative; }
+            .school-logo { height: 60px; margin-bottom: 10px; }
             .profile { display: flex; gap: 40px; }
             .photo { width: 150px; height: 150px; border-radius: 10px; border: 1px solid #ddd; object-fit: cover; }
             .details { flex: 1; }
             .row { display: grid; grid-template-columns: 150px 1fr; margin-bottom: 10px; border-bottom: 1px solid #f9f9f9; padding-bottom: 10px; }
             .label { font-weight: bold; color: #666; text-transform: uppercase; font-size: 12px; }
             .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 40px; }
-            .stat-card { padding: 20px; border: 1px solid #eee; border-radius: 10px; text-align: center; }
+            .stat-card { padding: 20px; border: 1px solid #eee; border-radius: 10px; text-align: center; background: white; }
             .stat-sub { font-size: 10px; color: #999; text-transform: uppercase; font-weight: bold; margin-bottom: 4px; display: block; }
             .stat-val { font-size: 24px; font-weight: 900; color: #000; margin-top: 5px; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
         <body>
+          <div class="watermark">${schoolName}</div>
+          ${schoolLogo ? `<img src="${schoolLogo}" class="logo-watermark" />` : ''}
           <div class="header">
-            <h1>STUDENT OFFICIAL RECORD</h1>
-            <p>Academic Year: 2024-2025</p>
+            ${schoolLogo ? `<img src="${schoolLogo}" class="school-logo" />` : ''}
+            <h1>${schoolName}</h1>
+            <p>Academic Year: ${systemConfig?.academicYear || '2024-2025'}</p>
           </div>
           <div class="profile">
             ${selectedStudent.imageUrl ? `<img src="${selectedStudent.imageUrl}" class="photo" />` : '<div class="photo" style="background:#eee; display:flex; align-items:center; justify-content:center;">No Photo</div>'}
@@ -325,9 +358,16 @@ export default function Students() {
       setClasses(classData);
     });
 
+    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'system'), (doc) => {
+      if (doc.exists()) {
+        setSystemConfig(doc.data());
+      }
+    });
+
     return () => {
       unsubscribe();
       unsubscribeClasses();
+      unsubscribeConfig();
     };
   }, []);
 

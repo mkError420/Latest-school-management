@@ -20,6 +20,7 @@ interface SystemConfig {
   phone?: string;
   email?: string;
   website?: string;
+  schoolLogoUrl?: string;
   lastBackup?: string;
 }
 

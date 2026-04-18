@@ -204,6 +204,7 @@
         "phone": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "website": { "type": "string" },
+        "schoolLogoUrl": { "type": "string", "description": "Base64 or URL of the school logo" },
         "lastBackup": { "type": "string", "format": "date-time" }
       },
       "required": ["schoolName", "academicYear"]
