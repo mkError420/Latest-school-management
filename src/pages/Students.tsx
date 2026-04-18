@@ -13,7 +13,10 @@ import {
   Camera,
   Upload,
   User as UserIcon,
-  X
+  X,
+  TrendingUp,
+  UserCheck,
+  Award
 } from 'lucide-react';
 import { 
   Table, 
@@ -50,7 +53,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -83,6 +86,13 @@ export default function Students() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [studentPerformance, setStudentPerformance] = useState<{
+    attendanceRate: number;
+    totalExams: number;
+    averageMarks: number;
+    recentGrade: string;
+  } | null>(null);
+  const [loadingPerformance, setLoadingPerformance] = useState(false);
   const [newStudent, setNewStudent] = useState({
     name: '',
     rollNumber: '',
@@ -92,6 +102,46 @@ export default function Students() {
     status: 'active' as const,
     imageUrl: ''
   });
+
+  useEffect(() => {
+    if (isViewDialogOpen && selectedStudent) {
+      fetchStudentPerformance(selectedStudent.id);
+    } else {
+      setStudentPerformance(null);
+    }
+  }, [isViewDialogOpen, selectedStudent]);
+
+  const fetchStudentPerformance = async (studentId: string) => {
+    setLoadingPerformance(true);
+    try {
+      // Fetch attendance
+      const attQuery = query(collection(db, 'attendance'), where('studentId', '==', studentId));
+      const attSnap = await getDocs(attQuery);
+      const totalDays = attSnap.size;
+      const presentDays = attSnap.docs.filter(d => d.data().status === 'present').length;
+      const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+      // Fetch results
+      const resQuery = query(collection(db, 'results'), where('studentId', '==', studentId));
+      const resSnap = await getDocs(resQuery);
+      const results = resSnap.docs.map(d => d.data());
+      const totalExams = resSnap.size;
+      const totalMarks = results.reduce((sum, r) => sum + (r.marksObtained || 0), 0);
+      const averageMarks = totalExams > 0 ? Math.round(totalMarks / totalExams) : 0;
+      const recentGrade = results.length > 0 ? results[0].grade : 'N/A';
+
+      setStudentPerformance({
+        attendanceRate,
+        totalExams,
+        averageMarks,
+        recentGrade
+      });
+    } catch (error) {
+      console.error('Error fetching performance:', error);
+    } finally {
+      setLoadingPerformance(false);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
     const file = e.target.files?.[0];
@@ -652,14 +702,46 @@ export default function Students() {
                   <div className="text-sm font-medium text-sidebar-foreground">Admission Date:</div>
                   <div className="col-span-2 text-white">{selectedStudent.admissionDate}</div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-sm font-medium text-sidebar-foreground">Status:</div>
-                  <div className="col-span-2">
-                    <Badge variant={selectedStudent.status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                      {selectedStudent.status}
-                    </Badge>
+                <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-white/5">
+                  <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 flex flex-col items-center text-center">
+                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500 mb-2">
+                      <UserCheck className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] text-sidebar-foreground uppercase font-black tracking-widest mb-1">Attendance</span>
+                    {loadingPerformance ? (
+                      <div className="h-6 w-12 bg-white/5 animate-pulse rounded" />
+                    ) : (
+                      <div className="text-xl font-black text-emerald-500">
+                        {studentPerformance?.attendanceRate}%
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex flex-col items-center text-center">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary mb-2">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] text-sidebar-foreground uppercase font-black tracking-widest mb-1">Result (Avg)</span>
+                    {loadingPerformance ? (
+                      <div className="h-6 w-12 bg-white/5 animate-pulse rounded" />
+                    ) : (
+                      <div className="text-xl font-black text-primary">
+                        {studentPerformance?.averageMarks || 0} <span className="text-[10px] font-bold text-sidebar-foreground">PTS</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {studentPerformance && studentPerformance.totalExams > 0 && (
+                  <div className="mt-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="w-4 h-4 text-emerald-500" />
+                      <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Recent Performance</span>
+                    </div>
+                    <Badge variant="outline" className="border-primary/20 text-primary uppercase text-[10px] font-black">
+                      Grade: {studentPerformance.recentGrade}
+                    </Badge>
+                  </div>
+                )}
               </div>
             )}
             <DialogFooter>
