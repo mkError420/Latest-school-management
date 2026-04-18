@@ -46,50 +46,130 @@ export default function Dashboard() {
   const { profile } = useAuth();
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    feesCollected: 0,
+    avgAttendance: 0,
+    libraryIssues: 0,
+    totalStudents: 0,
+    totalStaff: 0,
+    totalClasses: 0,
+    growthRate: 0,
+    admissionTrend: data
+  });
 
   useEffect(() => {
-    const q = query(
+    // Upcoming Exams
+    const examsQ = query(
       collection(db, 'exams'), 
       where('status', '==', 'scheduled'),
       orderBy('date', 'asc'),
-      limit(3)
+      limit(5)
     );
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const exams = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setUpcomingExams(exams);
+    const unsubscribeExams = onSnapshot(examsQ, (snapshot) => {
+      setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    const transactionsQuery = query(
+    // Recent Transactions
+    const transactionsQ = query(
       collection(db, 'fees'),
       orderBy('date', 'desc'),
-      limit(3)
+      limit(5)
     );
 
-    const unsubscribeTransactions = onSnapshot(transactionsQuery, (snapshot) => {
-      const transactions = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+    const unsubscribeTransactions = onSnapshot(transactionsQ, (snapshot) => {
+      setRecentTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Total Students & Trends
+    const studentsQ = query(collection(db, 'students'));
+    const unsubscribeStudents = onSnapshot(studentsQ, (snapshot) => {
+      const studentDocs = snapshot.docs.map(doc => doc.data());
+      const total = studentDocs.length;
+      
+      const now = new Date();
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const studentLastMonth = studentDocs.filter(s => s.createdAt && new Date(s.createdAt) < lastMonth).length;
+      const growth = studentLastMonth > 0 ? ((total - studentLastMonth) / studentLastMonth) * 100 : 100;
+
+      const months: any[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = format(d, 'MMM');
+        const monthStart = d;
+        const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        const count = studentDocs.filter(s => {
+          if (!s.createdAt) return false;
+          const date = new Date(s.createdAt);
+          return date >= monthStart && date <= monthEnd;
+        }).length;
+        months.push({ name: monthName, students: Math.max(5, count), revenue: 0 }); 
+      }
+
+      setStats(prev => ({ 
+        ...prev, 
+        totalStudents: total, 
+        growthRate: growth,
+        admissionTrend: months
       }));
-      setRecentTransactions(transactions);
+    });
+
+    // Staff Count
+    const staffQ = query(collection(db, 'staff'));
+    const unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
+      setStats(prev => ({ ...prev, totalStaff: snapshot.docs.length }));
+    });
+
+    // Classes Count
+    const classesQ = query(collection(db, 'classes'));
+    const unsubscribeClasses = onSnapshot(classesQ, (snapshot) => {
+      setStats(prev => ({ ...prev, totalClasses: snapshot.docs.length }));
+    });
+
+    // Fees Collected
+    const feesQ = query(collection(db, 'fees'), where('status', '==', 'paid'));
+    const unsubscribeFees = onSnapshot(feesQ, (snapshot) => {
+      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().amount || 0), 0);
+      setStats(prev => ({ ...prev, feesCollected: total }));
+    });
+
+    // Library Issues
+    const libraryQ = query(collection(db, 'library_issues'), where('status', '==', 'issued'));
+    const unsubscribeLibrary = onSnapshot(libraryQ, (snapshot) => {
+      setStats(prev => ({ ...prev, libraryIssues: snapshot.docs.length }));
+    });
+
+    // Attendance
+    const attendanceQ = query(collection(db, 'attendance'), limit(200));
+    const unsubscribeAttendance = onSnapshot(attendanceQ, (snapshot) => {
+      if (snapshot.empty) {
+        setStats(prev => ({ ...prev, avgAttendance: 95.0 }));
+        return;
+      }
+      const present = snapshot.docs.filter(d => d.data().status === 'present').length;
+      const avg = (present / snapshot.docs.length) * 100;
+      setStats(prev => ({ ...prev, avgAttendance: avg }));
     });
 
     return () => {
-      unsubscribe();
+      unsubscribeExams();
       unsubscribeTransactions();
+      unsubscribeStudents();
+      unsubscribeStaff();
+      unsubscribeClasses();
+      unsubscribeFees();
+      unsubscribeLibrary();
+      unsubscribeAttendance();
     };
   }, []);
 
-  const StatCard = ({ title, value, trend, color, trendDown }: any) => (
+  const StatCard = ({ title, value, trend, trendDown }: any) => (
     <Card className="bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
       <div className="flex justify-between items-start mb-5">
         <span className="text-sm font-semibold text-white">{title}</span>
       </div>
       <div className="text-[28px] font-bold text-white mb-1">{value}</div>
-      {trend && (
+      {trend !== undefined && (
         <div className={cn("text-xs flex items-center gap-1", trendDown ? "text-rose-500" : "text-emerald-500")}>
           {trendDown ? "↓" : "↑"} {trend}
         </div>
@@ -103,24 +183,24 @@ export default function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
-            title="Fees Collected" 
-            value="৳428.5k" 
-            trend="8.2% vs target" 
-          />
-          <StatCard 
-            title="Avg Attendance" 
-            value="96.4%" 
-            trend="0.2% vs prev" 
-            trendDown
-          />
-          <StatCard 
-            title="Library Circulation" 
-            value="1,102" 
-          />
-          <StatCard 
             title="Total Students" 
-            value="2,842" 
-            trend="12.4% growth"
+            value={stats.totalStudents.toLocaleString()} 
+            trend={`${stats.growthRate.toFixed(1)}% growth`}
+          />
+          <StatCard 
+            title="Total Staff" 
+            value={stats.totalStaff} 
+            trend="Active Members" 
+          />
+          <StatCard 
+            title="Fees Collected" 
+            value={`৳${(stats.feesCollected / 1000).toFixed(1)}k`} 
+            trend="Total Revenue" 
+          />
+          <StatCard 
+            title="Total Classes" 
+            value={stats.totalClasses} 
+            trend="Academic Units" 
           />
         </div>
 
@@ -132,14 +212,14 @@ export default function Dashboard() {
               <span className="text-[11px] text-sidebar-foreground">Last 6 Months</span>
             </div>
             <div className="flex-1 flex items-end gap-2 pt-2 min-h-[200px]">
-              {data.map((item, i) => (
+              {stats.admissionTrend.map((item, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                   <div 
                     className={cn(
                       "w-full rounded-t-md transition-all duration-300",
-                      i === data.length - 1 ? "bg-primary" : "bg-[#23262D] group-hover:bg-[#2D3139]"
+                      i === stats.admissionTrend.length - 1 ? "bg-primary" : "bg-[#23262D] group-hover:bg-[#2D3139]"
                     )}
-                    style={{ height: `${(item.students / 600) * 100}%` }}
+                    style={{ height: `${Math.max(10, (item.students / (stats.totalStudents || 100)) * 100)}%` }}
                   />
                   <span className="text-[9px] text-slate-600 font-bold uppercase">{item.name}</span>
                 </div>
@@ -148,11 +228,13 @@ export default function Dashboard() {
             <div className="mt-6 flex gap-8">
               <div>
                 <p className="text-[11px] text-sidebar-foreground">Total Students</p>
-                <p className="text-2xl font-bold text-white">2,842</p>
+                <p className="text-2xl font-bold text-white">{stats.totalStudents.toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-[11px] text-sidebar-foreground">Growth Rate</p>
-                <p className="text-2xl font-bold text-emerald-500">+12.4%</p>
+                <p className={cn("text-2xl font-bold", stats.growthRate >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                  {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate.toFixed(1)}%
+                </p>
               </div>
             </div>
           </Card>
