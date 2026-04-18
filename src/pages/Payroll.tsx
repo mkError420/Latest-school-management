@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { 
   Banknote, 
   Search, 
@@ -14,7 +16,15 @@ import {
   Trash2,
   Eye,
   FileText,
-  Edit
+  Edit,
+  Printer,
+  Calendar,
+  Phone,
+  MapPin,
+  Briefcase,
+  Building2,
+  Fingerprint,
+  Wallet
 } from 'lucide-react';
 import { 
   Table, 
@@ -62,7 +72,8 @@ import {
   TabsTrigger 
 } from '@/components/ui/tabs';
 import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -79,6 +90,8 @@ interface Staff {
   status: 'active' | 'inactive';
   phone?: string;
   nid?: string;
+  address?: string;
+  photoUrl?: string;
 }
 
 interface PayrollRecord {
@@ -106,8 +119,13 @@ export default function Payroll() {
   const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
   const [isProcessPayrollOpen, setIsProcessPayrollOpen] = useState(false);
   const [isViewPayslipOpen, setIsViewPayslipOpen] = useState(false);
+  const [isViewProfileOpen, setIsViewProfileOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
+  const [viewingStaff, setViewingStaff] = useState<Staff | null>(null);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [staffPhotoFile, setStaffPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [processPayrollRole, setProcessPayrollRole] = useState('all');
   const [processPayrollSearch, setProcessPayrollSearch] = useState('');
@@ -120,6 +138,8 @@ export default function Payroll() {
     joinDate: new Date().toISOString().split('T')[0],
     phone: '',
     nid: '',
+    address: '',
+    photoUrl: '',
     status: 'active' as const
   });
 
@@ -164,7 +184,22 @@ export default function Payroll() {
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true);
     try {
+      let finalPhotoUrl = '';
+      
+      if (staffPhotoFile) {
+        try {
+          const fileRef = ref(storage, `staff-photos/${Date.now()}-${staffPhotoFile.name}`);
+          const uploadResult = await uploadBytes(fileRef, staffPhotoFile);
+          finalPhotoUrl = await getDownloadURL(uploadResult.ref);
+        } catch (storageError: any) {
+          // CORS Fallback: If upload fails due to CORS/Permissions in preview, use Base64
+          console.warn('Storage upload failed (likely CORS), falling back to Base64:', storageError);
+          finalPhotoUrl = photoPreview || ''; 
+        }
+      }
+
       // Automatic ID Generation: Year (from Join Date) + last 3 digits of NID
       const year = new Date(newStaff.joinDate).getFullYear();
       const lastThreeNid = newStaff.nid ? newStaff.nid.slice(-3) : '000';
@@ -174,13 +209,67 @@ export default function Payroll() {
         ...newStaff,
         staffId,
         salary: Number(newStaff.salary),
+        photoUrl: finalPhotoUrl,
         createdAt: new Date().toISOString()
       });
       setIsAddStaffOpen(false);
-      setNewStaff({ name: '', role: 'Teacher', department: '', salary: '', joinDate: new Date().toISOString().split('T')[0], phone: '', nid: '', status: 'active' });
+      setNewStaff({ name: '', role: 'Teacher', department: '', salary: '', joinDate: new Date().toISOString().split('T')[0], phone: '', nid: '', address: '', photoUrl: '', status: 'active' });
+      setStaffPhotoFile(null);
+      setPhotoPreview(null);
       toast.success(`Staff member added successfully. ID: ${staffId}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'staff');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          // Compress the image using canvas
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Get compressed Base64
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          setPhotoPreview(dataUrl);
+          
+          // Convert dataUrl back to a File for Storage upload attempt
+          fetch(dataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+              const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+              setStaffPhotoFile(compressedFile);
+            });
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -244,7 +333,21 @@ export default function Payroll() {
   const handleEditStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaff) return;
+    setIsUploading(true);
     try {
+      let finalPhotoUrl = editingStaff.photoUrl || '';
+      
+      if (staffPhotoFile) {
+        try {
+          const fileRef = ref(storage, `staff-photos/${Date.now()}-${staffPhotoFile.name}`);
+          const uploadResult = await uploadBytes(fileRef, staffPhotoFile);
+          finalPhotoUrl = await getDownloadURL(uploadResult.ref);
+        } catch (storageError) {
+          console.warn('Storage edit failed (likely CORS), falling back to Base64:', storageError);
+          finalPhotoUrl = photoPreview || finalPhotoUrl;
+        }
+      }
+
       const { id, ...data } = editingStaff;
       
       // Re-generate Staff ID based on NID (Year from Join Date + last 3 digits of NID)
@@ -255,13 +358,18 @@ export default function Payroll() {
       await updateDoc(doc(db, 'staff', id), {
         ...data,
         staffId: updatedStaffId,
+        photoUrl: finalPhotoUrl,
         salary: Number(data.salary)
       });
       setIsEditStaffOpen(false);
       setEditingStaff(null);
+      setStaffPhotoFile(null);
+      setPhotoPreview(null);
       toast.success(`Staff details updated. ID synced: ${updatedStaffId}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `staff/${editingStaff.id}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -301,7 +409,7 @@ export default function Payroll() {
       return;
     }
     
-    const headers = ['Staff ID', 'Name', 'Role', 'Department', 'Phone', 'NID', 'Salary', 'Join Date', 'Status'];
+    const headers = ['Staff ID', 'Name', 'Role', 'Department', 'Phone', 'NID', 'Address', 'Salary', 'Join Date', 'Status'];
     const rows = filteredStaffList.map(s => [
       `"${s.staffId || 'N/A'}"`,
       `"${s.name}"`,
@@ -309,6 +417,7 @@ export default function Payroll() {
       `"${s.department || ''}"`,
       `"${s.phone || ''}"`,
       `"${s.nid || ''}"`,
+      `"${s.address || ''}"`,
       s.salary,
       `"${s.joinDate}"`,
       `"${s.status}"`
@@ -362,6 +471,36 @@ export default function Payroll() {
     document.body.classList.add('report-printing');
     window.print();
     document.body.classList.remove('report-printing');
+  };
+
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadProfile = async () => {
+    if (!profileRef.current || !viewingStaff) return;
+
+    try {
+      toast.loading('Preparing profile document...');
+      const canvas = await html2canvas(profileRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Staff_Profile_${viewingStaff.staffId || viewingStaff.id}.pdf`);
+      toast.dismiss();
+      toast.success('Profile downloaded as PDF');
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.dismiss();
+      toast.error('Failed to download profile');
+    }
   };
 
   return (
@@ -495,6 +634,21 @@ export default function Payroll() {
                     <DialogDescription className="text-sidebar-foreground">Register a new employee to the payroll system.</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
+                    <div className="flex justify-center mb-2">
+                      <div className="relative group">
+                        <div className="w-24 h-24 rounded-full bg-sidebar-accent flex items-center justify-center overflow-hidden border-2 border-dashed border-border group-hover:border-primary transition-colors">
+                          {photoPreview ? (
+                            <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <UserPlus className="w-10 h-10 text-sidebar-foreground" />
+                          )}
+                        </div>
+                        <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:bg-primary/90 transition-transform hover:scale-110">
+                          <Plus className="w-4 h-4" />
+                          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                        </label>
+                      </div>
+                    </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
                       <Input 
@@ -577,10 +731,21 @@ export default function Payroll() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Address</label>
+                      <Input 
+                        placeholder="House #123, Road #4, Dhaka" 
+                        value={newStaff.address || ''} 
+                        onChange={e => setNewStaff({...newStaff, address: e.target.value})}
+                        className="bg-background border-border"
+                      />
+                    </div>
                   </div>
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
-                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Add Staff</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading}>Cancel</Button>
+                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading}>
+                      {isUploading ? 'Adding...' : 'Add Staff'}
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -948,7 +1113,20 @@ export default function Payroll() {
                         {staffByRole[role].map((s) => (
                           <TableRow key={s.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                             <TableCell className="font-mono text-[10px] text-white/70">{s.staffId || 'N/A'}</TableCell>
-                            <TableCell className="font-semibold text-white pl-8">{s.name}</TableCell>
+                            <TableCell className="font-semibold text-white pl-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-sidebar-accent overflow-hidden flex-shrink-0 border border-border/50">
+                                  {s.photoUrl ? (
+                                    <img src={s.photoUrl} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-sidebar-foreground bg-primary/10">
+                                      {s.name.charAt(0)}
+                                    </div>
+                                  )}
+                                </div>
+                                {s.name}
+                              </div>
+                            </TableCell>
                             <TableCell className="capitalize text-sidebar-foreground font-medium">{s.role}</TableCell>
                             <TableCell className="text-sidebar-foreground italic">{s.department || 'N/A'}</TableCell>
                             <TableCell className="text-sidebar-foreground">{s.phone || 'N/A'}</TableCell>
@@ -961,6 +1139,18 @@ export default function Payroll() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-amber-500 hover:bg-amber-500/10 h-8 w-8"
+                                  onClick={() => {
+                                    setViewingStaff(s);
+                                    setIsViewProfileOpen(true);
+                                  }}
+                                  title="View Profile"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -1009,6 +1199,23 @@ export default function Payroll() {
               </DialogHeader>
               {editingStaff && (
                 <div className="grid gap-4 py-4">
+                  <div className="flex justify-center mb-2">
+                    <div className="relative group">
+                      <div className="w-20 h-20 rounded-full bg-sidebar-accent flex items-center justify-center overflow-hidden border-2 border-dashed border-border group-hover:border-primary transition-colors">
+                        {photoPreview ? (
+                          <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        ) : editingStaff.photoUrl ? (
+                          <img src={editingStaff.photoUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <UserPlus className="w-8 h-8 text-sidebar-foreground" />
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:bg-primary/90 transition-transform hover:scale-110">
+                        <Plus className="w-3 h-3" />
+                        <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                      </label>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
@@ -1098,11 +1305,21 @@ export default function Payroll() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Home Address</label>
+                    <Input 
+                      value={editingStaff.address || ''} 
+                      onChange={e => setEditingStaff({...editingStaff, address: e.target.value})}
+                      className="bg-background border-border"
+                    />
+                  </div>
                 </div>
               )}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditStaffOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Save Changes</Button>
+                <Button type="button" variant="outline" onClick={() => setIsEditStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading}>Cancel</Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading}>
+                  {isUploading ? 'Saving...' : 'Save Changes'}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -1220,6 +1437,173 @@ export default function Payroll() {
                 Print Payslip (PDF)
               </Button>
               <Button onClick={() => setIsViewPayslipOpen(false)} className="bg-gray-800 text-white hover:bg-gray-700">Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Staff Profile Dialog */}
+        <Dialog open={isViewProfileOpen} onOpenChange={setIsViewProfileOpen}>
+          <DialogContent className="bg-white text-black sm:max-w-[750px] max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl">
+            <div ref={profileRef} id="staff-profile-card" className="p-10 font-sans min-h-[500px]" style={{ backgroundColor: '#ffffff', color: '#111827' }}>
+              {viewingStaff && (
+                <div className="space-y-10">
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 pb-8"
+                    style={{ borderBottomColor: 'rgba(99, 102, 241, 0.2)' }}
+                  >
+                    <div className="flex gap-6 items-center">
+                      <div 
+                        className="w-24 h-24 rounded-2xl flex items-center justify-center border-2 overflow-hidden"
+                        style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', borderColor: 'rgba(99, 102, 241, 0.2)' }}
+                      >
+                        {viewingStaff.photoUrl ? (
+                          <img src={viewingStaff.photoUrl} alt={viewingStaff.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <UserPlus className="w-12 h-12" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#111827' }}>{viewingStaff.name}</h1>
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="font-semibold px-3 py-0.5 rounded-full text-xs"
+                            style={{ 
+                              backgroundColor: 'rgba(99, 102, 241, 0.05)', 
+                              color: '#6366F1', 
+                              border: '1px solid rgba(99, 102, 241, 0.2)' 
+                            }}
+                          >
+                            {viewingStaff.role}
+                          </span>
+                          <span style={{ color: '#9CA3AF' }}>•</span>
+                          <p className="text-sm font-medium" style={{ color: '#6B7280' }}>{viewingStaff.department}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: '#9CA3AF' }}>Employee ID</p>
+                      <p className="text-2xl font-mono font-bold" style={{ color: '#6366F1' }}>{viewingStaff.staffId || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {/* Identity Grid */}
+                  <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+                    {/* Official Info */}
+                    <div className="space-y-6">
+                      <h3 
+                        className="text-xs font-bold uppercase tracking-widest border-b pb-2"
+                        style={{ color: '#6366F1', borderBottomColor: 'rgba(99, 102, 241, 0.1)' }}
+                      >
+                        Employment Details
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <Briefcase className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Joining Date</p>
+                            <p className="text-sm font-semibold" style={{ color: '#374151' }}>{format(new Date(viewingStaff.joinDate), 'MMMM dd, yyyy')}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <Wallet className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Current Salary</p>
+                            <p className="text-sm font-semibold" style={{ color: '#374151' }}>৳{viewingStaff.salary.toLocaleString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Account Status</p>
+                            <span 
+                              className="mt-0.5 inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                              style={{ 
+                                backgroundColor: viewingStaff.status === 'active' ? '#10B981' : '#6B7280',
+                                color: 'white'
+                              }}
+                            >
+                              {viewingStaff.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Personal Info */}
+                    <div className="space-y-6">
+                      <h3 
+                        className="text-xs font-bold uppercase tracking-widest border-b pb-2"
+                        style={{ color: '#6366F1', borderBottomColor: 'rgba(99, 102, 241, 0.1)' }}
+                      >
+                        Personal Information
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Phone Number</p>
+                            <p className="text-sm font-semibold" style={{ color: '#374151' }}>{viewingStaff.phone || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <Fingerprint className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>NID / ID Number</p>
+                            <p className="text-sm font-semibold" style={{ color: '#374151' }}>{viewingStaff.nid || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center mt-0.5" style={{ backgroundColor: '#F9FAFB', color: '#9CA3AF' }}>
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] uppercase font-bold tracking-wider" style={{ color: '#9CA3AF' }}>Residential Address</p>
+                            <p className="text-sm font-semibold leading-relaxed" style={{ color: '#374151' }}>{viewingStaff.address || 'No address provided'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Identity Card Footer Branding */}
+                  <div 
+                    className="pt-12 mt-12 border-t border-dashed flex justify-between items-end"
+                    style={{ borderTopColor: '#E5E7EB', opacity: 0.6 }}
+                  >
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-tighter" style={{ color: '#1F2937' }}>{systemConfig?.schoolName || 'Education Management System'}</p>
+                      <p className="text-[9px]" style={{ color: '#9CA3AF' }}>Office Human Resource Profile Document</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] font-mono" style={{ color: '#9CA3AF' }}>HASH_{viewingStaff.id.slice(-12).toUpperCase()}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="bg-gray-50 border-t border-gray-100 p-6 flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadProfile} 
+                className="flex-1 bg-white border-gray-200 text-gray-700 hover:bg-gray-100 font-semibold"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Profile (PDF)
+              </Button>
+              <Button onClick={() => setIsViewProfileOpen(false)} className="bg-primary text-white hover:bg-primary/90 font-semibold px-8 border-none">
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

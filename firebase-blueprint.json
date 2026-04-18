@@ -165,6 +165,7 @@
         "department": { "type": "string" },
         "phone": { "type": "string" },
         "nid": { "type": "string" },
+        "address": { "type": "string" },
         "salary": { "type": "number" },
         "joinDate": { "type": "string", "format": "date" },
         "status": { "type": "string", "enum": ["active", "inactive"] }
