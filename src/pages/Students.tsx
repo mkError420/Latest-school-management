@@ -77,6 +77,7 @@ interface Student {
   guardianPhone: string;
   admissionDate: string;
   bloodGroup?: string;
+  gender: string;
 }
 
 interface ResultData {
@@ -124,7 +125,8 @@ export default function Students() {
     admissionDate: new Date().toISOString().split('T')[0],
     status: 'active' as const,
     imageUrl: '',
-    bloodGroup: ''
+    bloodGroup: '',
+    gender: 'Male'
   });
 
   useEffect(() => {
@@ -398,7 +400,8 @@ export default function Students() {
         admissionDate: new Date().toISOString().split('T')[0],
         status: 'active',
         imageUrl: '',
-        bloodGroup: ''
+        bloodGroup: '',
+        gender: 'Male'
       });
       toast.success('Student added successfully');
     } catch (error) {
@@ -432,7 +435,8 @@ export default function Students() {
         guardianPhone: selectedStudent.guardianPhone,
         admissionDate: selectedStudent.admissionDate,
         status: selectedStudent.status,
-        bloodGroup: selectedStudent.bloodGroup || ''
+        bloodGroup: selectedStudent.bloodGroup || '',
+        gender: selectedStudent.gender || 'Male'
       });
       setIsEditDialogOpen(false);
       toast.success('Student updated successfully');
@@ -716,6 +720,21 @@ export default function Students() {
                         </Select>
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-sidebar-foreground">Gender</label>
+                      <Select 
+                        value={newStudent.gender || ''} 
+                        onValueChange={val => setNewStudent({...newStudent, gender: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Gender" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
@@ -980,6 +999,10 @@ export default function Students() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="text-sm font-medium text-sidebar-foreground">Gender:</div>
+                  <div className="col-span-2 text-white">{selectedStudent.gender || 'Not Defined'}</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                   <div className="text-sm font-medium text-sidebar-foreground">Admission Date:</div>
                   <div className="col-span-2 text-white">{selectedStudent.admissionDate}</div>
                 </div>
@@ -1241,6 +1264,21 @@ export default function Students() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Gender</label>
+                    <Select 
+                      value={selectedStudent.gender || ''} 
+                      onValueChange={val => setSelectedStudent({...selectedStudent, gender: val || ''})}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Select Gender" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Status</label>
