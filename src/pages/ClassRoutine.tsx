@@ -1,5 +1,12 @@
 import { format } from 'date-fns';
 import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { 
   Table, 
   TableHeader, 
   TableBody, 
@@ -35,6 +42,7 @@ export default function ClassRoutine() {
   const { isAdmin, isTeacher, systemConfig } = useAuth();
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<string>('all');
   const [classes, setClasses] = useState<{id: string, name: string, section: string}[]>([]);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
   const [newRoutine, setNewRoutine] = useState({
@@ -106,6 +114,10 @@ export default function ClassRoutine() {
     window.print();
     document.body.classList.remove('report-printing');
   };
+
+  const filteredRoutine = selectedClass === 'all' 
+    ? routine 
+    : routine.filter(r => r.className === selectedClass);
 
   const dayOptions = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -211,7 +223,7 @@ export default function ClassRoutine() {
           {/* Routine Table */}
           <div className="space-y-6">
             {dayOptions.map(day => {
-              const dayEntries = routine.filter(r => r.day === day);
+              const dayEntries = filteredRoutine.filter(r => r.day === day);
               if (dayEntries.length === 0) return null;
               
               return (
@@ -259,9 +271,28 @@ export default function ClassRoutine() {
 
       <DashboardLayout>
       <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center no-print">
-          <h2 className="text-3xl font-bold text-white">Class Routine</h2>
-          <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+          <div>
+            <h2 className="text-3xl font-bold text-white">Class Routine</h2>
+            <p className="text-sidebar-foreground">Manage and view weekly class schedules.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="w-[200px]">
+              <Select value={selectedClass} onValueChange={(val) => setSelectedClass(val || 'all')}>
+                <SelectTrigger className="bg-sidebar border-border text-white">
+                  <SelectValue placeholder="Filter by Class" />
+                </SelectTrigger>
+                <SelectContent className="bg-sidebar border-border text-white">
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.name}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button onClick={handlePrint} className="bg-primary hover:bg-primary/90 text-white">
               <Printer className="w-4 h-4 mr-2" />
               Print Routine
@@ -371,11 +402,13 @@ export default function ClassRoutine() {
 
         <Card className="bg-card border-border print:border-none print:shadow-none">
           <CardHeader className="no-print">
-            <CardTitle className="text-white">Weekly Schedule</CardTitle>
+            <CardTitle className="text-white">
+              {selectedClass === 'all' ? 'Weekly Schedule' : `Routine: ${selectedClass}`}
+            </CardTitle>
           </CardHeader>
           <CardContent className="print:p-0">
             {dayOptions.map(day => {
-              const dayEntries = routine.filter(r => r.day === day);
+              const dayEntries = filteredRoutine.filter(r => r.day === day);
               if (dayEntries.length === 0) return null;
               
               return (
