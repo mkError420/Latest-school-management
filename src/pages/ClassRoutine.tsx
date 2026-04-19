@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Printer, Plus, Trash2 } from 'lucide-react';
-import { collection, query, onSnapshot, orderBy, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { Printer, Plus, Trash2, Pencil } from 'lucide-react';
+import { collection, query, onSnapshot, orderBy, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { useAuth } from '@/src/lib/auth';
@@ -24,6 +24,7 @@ interface RoutineEntry {
 export default function ClassRoutine() {
   const [routine, setRoutine] = useState<RoutineEntry[]>([]);
   const { isAdmin, isTeacher } = useAuth();
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [classes, setClasses] = useState<{id: string, name: string, section: string}[]>([]);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
@@ -35,6 +36,19 @@ export default function ClassRoutine() {
     endTime: '',
     teacher: ''
   });
+
+  const handleEditRoutine = (entry: RoutineEntry) => {
+    setEditingRoutineId(entry.id);
+    setNewRoutine({
+      day: entry.day,
+      className: entry.className,
+      subject: entry.subject,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+      teacher: entry.teacher
+    });
+    setIsDialogOpen(true);
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'routine'), orderBy('startTime'));
@@ -84,22 +98,43 @@ export default function ClassRoutine() {
 
   const dayOptions = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-  const handleAddRoutine = async (e: React.FormEvent) => {
+  const handleSaveRoutine = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoutine.className || !newRoutine.subject || !newRoutine.startTime || !newRoutine.endTime || !newRoutine.teacher) {
       toast.error('Please fill in all required fields');
       return;
     }
+
+    // Check for teacher schedule collision
+    const collision = routine.some(entry =>
+      entry.id !== editingRoutineId &&
+      entry.day === newRoutine.day &&
+      entry.teacher === newRoutine.teacher &&
+      (newRoutine.startTime < entry.endTime && entry.startTime < newRoutine.endTime)
+    );
+
+    if (collision) {
+      toast.error('This teacher is already assigned to another class at this time');
+      return;
+    }
+
     try {
-      await addDoc(collection(db, 'routine'), newRoutine);
-      toast.success('Routine added successfully');
+      if (editingRoutineId) {
+        await updateDoc(doc(db, 'routine', editingRoutineId), newRoutine);
+        toast.success('Routine updated successfully');
+      } else {
+        await addDoc(collection(db, 'routine'), newRoutine);
+        toast.success('Routine added successfully');
+      }
       setNewRoutine({ day: 'Monday', className: '', subject: '', startTime: '', endTime: '', teacher: '' });
+      setEditingRoutineId(null);
       setIsDialogOpen(false);
     } catch (error) {
-      console.error('Error adding routine:', error);
-      toast.error('Failed to add routine');
+      console.error('Error saving routine:', error);
+      toast.error('Failed to save routine');
     }
   };
+
 
   const handleDeleteRoutine = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this routine entry?')) {
@@ -125,18 +160,27 @@ export default function ClassRoutine() {
             </Button>
             
             {(isAdmin || isTeacher) && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                if (!open) {
+                  setEditingRoutineId(null);
+                  setNewRoutine({ day: 'Monday', className: '', subject: '', startTime: '', endTime: '', teacher: '' });
+                }
+                setIsDialogOpen(open);
+              }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-white text-black hover:bg-gray-200">
+                  <Button className="bg-white text-black hover:bg-gray-200" onClick={() => {
+                    setEditingRoutineId(null);
+                    setNewRoutine({ day: 'Monday', className: '', subject: '', startTime: '', endTime: '', teacher: '' });
+                  }}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Routine
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-sidebar border-border text-white">
                   <DialogHeader>
-                    <DialogTitle>Add Class Routine</DialogTitle>
+                    <DialogTitle>{editingRoutineId ? 'Edit Class Routine' : 'Add Class Routine'}</DialogTitle>
                   </DialogHeader>
-                  <form onSubmit={handleAddRoutine} className="space-y-4">
+                  <form onSubmit={handleSaveRoutine} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="day">Day</Label>
@@ -207,7 +251,9 @@ export default function ClassRoutine() {
                         />
                       </div>
                     </div>
-                    <Button type="submit" className="w-full">Save Routine</Button>
+                    <Button type="submit" className="w-full">
+                      {editingRoutineId ? 'Save Changes' : 'Save Routine'}
+                    </Button>
                   </form>
                 </DialogContent>
               </Dialog>
@@ -231,14 +277,24 @@ export default function ClassRoutine() {
                     {dayEntries.map(entry => (
                       <div key={entry.id} className="bg-sidebar p-4 rounded-lg border border-border relative group">
                         {(isAdmin || isTeacher) && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteRoutine(entry.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => handleEditRoutine(entry)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteRoutine(entry.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                         <p className="font-bold text-white pr-8">{entry.subject}</p>
                         <p className="text-sm text-sidebar-foreground">{entry.className}</p>

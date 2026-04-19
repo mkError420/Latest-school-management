@@ -723,7 +723,7 @@ export default function Exams() {
                                 </TableHead>
                               ))}
                               <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">Total</TableHead>
-                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">GPA</TableHead>
+                              <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-center print:text-black print:border print:border-gray-300">GPA(5.00)</TableHead>
                               <TableHead className="text-[11px] font-bold text-sidebar-foreground uppercase text-right print:text-black print:border print:border-gray-300">Avg</TableHead>
                             </TableRow>
                           </TableHeader>
