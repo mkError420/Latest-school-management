@@ -96,11 +96,12 @@ export default function Attendance() {
         const dateStr = format(d, 'yyyy-MM-dd');
         const dayName = dayNames[d.getDay()];
         
-        const q = query(
-          collection(db, 'attendance'), 
-          where('classId', '==', selectedClass),
-          where('date', '==', dateStr)
-        );
+        const constraints = [where('date', '==', dateStr)];
+        if (selectedClass !== 'all') {
+          constraints.push(where('classId', '==', selectedClass));
+        }
+
+        const q = query(collection(db, 'attendance'), ...constraints);
         
         const snapshot = await getDocs(q);
         const docs = snapshot.docs.map(doc => doc.data());
@@ -178,21 +179,77 @@ export default function Attendance() {
 
   useEffect(() => {
     if (!selectedClass) return;
-    const q = query(collection(db, 'students'), where('classId', '==', selectedClass));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    
+    // Fetch students based on class selection
+    const constraints = [];
+    if (selectedClass !== 'all') {
+      constraints.push(where('classId', '==', selectedClass));
+    }
+    
+    const q = query(collection(db, 'students'), ...constraints);
+    const unsubscribeStudents = onSnapshot(q, (snapshot) => {
       const studentData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Student[];
       setStudents(studentData);
       
-      // Initialize attendance with 'present'
-      const initialAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
-      studentData.forEach(s => initialAttendance[s.id] = 'present');
-      setAttendance(initialAttendance);
+      // Initialize attendance with 'present' as default for taking attendance
+      // If we are viewing 'all', we should probably fetch the actual attendance records for the day 
+      // instead of blindly setting everyone to 'present'. But the previous behavior for a single class 
+      // was to initialize to 'present' so the teacher can modify.
     });
-    return () => unsubscribe();
+    
+    return () => {
+      unsubscribeStudents();
+    };
   }, [selectedClass]);
+
+  // Fetch actual attendance records for the selected date to populate stats accurately, 
+  // especially when viewing "All Classes" or historical data.
+  useEffect(() => {
+    if (!selectedClass || !date) return;
+    
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const constraints = [where('date', '==', dateStr)];
+    if (selectedClass !== 'all') {
+      constraints.push(where('classId', '==', selectedClass));
+    }
+    
+    const q = query(collection(db, 'attendance'), ...constraints);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty && selectedClass !== 'all') {
+        // If no records and a specific class is selected, let the student effect initialize them
+        // We will just keep the current state or reset to 'present' for the selected class's students
+        setAttendance(prev => {
+          const newState = { ...prev };
+          students.forEach(s => {
+            if (!newState[s.id]) newState[s.id] = 'present';
+          });
+          return newState;
+        });
+      } else {
+        const attendanceData: Record<string, 'present' | 'absent' | 'late'> = {};
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          attendanceData[data.studentId] = data.status;
+        });
+        
+        // Merge with existing students so we have a full list even if some aren't marked yet
+        setAttendance(prev => {
+          const newState = { ...attendanceData };
+          if (selectedClass !== 'all') {
+            students.forEach(s => {
+              if (!newState[s.id]) newState[s.id] = 'present';
+            });
+          }
+          return newState;
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedClass, date, students]);
 
   const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late') => {
     setAttendance(prev => ({ ...prev, [studentId]: status }));
@@ -202,12 +259,17 @@ export default function Attendance() {
     setIsSaving(true);
     try {
       const selectedCls = classes.find(c => c.id === selectedClass);
-      const className = selectedCls ? `${selectedCls.name} - ${selectedCls.section}` : selectedClass;
+      const className = selectedCls ? `${selectedCls.name} - ${selectedCls.section}` : (selectedClass === 'all' ? 'All Classes' : selectedClass);
       const dateStr = format(date, 'yyyy-MM-dd');
+      
       const batch = Object.entries(attendance).map(([studentId, status]) => {
+        const studentClassId = selectedClass === 'all' 
+          ? students.find(s => s.id === studentId)?.classId || ''
+          : selectedClass;
+
         return addDoc(collection(db, 'attendance'), {
           studentId,
-          classId: selectedClass,
+          classId: studentClassId,
           date: dateStr,
           status,
           createdAt: new Date().toISOString()
@@ -231,17 +293,19 @@ export default function Attendance() {
     }
 
     const selectedCls = classes.find(c => c.id === selectedClass);
-    const className = selectedCls ? `${selectedCls.name}-${selectedCls.section}` : 'Class';
+    const className = selectedCls ? `${selectedCls.name}-${selectedCls.section}` : (selectedClass === 'all' ? 'All_Classes' : 'Class');
     const dateStr = format(date, 'yyyy-MM-dd');
 
     const headers = ['Roll Number', 'Student Name', 'Status', 'Date', 'Class'];
     const csvData = students.map(student => {
+      const studentClass = classes.find(c => c.id === student.classId);
+      const studentClassName = studentClass ? `${studentClass.name}-${studentClass.section}` : 'N/A';
       return [
         student.rollNumber,
         student.name,
         attendance[student.id] || 'present',
         dateStr,
-        className
+        selectedClass === 'all' ? studentClassName : className
       ].map(field => `"${field}"`).join(',');
     });
 
@@ -282,12 +346,15 @@ export default function Attendance() {
             <Select value={selectedClass} onValueChange={(val) => setSelectedClass(val || '')}>
               <SelectTrigger className="w-[180px] bg-card border-border text-sidebar-foreground uppercase font-bold tracking-wider text-[10px] h-9">
                 <SelectValue placeholder="Class">
-                  {selectedClass && classes.find(c => c.id === selectedClass)
-                    ? `${classes.find(c => c.id === selectedClass)?.name} - ${classes.find(c => c.id === selectedClass)?.section}`
-                    : "Select Class"}
+                  {selectedClass === 'all' 
+                    ? 'All Classes' 
+                    : selectedClass && classes.find(c => c.id === selectedClass)
+                      ? `${classes.find(c => c.id === selectedClass)?.name} - ${classes.find(c => c.id === selectedClass)?.section}`
+                      : "Select Class"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
+                <SelectItem value="all">All Classes</SelectItem>
                 {classes.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
                     {cls.name} - {cls.section}
