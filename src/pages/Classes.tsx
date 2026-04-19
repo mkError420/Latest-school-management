@@ -37,6 +37,13 @@ import {
   DropdownMenuLabel, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
@@ -50,8 +57,16 @@ interface Class {
   roomNumber: string;
 }
 
+interface Teacher {
+  id: string;
+  name: string;
+  role: string;
+  status?: string;
+}
+
 export default function Classes() {
   const [classes, setClasses] = useState<Class[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -66,18 +81,42 @@ export default function Classes() {
 
   useEffect(() => {
     const q = query(collection(db, 'classes'), orderBy('name'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeClasses = onSnapshot(q, (snapshot) => {
       const classData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Class[];
       setClasses(classData);
     });
-    return () => unsubscribe();
+
+    const staffQ = query(collection(db, 'staff'), orderBy('name'));
+    const unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
+      const staffData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        role: doc.data().role,
+        status: doc.data().status
+      })) as Teacher[];
+      const filteredTeachers = staffData.filter(s => s.role.toLowerCase() === 'teacher' && s.status === 'active');
+      setTeachers(filteredTeachers);
+    });
+
+    return () => {
+      unsubscribeClasses();
+      unsubscribeStaff();
+    };
   }, []);
+
+  const getTeacherClassCount = (teacherName: string, excludeClassId?: string) => {
+    return classes.filter(c => c.teacher === teacherName && c.id !== excludeClassId).length;
+  };
 
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (getTeacherClassCount(newClass.teacher) >= 2) {
+      toast.error(`Cannot assign. ${newClass.teacher} is already assigned to the maximum of 2 classes.`);
+      return;
+    }
     try {
       await addDoc(collection(db, 'classes'), {
         ...newClass,
@@ -99,6 +138,12 @@ export default function Classes() {
   const handleEditClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClass) return;
+
+    if (getTeacherClassCount(selectedClass.teacher, selectedClass.id) >= 2) {
+      toast.error(`Cannot assign. ${selectedClass.teacher} is already at the maximum of 2 classes.`);
+      return;
+    }
+
     try {
       const classRef = doc(db, 'classes', selectedClass.id);
       await updateDoc(classRef, {
@@ -178,9 +223,8 @@ export default function Classes() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Section</label>
+                      <label className="text-sm font-medium text-sidebar-foreground">Section <span className="text-xs opacity-50">(Optional)</span></label>
                       <Input 
-                        required 
                         value={newClass.section} 
                         onChange={e => setNewClass({...newClass, section: e.target.value})}
                         placeholder="e.g. A" 
@@ -190,13 +234,30 @@ export default function Classes() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Class Teacher</label>
-                    <Input 
+                    <Select 
                       required 
                       value={newClass.teacher} 
-                      onChange={e => setNewClass({...newClass, teacher: e.target.value})}
-                      placeholder="Teacher Name" 
-                      className="bg-background border-border"
-                    />
+                      onValueChange={val => setNewClass({...newClass, teacher: val})}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Select a teacher" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        {teachers.length === 0 ? (
+                          <SelectItem value="none" disabled>No teachers found</SelectItem>
+                        ) : (
+                          teachers.map(teacher => {
+                            const count = getTeacherClassCount(teacher.name);
+                            const isMaxedOut = count >= 2;
+                            return (
+                              <SelectItem key={teacher.id} value={teacher.name} disabled={isMaxedOut && newClass.teacher !== teacher.name}>
+                                {teacher.name} {isMaxedOut ? '(Max Assigned)' : `(${count}/2 assigned)`}
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Room Number</label>
@@ -277,7 +338,7 @@ export default function Classes() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <h3 className="text-xl font-bold text-white mb-1">{cls.name} - {cls.section}</h3>
+              <h3 className="text-xl font-bold text-white mb-1">{cls.name}{cls.section ? ` - ${cls.section}` : ''}</h3>
               <div className="space-y-2 mt-4">
                 <div className="flex items-center text-sm text-sidebar-foreground">
                   <Users className="w-4 h-4 mr-2 text-primary" />
@@ -321,9 +382,8 @@ export default function Classes() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Section</label>
+                      <label className="text-sm font-medium text-sidebar-foreground">Section <span className="text-xs opacity-50">(Optional)</span></label>
                       <Input 
-                        required 
                         value={selectedClass.section || ''} 
                         onChange={e => setSelectedClass({...selectedClass, section: e.target.value})}
                         className="bg-background border-border"
@@ -332,12 +392,36 @@ export default function Classes() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Class Teacher</label>
-                    <Input 
+                    <Select 
                       required 
                       value={selectedClass.teacher || ''} 
-                      onChange={e => setSelectedClass({...selectedClass, teacher: e.target.value})}
-                      className="bg-background border-border"
-                    />
+                      onValueChange={val => setSelectedClass({...selectedClass, teacher: val})}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Select a teacher">
+                           {selectedClass.teacher && !teachers.some(t => t.name === selectedClass.teacher) ? selectedClass.teacher : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        {teachers.length === 0 ? (
+                          <SelectItem value="none" disabled>No teachers found</SelectItem>
+                        ) : (
+                          teachers.map(teacher => {
+                            const count = getTeacherClassCount(teacher.name, selectedClass.id);
+                            const isMaxedOut = count >= 2;
+                            return (
+                              <SelectItem key={teacher.id} value={teacher.name} disabled={isMaxedOut && selectedClass.teacher !== teacher.name}>
+                                {teacher.name} {isMaxedOut ? '(Max Assigned)' : `(${count}/2 assigned)`}
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                        {/* Fallback to show current teacher if they are no longer in the list */}
+                        {selectedClass.teacher && !teachers.some(t => t.name === selectedClass.teacher) && (
+                           <SelectItem value={selectedClass.teacher}>{selectedClass.teacher} (Not in Staff Directory)</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Room Number</label>

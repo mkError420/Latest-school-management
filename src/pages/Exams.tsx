@@ -433,7 +433,7 @@ export default function Exams() {
               <div>
                 <h1 className="text-2xl font-bold text-white">Grading: {gradingExam.subject}</h1>
                 <p className="text-sidebar-foreground">
-                  {classes.find(c => c.id === gradingExam.classId)?.name} • {gradingExam.type} • Total Marks: {gradingExam.totalMarks}
+                  {classes.find(c => c.id === gradingExam.classId)?.name}{classes.find(c => c.id === gradingExam.classId)?.section ? ` - ${classes.find(c => c.id === gradingExam.classId)?.section}` : ''} • {gradingExam.type} • Total Marks: {gradingExam.totalMarks}
                 </p>
               </div>
             </div>
@@ -565,7 +565,7 @@ export default function Exams() {
                 <p className="text-sm font-semibold capitalize whitespace-nowrap">{reportExamType.replace('_', ' ')}</p>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest hover:bg-none mt-2">Class Section</p>
                 <p className="text-sm font-semibold whitespace-nowrap">
-                  {classes.find(c => c.id === reportClassId)?.name} - {classes.find(c => c.id === reportClassId)?.section}
+                  {classes.find(c => c.id === reportClassId)?.name}{classes.find(c => c.id === reportClassId)?.section ? ` - ${classes.find(c => c.id === reportClassId)?.section}` : ''}
                 </p>
               </div>
             </div>
@@ -666,13 +666,13 @@ export default function Exams() {
                           <SelectValue placeholder="Choose a class">
                             {reportClassId ? (() => {
                               const selectedClass = classes.find(c => c.id === reportClassId);
-                              return selectedClass ? `${selectedClass.name} - ${selectedClass.section}` : undefined;
+                              return selectedClass ? `${selectedClass.name}${selectedClass.section ? ` - ${selectedClass.section}` : ''}` : undefined;
                             })() : undefined}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                            <SelectItem key={cls.id} value={cls.id}>{cls.name}{cls.section ? ` - ${cls.section}` : ''}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -974,7 +974,7 @@ export default function Exams() {
                       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
                         <div className="w-1.5 h-6 bg-primary rounded-full" />
                         <h4 className="text-lg font-bold text-white">
-                          {cls.name} - {cls.section}
+                          {cls.name}{cls.section ? ` - ${cls.section}` : ''}
                         </h4>
                         <Badge variant="outline" className="ml-2 text-xs text-sidebar-foreground border-border">
                           {classExams.length} Exams
@@ -1095,13 +1095,13 @@ export default function Exams() {
                 <Select value={resultsClassFilter || ''} onValueChange={val => setResultsClassFilter(val || '')}>
                   <SelectTrigger className="bg-card border-border">
                     <SelectValue placeholder="All Classes">
-                      {resultsClassFilter === 'all' ? 'All Classes' : classes.find(c => c.id === resultsClassFilter)?.name}
+                      {resultsClassFilter === 'all' ? 'All Classes' : (classes.find(c => c.id === resultsClassFilter) ? `${classes.find(c => c.id === resultsClassFilter)?.name}${classes.find(c => c.id === resultsClassFilter)?.section ? ` - ${classes.find(c => c.id === resultsClassFilter)?.section}` : ''}` : undefined)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border">
                     <SelectItem value="all">All Classes</SelectItem>
                     {classes.map(cls => (
-                      <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                      <SelectItem key={cls.id} value={cls.id}>{cls.name}{cls.section ? ` - ${cls.section}` : ''}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1142,7 +1142,7 @@ export default function Exams() {
                     <div key={cls.id} className="space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b border-border/50">
                         <div className="w-1.5 h-6 bg-primary rounded-full" />
-                        <h4 className="text-lg font-bold text-white">{cls.name}</h4>
+                        <h4 className="text-lg font-bold text-white">{cls.name}{cls.section ? ` - ${cls.section}` : ''}</h4>
                       </div>
 
                       <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
@@ -1235,14 +1235,14 @@ export default function Exams() {
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue>
                             {selectedExam.classId && classes.find(c => c.id === selectedExam.classId) 
-                              ? `${classes.find(c => c.id === selectedExam.classId)?.name}`
+                              ? `${classes.find(c => c.id === selectedExam.classId)?.name}${classes.find(c => c.id === selectedExam.classId)?.section ? ` - ${classes.find(c => c.id === selectedExam.classId)?.section}` : ''}`
                               : undefined}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
                             <SelectItem key={cls.id} value={cls.id}>
-                              {cls.name} - {cls.section}
+                              {cls.name}{cls.section ? ` - ${cls.section}` : ''}
                             </SelectItem>
                           ))}
                         </SelectContent>

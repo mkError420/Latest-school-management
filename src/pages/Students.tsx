@@ -226,7 +226,7 @@ export default function Students() {
     if (!win) return;
 
     const classInfo = classes.find(c => c.id === selectedStudent.classId);
-    const className = classInfo ? `${classInfo.name} - ${classInfo.section}` : 'N/A';
+    const className = classInfo ? `${classInfo.name}${classInfo.section ? ` - ${classInfo.section}` : ''}` : 'N/A';
 
     const monthLabel = format(new Date(performanceFilters.attendanceMonth + '-01'), 'MMMM yyyy');
     const examTypeLabel = performanceFilters.examType === 'all' 
@@ -739,7 +739,7 @@ export default function Students() {
                     {selectedClassId === 'all' && 'All Classes'}
                     {selectedClassId === 'unassigned' && 'Unassigned'}
                     {selectedClassId !== 'all' && selectedClassId !== 'unassigned' && classes.find(c => c.id === selectedClassId)
-                      ? `${classes.find(c => c.id === selectedClassId)?.name} - ${classes.find(c => c.id === selectedClassId)?.section}`
+                      ? `${classes.find(c => c.id === selectedClassId)?.name}${classes.find(c => c.id === selectedClassId)?.section ? ` - ${classes.find(c => c.id === selectedClassId)?.section}` : ''}`
                       : undefined}
                   </SelectValue>
                 </div>
@@ -747,7 +747,7 @@ export default function Students() {
               <SelectContent className="bg-card border-border">
                 <SelectItem value="all">All Classes</SelectItem>
                 {classes.map(cls => (
-                  <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                  <SelectItem key={cls.id} value={cls.id}>{cls.name}{cls.section ? ` - ${cls.section}` : ''}</SelectItem>
                 ))}
                 <SelectItem value="unassigned">Unassigned</SelectItem>
               </SelectContent>
@@ -774,7 +774,7 @@ export default function Students() {
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-1 bg-primary rounded-full" />
                     <h2 className="text-lg font-bold text-white">
-                      {group.class.name} <span className="text-sidebar-foreground font-normal text-sm ml-2">Section: {group.class.section}</span>
+                      {group.class.name} {group.class.section && <span className="text-sidebar-foreground font-normal text-sm ml-2">Section: {group.class.section}</span>}
                     </h2>
                     <Badge variant="outline" className="ml-2 border-primary/30 text-primary bg-primary/5">
                       {group.students.length} Students
