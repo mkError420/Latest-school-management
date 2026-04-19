@@ -17,6 +17,7 @@ import Attendance from '@/src/pages/Attendance';
 import Fees from '@/src/pages/Fees';
 import Exams from '@/src/pages/Exams';
 import Library from '@/src/pages/Library';
+import ClassRoutine from '@/src/pages/ClassRoutine';
 import Payroll from '@/src/pages/Payroll';
 import Settings from '@/src/pages/Settings';
 import Unauthorized from '@/src/pages/Unauthorized';
@@ -68,6 +69,12 @@ export default function App() {
           <Route path="/library" element={
             <ProtectedRoute>
               <Library />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/routine" element={
+            <ProtectedRoute>
+              <ClassRoutine />
             </ProtectedRoute>
           } />
           

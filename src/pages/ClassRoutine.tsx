@@ -1,0 +1,258 @@
+import React, { useState, useEffect } from 'react';
+import DashboardLayout from '@/src/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Printer, Plus, Trash2 } from 'lucide-react';
+import { collection, query, onSnapshot, orderBy, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/src/lib/firebase';
+import { toast } from 'sonner';
+import { useAuth } from '@/src/lib/auth';
+
+interface RoutineEntry {
+  id: string;
+  day: string;
+  className: string;
+  subject: string;
+  startTime: string;
+  endTime: string;
+  teacher: string;
+}
+
+export default function ClassRoutine() {
+  const [routine, setRoutine] = useState<RoutineEntry[]>([]);
+  const { isAdmin, isTeacher } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [classes, setClasses] = useState<{id: string, name: string, section: string}[]>([]);
+  const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
+  const [newRoutine, setNewRoutine] = useState({
+    day: 'Monday',
+    className: '',
+    subject: '',
+    startTime: '',
+    endTime: '',
+    teacher: ''
+  });
+
+  useEffect(() => {
+    const q = query(collection(db, 'routine'), orderBy('startTime'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const routineData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as RoutineEntry[];
+      setRoutine(routineData);
+    }, (error) => {
+      console.error('Error fetching routine:', error);
+      toast.error('Failed to load routine');
+    });
+
+    const classQ = query(collection(db, 'classes'));
+    const unsubscribeClasses = onSnapshot(classQ, (snapshot) => {
+      const classData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        section: doc.data().section
+      }));
+      setClasses(classData);
+    });
+
+    const staffQ = query(collection(db, 'staff'));
+    const unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
+      const staffData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        role: doc.data().role,
+        status: doc.data().status
+      }));
+      const activeTeachers = staffData.filter(s => s.role.toLowerCase() === 'teacher' && s.status === 'active');
+      setTeachers(activeTeachers);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeClasses();
+      unsubscribeStaff();
+    };
+  }, []);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const dayOptions = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+  const handleAddRoutine = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoutine.className || !newRoutine.subject || !newRoutine.startTime || !newRoutine.endTime || !newRoutine.teacher) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'routine'), newRoutine);
+      toast.success('Routine added successfully');
+      setNewRoutine({ day: 'Monday', className: '', subject: '', startTime: '', endTime: '', teacher: '' });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding routine:', error);
+      toast.error('Failed to add routine');
+    }
+  };
+
+  const handleDeleteRoutine = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this routine entry?')) {
+      try {
+        await deleteDoc(doc(db, 'routine', id));
+        toast.success('Routine deleted successfully');
+      } catch (error) {
+        console.error('Error deleting routine:', error);
+        toast.error('Failed to delete routine');
+      }
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center no-print">
+          <h2 className="text-3xl font-bold text-white">Class Routine</h2>
+          <div className="flex gap-4">
+            <Button onClick={handlePrint} className="bg-primary hover:bg-primary/90 text-white">
+              <Printer className="w-4 h-4 mr-2" />
+              Print Routine
+            </Button>
+            
+            {(isAdmin || isTeacher) && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-white text-black hover:bg-gray-200">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Routine
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-sidebar border-border text-white">
+                  <DialogHeader>
+                    <DialogTitle>Add Class Routine</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAddRoutine} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="day">Day</Label>
+                        <select 
+                          id="day" 
+                          className="w-full flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          value={newRoutine.day}
+                          onChange={(e) => setNewRoutine({...newRoutine, day: e.target.value})}
+                        >
+                          {dayOptions.map(day => (
+                            <option key={day} value={day} className="text-black">{day}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="className">Class Name</Label>
+                        <select 
+                          id="className" 
+                          className="w-full flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          value={newRoutine.className}
+                          onChange={(e) => setNewRoutine({...newRoutine, className: e.target.value})}
+                        >
+                          <option value="" disabled className="text-black">Select Class</option>
+                          {classes.map(c => (
+                            <option key={c.id} value={`${c.name} - ${c.section}`} className="text-black">{c.name} - {c.section}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="subject">Subject</Label>
+                        <Input 
+                          id="subject" 
+                          placeholder="e.g. Mathematics"
+                          value={newRoutine.subject}
+                          onChange={(e) => setNewRoutine({...newRoutine, subject: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="teacher">Teacher Name</Label>
+                        <select 
+                          id="teacher" 
+                          className="w-full flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          value={newRoutine.teacher}
+                          onChange={(e) => setNewRoutine({...newRoutine, teacher: e.target.value})}
+                        >
+                          <option value="" disabled className="text-black">Select Teacher</option>
+                          {teachers.map(t => (
+                            <option key={t.id} value={t.name} className="text-black">{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="startTime">Start Time</Label>
+                        <Input 
+                          id="startTime" 
+                          type="time"
+                          value={newRoutine.startTime}
+                          onChange={(e) => setNewRoutine({...newRoutine, startTime: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="endTime">End Time</Label>
+                        <Input 
+                          id="endTime" 
+                          type="time"
+                          value={newRoutine.endTime}
+                          onChange={(e) => setNewRoutine({...newRoutine, endTime: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <Button type="submit" className="w-full">Save Routine</Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        </div>
+
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-white">Weekly Schedule</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {dayOptions.map(day => {
+              const dayEntries = routine.filter(r => r.day === day);
+              if (dayEntries.length === 0) return null;
+              
+              return (
+                <div key={day} className="mb-6">
+                  <h3 className="text-xl font-semibold text-primary mb-3">{day}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {dayEntries.map(entry => (
+                      <div key={entry.id} className="bg-sidebar p-4 rounded-lg border border-border relative group">
+                        {(isAdmin || isTeacher) && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteRoutine(entry.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <p className="font-bold text-white pr-8">{entry.subject}</p>
+                        <p className="text-sm text-sidebar-foreground">{entry.className}</p>
+                        <p className="text-sm text-sidebar-foreground">Teacher: {entry.teacher}</p>
+                        <p className="text-sm font-mono text-primary mt-2">{entry.startTime} - {entry.endTime}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}

@@ -130,6 +130,15 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0;
     }
 
+    function isValidRoutine(data) {
+      return data.keys().hasAll(['day', 'className', 'subject', 'startTime', 'endTime']) &&
+             data.day in ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] &&
+             data.className is string && data.className.size() > 0 &&
+             data.subject is string && data.subject.size() > 0 &&
+             data.startTime is string && data.startTime.size() > 0 &&
+             data.endTime is string && data.endTime.size() > 0;
+    }
+
     // Rules
     match /users/{uid} {
       allow read: if isAuthenticated();
@@ -203,6 +212,12 @@ service cloud.firestore {
     match /roles/{roleId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin() && isValidRole(request.resource.data);
+    }
+
+    match /routine/{routineId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isTeacher()) && isValidRoutine(request.resource.data);
+      allow delete: if isAdmin() || isTeacher();
     }
   }
 }

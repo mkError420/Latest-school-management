@@ -6,7 +6,8 @@ import {
   CalendarCheck, 
   CreditCard, 
   GraduationCap, 
-  Library, 
+  Library,
+  Clock3,
   Banknote, 
   Settings, 
   LogOut, 
@@ -53,6 +54,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Fees', href: '/fees', icon: CreditCard, roles: ['admin', 'parent'] },
     { name: 'Exams', href: '/exams', icon: GraduationCap, roles: ['admin', 'teacher', 'student', 'parent'] },
     { name: 'Library', href: '/library', icon: Library, roles: ['admin', 'teacher', 'student'] },
+    { name: 'Class Routine', href: '/routine', icon: Clock3, roles: ['admin', 'teacher', 'student', 'parent'] },
     { name: 'Payroll', href: '/payroll', icon: Banknote, roles: ['admin'] },
     { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'teacher', 'parent', 'student'] },
   ];
