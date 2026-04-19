@@ -1,3 +1,11 @@
+import { 
+  Table, 
+  TableHeader, 
+  TableBody, 
+  TableHead, 
+  TableRow, 
+  TableCell,
+} from '@/components/ui/table';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -283,8 +291,8 @@ export default function ClassRoutine() {
               
               return (
                 <div key={day} className="mb-6">
-                  <h3 className="text-xl font-semibold text-primary mb-3">{day}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <h3 className="text-xl font-semibold text-primary mb-3 no-print">{day}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">
                     {dayEntries.map(entry => (
                       <div key={entry.id} className="bg-sidebar p-4 rounded-lg border border-border relative group">
                         {(isAdmin || isTeacher) && (
@@ -313,6 +321,29 @@ export default function ClassRoutine() {
                         <p className="text-sm font-mono text-primary mt-2">{entry.startTime} - {entry.endTime}</p>
                       </div>
                     ))}
+                  </div>
+                  <div className="hidden print:block mt-4">
+                    <h3 className="text-xl font-bold text-black mb-2">{day}</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-black">Class</TableHead>
+                          <TableHead className="text-black">Subject</TableHead>
+                          <TableHead className="text-black">Teacher</TableHead>
+                          <TableHead className="text-black">Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dayEntries.map(entry => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="text-black">{entry.className}</TableCell>
+                            <TableCell className="text-black">{entry.subject}</TableCell>
+                            <TableCell className="text-black">{entry.teacher}</TableCell>
+                            <TableCell className="text-black">{entry.startTime} - {entry.endTime}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               );
