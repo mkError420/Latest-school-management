@@ -520,7 +520,12 @@ export default function Exams() {
   return (
     <DashboardLayout>
       {/* Print Only Report Container */}
-      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans relative overflow-hidden">
+      <div className="print-only p-8 w-full bg-white text-black font-sans relative overflow-hidden">
+        <style>{`
+          @media print {
+            @page { size: landscape; margin: 10mm; }
+          }
+        `}</style>
         {reportResults.length > 0 && (
           <div className="space-y-8 relative z-10">
             {/* Watermarks */}
@@ -569,15 +574,15 @@ export default function Exams() {
               <table className="w-full border-collapse border border-black">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="border border-black px-2 py-2 text-left text-xs font-bold uppercase">Student</th>
-                    <th className="border border-black px-2 py-2 text-center text-xs font-bold uppercase w-16">Roll</th>
+                    <th className="border border-black px-2 py-2 text-left text-[11px] font-bold uppercase whitespace-nowrap">Student</th>
+                    <th className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase w-12">Roll</th>
                     {reportExams.map(exam => (
-                      <th key={exam.id} className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase">
+                      <th key={exam.id} className="border border-black px-1 py-2 text-center text-[9px] font-bold uppercase min-w-[40px]">
                         {exam.subject}
                       </th>
                     ))}
-                    <th className="border border-black px-2 py-2 text-center text-xs font-bold uppercase w-20">Total</th>
-                    <th className="border border-black px-2 py-2 text-center text-xs font-bold uppercase w-20">GPA</th>
+                    <th className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase w-12">Total</th>
+                    <th className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase w-12">GPA</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -597,18 +602,18 @@ export default function Exams() {
 
                       return (
                         <tr key={student.id}>
-                          <td className="border border-black px-2 py-1 text-sm">{student.name}</td>
-                          <td className="border border-black px-2 py-1 text-sm text-center">{student.rollNumber}</td>
+                          <td className="border border-black px-2 py-1 text-[11px] whitespace-nowrap">{student.name}</td>
+                          <td className="border border-black px-1 py-1 text-[11px] text-center">{student.rollNumber}</td>
                           {reportExams.map(exam => {
                             const result = studentResults.find(r => r.examId === exam.id);
                             return (
-                              <td key={exam.id} className="border border-black px-1 py-1 text-sm text-center">
+                              <td key={exam.id} className="border border-black px-1 py-1 text-[11px] text-center font-medium">
                                 {result ? result.marksObtained : '-'}
                               </td>
                             );
                           })}
-                          <td className="border border-black px-2 py-1 text-sm text-center font-bold">{total}</td>
-                          <td className="border border-black px-2 py-1 text-sm text-center font-bold">
+                          <td className="border border-black px-1 py-1 text-[11px] text-center font-bold">{total}</td>
+                          <td className="border border-black px-1 py-1 text-[11px] text-center font-bold">
                             {hasFail ? '0.00 (F)' : finalGPA.toFixed(2)}
                           </td>
                         </tr>
