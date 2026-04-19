@@ -52,6 +52,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 export default function Dashboard() {
   const { profile } = useAuth();
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [feeDocs, setFeeDocs] = useState<any[]>([]);
   const [payrollDocs, setPayrollDocs] = useState<any[]>([]);
@@ -162,11 +163,18 @@ export default function Dashboard() {
     const examsQ = query(
       collection(db, 'exams'), 
       where('status', '==', 'scheduled'),
-      orderBy('date', 'asc'),
-      limit(5)
+      orderBy('date', 'asc')
     );
     unsubscribes.push(onSnapshot(examsQ, (snapshot) => {
       setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }));
+
+    // Classes - Accessible to all authenticated users for data resolution
+    const classesQ = query(collection(db, 'classes'));
+    unsubscribes.push(onSnapshot(classesQ, (snapshot) => {
+      const classData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setClasses(classData);
+      setStats(prev => ({ ...prev, totalClasses: classData.length }));
     }));
 
     // Data only for Admin and Teachers
@@ -207,12 +215,6 @@ export default function Dashboard() {
       const staffQ = query(collection(db, 'staff'));
       unsubscribes.push(onSnapshot(staffQ, (snapshot) => {
         setStats(prev => ({ ...prev, totalStaff: snapshot.docs.length }));
-      }));
-
-      // Classes Count
-      const classesQ = query(collection(db, 'classes'));
-      unsubscribes.push(onSnapshot(classesQ, (snapshot) => {
-        setStats(prev => ({ ...prev, totalClasses: snapshot.docs.length }));
       }));
 
       // Library Issues
@@ -629,32 +631,43 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="space-y-0 relative z-10">
-              {upcomingExams.length > 0 ? upcomingExams.map((event, i) => (
-                <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 group cursor-default hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#1A1D23] border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                      <Calendar className="w-4 h-4" />
+              {(() => {
+                const filtered = upcomingExams
+                  .filter(exam => classes.some(c => c.id === exam.classId))
+                  .slice(0, 5);
+                
+                return filtered.length > 0 ? filtered.map((event, i) => {
+                  const cls = classes.find(c => c.id === event.classId);
+                  return (
+                    <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 group cursor-default hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-[#1A1D23] border border-border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">{event.subject}</h4>
+                          <p className="text-[11px] text-sidebar-foreground">
+                            {cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'Unknown Class'} • {event.type.replace('_', ' ')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[13px] font-bold text-white">
+                          {formatDistanceToNow(new Date(event.date), { addSuffix: true })}
+                        </p>
+                        <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest opacity-60">
+                          {format(new Date(event.date), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">{event.subject}</h4>
-                      <p className="text-[11px] text-sidebar-foreground">{event.type} • {event.time}</p>
-                    </div>
+                  );
+                }) : (
+                  <div className="py-12 text-center">
+                    <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
+                    <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No upcoming exams</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[13px] font-bold text-white">
-                      {formatDistanceToNow(new Date(event.date), { addSuffix: true })}
-                    </p>
-                    <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest opacity-60">
-                      {format(new Date(event.date), 'MMM dd, yyyy')}
-                    </p>
-                  </div>
-                </div>
-              )) : (
-                <div className="py-12 text-center">
-                  <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
-                  <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No upcoming exams</p>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </Card>
 
