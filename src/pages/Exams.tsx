@@ -625,7 +625,12 @@ export default function Exams() {
                       <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
                       <Select value={reportClassId || ''} onValueChange={val => setReportClassId(val || '')}>
                         <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Choose a class" />
+                          <SelectValue placeholder="Choose a class">
+                            {reportClassId ? (() => {
+                              const selectedClass = classes.find(c => c.id === reportClassId);
+                              return selectedClass ? `${selectedClass.name} - ${selectedClass.section}` : undefined;
+                            })() : undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           {classes.map((cls) => (
@@ -804,7 +809,12 @@ export default function Exams() {
                           onValueChange={val => setNewExam({...newExam, classId: val || ''})}
                         >
                           <SelectTrigger className="w-full bg-background border-border">
-                            <SelectValue placeholder="Select Class" />
+                            <SelectValue placeholder="Select Class">
+                              {newExam.classId ? (() => {
+                                const selectedClass = classes.find(c => c.id === newExam.classId);
+                                return selectedClass ? `${selectedClass.name} - ${selectedClass.section}` : undefined;
+                              })() : undefined}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
                             {classes.map((cls) => (
