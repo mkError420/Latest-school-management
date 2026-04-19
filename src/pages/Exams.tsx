@@ -108,6 +108,7 @@ export default function Exams() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [classFilter, setClassFilter] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -425,15 +426,20 @@ export default function Exams() {
     }
   };
 
-  const filteredExams = exams.filter(exam => 
-    exam.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    classes.find(c => c.id === exam.classId)?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredExams = exams.filter(exam => {
+    const belongsToExistingClass = classes.some(c => c.id === exam.classId);
+    if (!belongsToExistingClass) return false;
+
+    const matchesSearch = exam.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    classes.find(c => c.id === exam.classId)?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClass = classFilter === 'all' || exam.classId === classFilter;
+    return matchesSearch && matchesClass;
+  });
 
   const stats = {
-    upcoming: exams.filter(e => e.status === 'scheduled').length,
-    ongoing: exams.filter(e => e.status === 'ongoing').length,
-    completed: exams.filter(e => e.status === 'completed').length
+    upcoming: filteredExams.filter(e => e.status === 'scheduled').length,
+    ongoing: filteredExams.filter(e => e.status === 'ongoing').length,
+    completed: filteredExams.filter(e => e.status === 'completed').length
   };
 
   if (viewMode === 'grading' && gradingExam) {
@@ -979,16 +985,33 @@ export default function Exams() {
             </div>
 
             <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
-              <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="p-4 border-b border-border flex flex-col md:flex-row items-center justify-between gap-4">
                 <h3 className="font-semibold text-white">Scheduled Exams</h3>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
-                  <Input 
-                    placeholder="Search exams..." 
-                    className="pl-10 h-9 bg-background border-border text-foreground" 
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                  />
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  <div className="relative w-full md:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground" />
+                    <Input 
+                      placeholder="Search subjects..." 
+                      className="pl-10 h-10 bg-background border-border text-foreground w-full" 
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={classFilter} onValueChange={(val) => setClassFilter(val || 'all')}>
+                    <SelectTrigger className="w-full md:w-[180px] bg-background border-border h-10">
+                      <SelectValue placeholder="All Classes">
+                      {classFilter === 'all' ? 'All Classes' : (classes.find(c => c.id === classFilter) ? `${classes.find(c => c.id === classFilter)?.name}${classes.find(c => c.id === classFilter)?.section ? ` - ${classes.find(c => c.id === classFilter)?.section}` : ''}` : undefined)}
+                    </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="all">All Classes</SelectItem>
+                      {classes.map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id}>
+                          {cls.name}{cls.section ? ` - ${cls.section}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
