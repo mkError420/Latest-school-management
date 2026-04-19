@@ -280,11 +280,11 @@ export default function ClassRoutine() {
           </div>
         </div>
 
-        <Card className="bg-card border-border">
-          <CardHeader>
+        <Card className="bg-card border-border print:border-none print:shadow-none">
+          <CardHeader className="no-print">
             <CardTitle className="text-white">Weekly Schedule</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="print:p-0">
             {dayOptions.map(day => {
               const dayEntries = routine.filter(r => r.day === day);
               if (dayEntries.length === 0) return null;
@@ -322,24 +322,24 @@ export default function ClassRoutine() {
                       </div>
                     ))}
                   </div>
-                  <div className="hidden print:block mt-4">
+                  <div className="hidden print:block mt-4 print:mt-0">
                     <h3 className="text-xl font-bold text-black mb-2">{day}</h3>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-black">Class</TableHead>
-                          <TableHead className="text-black">Subject</TableHead>
-                          <TableHead className="text-black">Teacher</TableHead>
-                          <TableHead className="text-black">Time</TableHead>
+                          <TableHead className="text-black border border-black p-2">Class</TableHead>
+                          <TableHead className="text-black border border-black p-2">Subject</TableHead>
+                          <TableHead className="text-black border border-black p-2">Teacher</TableHead>
+                          <TableHead className="text-black border border-black p-2">Time</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {dayEntries.map(entry => (
                           <TableRow key={entry.id}>
-                            <TableCell className="text-black">{entry.className}</TableCell>
-                            <TableCell className="text-black">{entry.subject}</TableCell>
-                            <TableCell className="text-black">{entry.teacher}</TableCell>
-                            <TableCell className="text-black">{entry.startTime} - {entry.endTime}</TableCell>
+                            <TableCell className="text-black border border-black p-2">{entry.className}</TableCell>
+                            <TableCell className="text-black border border-black p-2">{entry.subject}</TableCell>
+                            <TableCell className="text-black border border-black p-2">{entry.teacher}</TableCell>
+                            <TableCell className="text-black border border-black p-2">{entry.startTime} - {entry.endTime}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
