@@ -285,8 +285,8 @@ export default function ClassRoutine() {
                 <SelectContent className="bg-sidebar border-border text-white">
                   <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.name}>
-                      {cls.name}
+                    <SelectItem key={cls.id} value={`${cls.name} - ${cls.section}`}>
+                      {cls.name} - {cls.section}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -443,29 +443,6 @@ export default function ClassRoutine() {
                         <p className="text-sm font-mono text-primary mt-2">{entry.startTime} - {entry.endTime}</p>
                       </div>
                     ))}
-                  </div>
-                  <div className="hidden print:block mt-4 print:mt-0">
-                    <h3 className="text-xl font-bold text-black mb-2">{day}</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-black border border-black p-2">Class</TableHead>
-                          <TableHead className="text-black border border-black p-2">Subject</TableHead>
-                          <TableHead className="text-black border border-black p-2">Teacher</TableHead>
-                          <TableHead className="text-black border border-black p-2">Time</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dayEntries.map(entry => (
-                          <TableRow key={entry.id}>
-                            <TableCell className="text-black border border-black p-2">{entry.className}</TableCell>
-                            <TableCell className="text-black border border-black p-2">{entry.subject}</TableCell>
-                            <TableCell className="text-black border border-black p-2">{entry.teacher}</TableCell>
-                            <TableCell className="text-black border border-black p-2">{entry.startTime} - {entry.endTime}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
                   </div>
                 </div>
               );
