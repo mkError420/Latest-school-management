@@ -64,8 +64,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const NavContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="px-6 py-8 mb-4">
-        <h1 className="text-lg font-bold tracking-widest text-primary uppercase">{systemConfig?.schoolName.split(' ')[0] || 'EduFlow'}</h1>
-        <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{systemConfig?.schoolName.split(' ').slice(1).join(' ') || 'Management System'}</p>
+        {systemConfig?.schoolLogoUrl ? (
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 shrink-0">
+               <img src={systemConfig.schoolLogoUrl} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+             </div>
+             <div>
+               <h1 className="text-sm font-bold tracking-widest text-primary uppercase leading-tight line-clamp-2">{systemConfig?.schoolName || 'EduFlow'}</h1>
+             </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-lg font-bold tracking-widest text-primary uppercase">{systemConfig?.schoolName.split(' ')[0] || 'EduFlow'}</h1>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{systemConfig?.schoolName.split(' ').slice(1).join(' ') || 'Management System'}</p>
+          </>
+        )}
       </div>
       <nav className="flex-1 space-y-1">
         <div className="px-6 mb-4">

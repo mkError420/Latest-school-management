@@ -6,11 +6,13 @@ import { auth, db } from '@/src/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap } from 'lucide-react';
+import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { systemConfig } = useAuth();
   const from = location.state?.from?.pathname || '/';
 
   const handleGoogleLogin = async () => {
@@ -52,13 +54,24 @@ export default function Login() {
       <Card className="w-full max-w-md border-border bg-card shadow-2xl">
         <CardHeader className="text-center space-y-1">
           <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20">
-              <GraduationCap className="w-10 h-10 text-white" />
-            </div>
+            {systemConfig?.schoolLogoUrl ? (
+              <img 
+                src={systemConfig.schoolLogoUrl} 
+                alt="School Logo" 
+                className="w-24 h-24 object-contain"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20">
+                <GraduationCap className="w-10 h-10 text-white" />
+              </div>
+            )}
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight text-white">EduFlow</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight text-white mb-2">
+            {systemConfig?.schoolName || 'EduFlow'}
+          </CardTitle>
           <CardDescription className="text-sidebar-foreground">
-            Comprehensive School Management System
+            {systemConfig?.schoolName ? 'School Management System' : 'Comprehensive School Management System'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">

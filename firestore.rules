@@ -196,7 +196,7 @@ service cloud.firestore {
     }
 
     match /config/system {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdmin() && isValidSystemConfig(request.resource.data);
     }
 
