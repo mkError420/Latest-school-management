@@ -277,7 +277,7 @@ export default function ClassRoutine() {
                     {dayEntries.map(entry => (
                       <div key={entry.id} className="bg-sidebar p-4 rounded-lg border border-border relative group">
                         {(isAdmin || isTeacher) && (
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                             <Button 
                               variant="ghost" 
                               size="icon" 
