@@ -378,7 +378,9 @@ export default function Students() {
     e.preventDefault();
     try {
       const year = new Date(newStudent.admissionDate).getFullYear();
-      const studentId = `${year}${newStudent.rollNumber}`;
+      const selectedClass = classes.find(c => c.id === newStudent.classId);
+      const classNumber = selectedClass?.name.replace(/\D/g, '') || '';
+      const studentId = `${year}${classNumber}${newStudent.rollNumber}`;
 
       await addDoc(collection(db, 'students'), { 
         ...newStudent,
@@ -414,7 +416,9 @@ export default function Students() {
     if (!selectedStudent) return;
     try {
       const year = new Date(selectedStudent.admissionDate).getFullYear();
-      const studentId = `${year}${selectedStudent.rollNumber}`;
+      const selectedClass = classes.find(c => c.id === selectedStudent.classId);
+      const classNumber = selectedClass?.name.replace(/\D/g, '') || '';
+      const studentId = `${year}${classNumber}${selectedStudent.rollNumber}`;
 
       const studentRef = doc(db, 'students', selectedStudent.id);
       await updateDoc(studentRef, {
