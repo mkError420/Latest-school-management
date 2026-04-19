@@ -8,7 +8,7 @@ import {
   doc, 
   updateDoc 
 } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
+import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,61 +44,47 @@ interface Subject {
   id: string;
   name: string;
   code: string;
-  className: string;
-}
-
-interface ClassData {
-  id: string;
-  name: string;
-  section: string;
 }
 
 export default function Subjects() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [classes, setClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClassFilter, setSelectedClassFilter] = useState('all');
   const { isAdmin } = useAuth();
 
   const [formData, setFormData] = useState({
     name: '',
-    code: '',
-    className: ''
+    code: ''
   });
 
   useEffect(() => {
     const qSubjects = query(collection(db, 'subjects'));
-    const unsubscribeSubjects = onSnapshot(qSubjects, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Subject[];
-      setSubjects(data);
-      setLoading(false);
-    });
-
-    const qClasses = query(collection(db, 'classes'));
-    const unsubscribeClasses = onSnapshot(qClasses, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ClassData[];
-      setClasses(data);
-    });
+    const unsubscribeSubjects = onSnapshot(qSubjects, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Subject[];
+        setSubjects(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching subjects:', error);
+        handleFirestoreError(error, OperationType.LIST, 'subjects');
+      }
+    );
 
     return () => {
       unsubscribeSubjects();
-      unsubscribeClasses();
     };
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.className) {
-      toast.error('Name and Class are required');
+    if (!formData.name) {
+      toast.error('Subject Name is required');
       return;
     }
 
@@ -114,7 +100,7 @@ export default function Subjects() {
       resetForm();
     } catch (error) {
       console.error('Error saving subject:', error);
-      toast.error('Failed to save subject');
+      handleFirestoreError(error, editingSubject ? OperationType.UPDATE : OperationType.CREATE, `subjects/${editingSubject?.id || 'new'}`);
     }
   };
 
@@ -125,21 +111,20 @@ export default function Subjects() {
         toast.success('Subject deleted successfully');
       } catch (error) {
         console.error('Error deleting subject:', error);
-        toast.error('Failed to delete subject');
+        handleFirestoreError(error, OperationType.DELETE, `subjects/${id}`);
       }
     }
   };
 
   const resetForm = () => {
-    setFormData({ name: '', code: '', className: '' });
+    setFormData({ name: '', code: '' });
     setEditingSubject(null);
   };
 
   const filteredSubjects = subjects.filter(subject => {
     const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          subject.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClassFilter === 'all' || subject.className === selectedClassFilter;
-    return matchesSearch && matchesClass;
+                          (subject.code || '').toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   return (
@@ -151,7 +136,7 @@ export default function Subjects() {
               <BookOpen className="w-8 h-8 text-primary" />
               Subjects
             </h1>
-            <p className="text-sidebar-foreground">Manage and organize school subjects class-wise.</p>
+            <p className="text-sidebar-foreground">Manage and organize school subjects.</p>
           </div>
 
           {isAdmin && (
@@ -190,24 +175,6 @@ export default function Subjects() {
                       onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Assign to Class</Label>
-                    <Select 
-                      value={formData.className} 
-                      onValueChange={(val) => setFormData({ ...formData, className: val || '' })}
-                    >
-                      <SelectTrigger className="bg-background border-border">
-                        <SelectValue placeholder="Select Class" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-sidebar border-border text-white">
-                        {classes.map((cls) => (
-                          <SelectItem key={cls.id} value={`${cls.name} - ${cls.section}`}>
-                            {cls.name} - {cls.section}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
                     {editingSubject ? 'Update Subject' : 'Add Subject'}
                   </Button>
@@ -231,19 +198,6 @@ export default function Subjects() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Select value={selectedClassFilter} onValueChange={(val) => setSelectedClassFilter(val || 'all')}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-sidebar border-border text-white">
-                    <SelectValue placeholder="All Classes" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-sidebar border-border text-white">
-                    <SelectItem value="all">All Classes</SelectItem>
-                    {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={`${cls.name} - ${cls.section}`}>
-                        {cls.name} - {cls.section}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </CardHeader>
@@ -254,20 +208,19 @@ export default function Subjects() {
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="text-sidebar-foreground font-bold">Subject Name</TableHead>
                     <TableHead className="text-sidebar-foreground font-bold">Subject Code</TableHead>
-                    <TableHead className="text-sidebar-foreground font-bold">Assigned Class</TableHead>
                     <TableHead className="text-sidebar-foreground font-bold text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-sidebar-foreground">
+                      <TableCell colSpan={3} className="text-center py-10 text-sidebar-foreground">
                         Loading subjects...
                       </TableCell>
                     </TableRow>
                   ) : filteredSubjects.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-sidebar-foreground">
+                      <TableCell colSpan={3} className="text-center py-10 text-sidebar-foreground">
                         No subjects found.
                       </TableCell>
                     </TableRow>
@@ -276,11 +229,6 @@ export default function Subjects() {
                       <TableRow key={subject.id} className="border-border hover:bg-sidebar/30 transition-colors">
                         <TableCell className="font-medium text-white">{subject.name}</TableCell>
                         <TableCell className="text-sidebar-foreground font-mono">{subject.code || 'N/A'}</TableCell>
-                        <TableCell>
-                          <span className="px-2 py-1 bg-primary/10 text-primary text-[11px] font-bold rounded uppercase">
-                            {subject.className}
-                          </span>
-                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             {isAdmin && (
@@ -293,8 +241,7 @@ export default function Subjects() {
                                     setEditingSubject(subject);
                                     setFormData({
                                       name: subject.name,
-                                      code: subject.code,
-                                      className: subject.className
+                                      code: subject.code || ''
                                     });
                                     setIsDialogOpen(true);
                                   }}

@@ -11,7 +11,7 @@ service cloud.firestore {
 
     // Helper Functions
     function isAuthenticated() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function isOwner(userId) {
@@ -111,11 +111,14 @@ service cloud.firestore {
              data.endTime is string && data.endTime.size() > 0;
     }
 
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function isValidSubject(data) {
-      return data.keys().hasAll(['name', 'className']) &&
-             data.name is string && data.name.size() > 0 &&
-             data.className is string && data.className.size() > 0 &&
-             (!data.keys().contains('code') || data.code is string);
+      return data.keys().hasAll(['name']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             (!data.keys().contains('code') || (data.code is string && data.code.size() <= 50));
     }
 
     // Rules
@@ -201,7 +204,14 @@ service cloud.firestore {
 
     match /subjects/{subjectId} {
       allow read: if isAuthenticated();
-      allow create, update: if (isAdmin() || isTeacher()) && isValidSubject(request.resource.data);
+      allow create: if (isAdmin() || isTeacher()) && 
+                    isValidId(subjectId) && 
+                    isValidSubject(request.resource.data) &&
+                    request.resource.data.keys().size() <= 2;
+      allow update: if (isAdmin() || isTeacher()) && 
+                    isValidId(subjectId) && 
+                    isValidSubject(request.resource.data) &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'code']);
       allow delete: if isAdmin() || isTeacher();
     }
   }

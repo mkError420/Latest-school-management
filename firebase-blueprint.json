@@ -256,14 +256,13 @@
     },
     "Subject": {
       "title": "Subject",
-      "description": "School subjects associated with specific classes.",
+      "description": "School subjects.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "code": { "type": "string" },
-        "className": { "type": "string" }
+        "code": { "type": "string" }
       },
-      "required": ["name", "className"]
+      "required": ["name"]
     }
   },
   "firestore": {
