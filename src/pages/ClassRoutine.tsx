@@ -191,45 +191,57 @@ export default function ClassRoutine() {
 
   return (
     <>
-      <div className="print-only p-8 max-w-[297mm] mx-auto bg-white text-black font-sans relative overflow-hidden min-h-screen">
-        {/* Colorful Grid Print View */}
-        <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white min-h-[90vh]">
-          {/* Vibrant Header */}
-          <div className="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 p-8 flex justify-between items-center relative gap-4">
-            <h1 className="text-6xl font-black text-white italic drop-shadow-[4px_4px_0px_rgba(0,0,0,0.2)] tracking-tighter">
+      <style>
+        {`
+          @media print {
+            @page {
+              size: A4 landscape;
+              margin: 10mm;
+            }
+            body {
+              -webkit-print-color-adjust: exact;
+            }
+          }
+        `}
+      </style>
+      <div className="print-only p-0 max-w-[297mm] mx-auto bg-white text-black font-sans relative overflow-hidden">
+        {/* Colorful Grid Print View - Compacted for 1 Page */}
+        <div className="rounded-2xl overflow-hidden shadow-none border-2 border-indigo-100 bg-white">
+          {/* Compact Vibrant Header */}
+          <div className="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 p-4 flex justify-between items-center relative gap-4">
+            <h1 className="text-4xl font-black text-white italic drop-shadow-[2px_2px_0px_rgba(0,0,0,0.2)] tracking-tighter">
               Class Schedule
             </h1>
             
-            <div className="bg-white/95 rounded-xl p-4 min-w-[300px] shadow-lg border-2 border-white/20">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                  <span className="font-bold text-gray-500 min-w-[80px] uppercase text-xs tracking-widest">Name :</span>
-                  <span className="font-bold text-indigo-900 text-lg">{selectedClass !== 'all' ? selectedClass : 'General Schedule'}</span>
+            <div className="bg-white/95 rounded-lg p-2 min-w-[240px] shadow-md border border-white/20">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-1">
+                  <span className="font-bold text-gray-500 min-w-[60px] uppercase text-[10px] tracking-widest">Name :</span>
+                  <span className="font-bold text-indigo-900 text-sm">{selectedClass !== 'all' ? selectedClass : 'General Schedule'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-gray-500 min-w-[80px] uppercase text-xs tracking-widest">Year :</span>
-                  <span className="font-bold text-indigo-900 text-lg">{systemConfig?.academicYear || '2023-2024'}</span>
+                  <span className="font-bold text-gray-500 min-w-[60px] uppercase text-[10px] tracking-widest">Year :</span>
+                  <span className="font-bold text-indigo-900 text-sm">{systemConfig?.academicYear || '2023-2024'}</span>
                 </div>
               </div>
             </div>
             
-            {/* Logo in top right if available */}
             {systemConfig?.schoolLogoUrl && (
-              <img src={systemConfig.schoolLogoUrl} alt="Logo" className="absolute -top-4 -right-4 h-32 w-32 opacity-10 rotate-12" />
+              <img src={systemConfig.schoolLogoUrl} alt="Logo" className="absolute -top-2 -right-2 h-20 w-20 opacity-10 rotate-12" />
             )}
           </div>
 
-          {/* Grid Container */}
-          <div className="p-8 bg-gradient-to-br from-indigo-50 to-purple-50 flex-grow min-h-[80vh]">
-            <div className="grid grid-cols-8 gap-3">
+          {/* Grid Container - Compact heights */}
+          <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50">
+            <div className="grid grid-cols-8 gap-1.5">
               {/* Header: Time + Days */}
-              <div className="bg-cyan-400 text-white rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-lg h-14 shadow-md border-b-4 border-cyan-600">
+              <div className="bg-cyan-400 text-white rounded-lg flex items-center justify-center font-black uppercase tracking-widest text-xs h-10 shadow-sm border-b-2 border-cyan-600">
                 Time
               </div>
               {dayOptions.map((day, idx) => (
                 <div 
                   key={day} 
-                  className={`rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-lg h-14 shadow-md border-b-4 ${
+                  className={`rounded-lg flex items-center justify-center font-black uppercase tracking-widest text-xs h-10 shadow-sm border-b-2 ${
                     idx % 2 === 0 ? 'bg-pink-300 text-pink-900 border-pink-400' : 'bg-cyan-300 text-cyan-900 border-cyan-400'
                   }`}
                 >
@@ -237,11 +249,11 @@ export default function ClassRoutine() {
                 </div>
               ))}
 
-              {/* Rows */}
+              {/* Rows - Dynamically sizing or smaller fixed heights to ensure single page */}
               {timeSlots.map((slot, rowIdx) => (
                 <React.Fragment key={slot}>
                   {/* Time Row Label */}
-                  <div className={`rounded-xl flex items-center justify-center font-bold text-lg h-24 shadow-sm border-b-2 ${
+                  <div className={`rounded-lg flex items-center justify-center font-bold text-[11px] h-14 shadow-sm border-b-2 ${
                     rowIdx % 2 === 0 ? 'bg-pink-100 text-pink-800 border-pink-200' : 'bg-cyan-100 text-cyan-800 border-cyan-200'
                   }`}>
                     {slot}
@@ -251,13 +263,13 @@ export default function ClassRoutine() {
                   {dayOptions.map((day) => {
                     const entries = filteredRoutine.filter(r => r.day === day && `${r.startTime} - ${r.endTime}` === slot);
                     return (
-                      <div key={`${day}-${slot}`} className="bg-white rounded-xl shadow-inner border border-white p-2 min-h-[96px] flex flex-col items-center justify-center text-center">
+                      <div key={`${day}-${slot}`} className="bg-white rounded-lg shadow-inner border border-white/50 p-1 min-h-[56px] flex flex-col items-center justify-center text-center">
                         {entries.map(entry => (
-                          <div key={entry.id} className="space-y-1">
-                            <p className="font-black text-indigo-900 text-sm leading-tight uppercase">{entry.subject}</p>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase overflow-hidden whitespace-nowrap text-ellipsis max-w-[100px]">{entry.teacher}</p>
+                          <div key={entry.id} className="w-full">
+                            <p className="font-black text-indigo-900 text-[10px] leading-[1.1] uppercase break-words px-1">{entry.subject}</p>
+                            <p className="text-[8px] text-gray-500 font-bold uppercase overflow-hidden whitespace-nowrap text-ellipsis px-1">{entry.teacher}</p>
                             {selectedClass === 'all' && (
-                              <p className="text-[10px] font-black text-cyan-600">{entry.className}</p>
+                              <p className="text-[8px] font-black text-cyan-600 uppercase mt-0.5">{entry.className}</p>
                             )}
                           </div>
                         ))}
@@ -269,18 +281,18 @@ export default function ClassRoutine() {
             </div>
           </div>
           
-          {/* Signature and Footer */}
-          <div className="p-8 flex justify-between items-end bg-white border-t-2 border-indigo-50">
-            <div className="space-y-4">
-              <div className="w-64 h-0.5 bg-indigo-900/10 mb-2"></div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-900/40">Principal Signature</p>
+          {/* Compact Footer */}
+          <div className="p-4 flex justify-between items-end bg-white border-t border-indigo-50">
+            <div className="space-y-1">
+              <div className="w-48 h-px bg-indigo-900/10 mb-1"></div>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-900/30">Principal Signature</p>
             </div>
             <div className="text-right">
-               <p className="text-xs font-bold text-indigo-900/50 uppercase tracking-widest">
+               <p className="text-[10px] font-bold text-indigo-900/50 uppercase tracking-widest">
                  {systemConfig?.schoolName || 'Education Management'}
                </p>
-               <p className="text-[10px] text-gray-400 italic mt-1">
-                 Official document generated on {format(new Date(), 'dd MMMM yyyy')}
+               <p className="text-[8px] text-gray-400 italic">
+                 Generated on {format(new Date(), 'dd MMM yyyy')}
                </p>
             </div>
           </div>
