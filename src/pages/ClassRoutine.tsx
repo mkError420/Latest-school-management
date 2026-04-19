@@ -221,38 +221,42 @@ export default function ClassRoutine() {
           </div>
 
           {/* Routine Table */}
-          <div className="space-y-6">
-            {dayOptions.map(day => {
-              const dayEntries = filteredRoutine.filter(r => r.day === day);
-              if (dayEntries.length === 0) return null;
-              
-              return (
-                <div key={day} className="break-inside-avoid">
-                  <h3 className="text-lg font-bold text-black border-l-4 border-black pl-3 mb-3 bg-gray-100 py-1 uppercase tracking-wider">{day}</h3>
-                  <Table className="border border-black">
-                    <TableHeader>
-                      <TableRow className="bg-gray-50">
-                        <TableHead className="text-black font-bold border border-black h-10">Class</TableHead>
-                        <TableHead className="text-black font-bold border border-black h-10">Subject</TableHead>
-                        <TableHead className="text-black font-bold border border-black h-10">Teacher</TableHead>
-                        <TableHead className="text-black font-bold border border-black h-10 text-right">Time Range</TableHead>
+          <Table className="border border-black">
+            <TableHeader>
+              <TableRow className="bg-gray-50 border-black">
+                <TableHead className="text-black font-bold border border-black h-10 w-[20%]">Class</TableHead>
+                <TableHead className="text-black font-bold border border-black h-10 w-[30%]">Subject</TableHead>
+                <TableHead className="text-black font-bold border border-black h-10 w-[25%]">Teacher</TableHead>
+                <TableHead className="text-black font-bold border border-black h-10 w-[25%] text-right">Time Range</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {dayOptions.map(day => {
+                const dayEntries = filteredRoutine.filter(r => r.day === day);
+                if (dayEntries.length === 0) return null;
+                
+                return (
+                  <React.Fragment key={day}>
+                    {/* Day Header Row */}
+                    <TableRow className="bg-gray-100 border-black break-inside-avoid">
+                      <TableCell colSpan={4} className="text-black font-bold border border-black py-2 uppercase tracking-widest text-left pl-4">
+                        <span className="border-l-4 border-black pl-2">{day}</span>
+                      </TableCell>
+                    </TableRow>
+                    {/* Entries for the Day */}
+                    {dayEntries.map(entry => (
+                      <TableRow key={entry.id} className="border-black break-inside-avoid">
+                        <TableCell className="text-black border border-black py-2 font-medium">{entry.className}</TableCell>
+                        <TableCell className="text-black border border-black py-2">{entry.subject}</TableCell>
+                        <TableCell className="text-black border border-black py-2">{entry.teacher}</TableCell>
+                        <TableCell className="text-black border border-black py-2 text-right font-mono text-sm">{entry.startTime} - {entry.endTime}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dayEntries.map(entry => (
-                        <TableRow key={entry.id} className="border-black">
-                          <TableCell className="text-black border border-black py-2 font-medium">{entry.className}</TableCell>
-                          <TableCell className="text-black border border-black py-2">{entry.subject}</TableCell>
-                          <TableCell className="text-black border border-black py-2">{entry.teacher}</TableCell>
-                          <TableCell className="text-black border border-black py-2 text-right font-mono text-sm">{entry.startTime} - {entry.endTime}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              );
-            })}
-          </div>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
 
           {/* Footer */}
           <div className="mt-12 flex justify-between items-end">
