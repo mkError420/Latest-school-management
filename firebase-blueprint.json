@@ -263,6 +263,18 @@
         "code": { "type": "string" }
       },
       "required": ["name"]
+    },
+    "StaffAttendance": {
+      "title": "StaffAttendance",
+      "description": "Daily attendance records for school staff.",
+      "type": "object",
+      "properties": {
+        "staffId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["present", "absent", "late"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["staffId", "date", "status"]
     }
   },
   "firestore": {
@@ -273,6 +285,7 @@
     "/students/{studentId}": { "schema": "Student", "description": "Student records" },
     "/classes/{classId}": { "schema": "Class", "description": "Class definitions" },
     "/attendance/{attendanceId}": { "schema": "Attendance", "description": "Daily attendance" },
+    "/staff_attendance/{attendanceId}": { "schema": "StaffAttendance", "description": "Staff attendance" },
     "/fees/{feeId}": { "schema": "Fee", "description": "Fee payments" },
     "/exams/{examId}": { "schema": "Exam", "description": "Exam schedules" },
     "/results/{resultId}": { "schema": "Result", "description": "Exam results" },

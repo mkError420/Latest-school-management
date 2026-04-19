@@ -97,6 +97,13 @@ service cloud.firestore {
              data.status in ['paid', 'pending'];
     }
 
+    function isValidStaffAttendance(data) {
+      return data.keys().hasAll(['staffId', 'date', 'status']) &&
+             data.staffId is string && data.staffId.size() > 0 &&
+             data.date is string && data.date.size() > 0 &&
+             data.status in ['present', 'absent', 'late'];
+    }
+
     function isValidRole(data) {
       return data.keys().hasAll(['name', 'permissions']) &&
              data.name is string && data.name.size() > 0;
@@ -173,6 +180,11 @@ service cloud.firestore {
     match /staff/{id} {
       allow read: if isAdmin() || isTeacher();
       allow write: if isAdmin();
+    }
+
+    match /staff_attendance/{id} {
+      allow read: if isAdmin() || isTeacher();
+      allow write: if isAdmin() && isValidStaffAttendance(request.resource.data);
     }
 
     match /payroll/{id} {

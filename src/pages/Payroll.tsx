@@ -24,7 +24,8 @@ import {
   Briefcase,
   Building2,
   Fingerprint,
-  Wallet
+  Wallet,
+  XCircle
 } from 'lucide-react';
 import { 
   Table, 
@@ -71,7 +72,7 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc, where, setDoc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/auth';
@@ -112,6 +113,14 @@ interface PayrollRecord {
   paymentMethod: string;
 }
 
+interface StaffAttendance {
+  id: string;
+  staffId: string;
+  date: string;
+  status: 'present' | 'absent' | 'late';
+  updatedAt: string;
+}
+
 export default function Payroll() {
   const { systemConfig } = useAuth();
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
@@ -122,6 +131,10 @@ export default function Payroll() {
   const [isProcessPayrollOpen, setIsProcessPayrollOpen] = useState(false);
   const [isViewPayslipOpen, setIsViewPayslipOpen] = useState(false);
   const [isViewProfileOpen, setIsViewProfileOpen] = useState(false);
+  const [isAttendanceSummaryOpen, setIsAttendanceSummaryOpen] = useState(false);
+  const [summaryMonth, setSummaryMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [monthlyAttendance, setMonthlyAttendance] = useState<StaffAttendance[]>([]);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
   const [viewingStaff, setViewingStaff] = useState<Staff | null>(null);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -130,8 +143,11 @@ export default function Payroll() {
   const [isUploading, setIsUploading] = useState(false);
   const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
+  const [printType, setPrintType] = useState<'payslip' | 'attendance'>('payslip');
   const [processPayrollRole, setProcessPayrollRole] = useState('all');
   const [processPayrollSearch, setProcessPayrollSearch] = useState('');
+  const [staffAttendance, setStaffAttendance] = useState<StaffAttendance[]>([]);
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const [newStaff, setNewStaff] = useState({
     name: '',
@@ -186,6 +202,20 @@ export default function Payroll() {
       unsubscribeStaff();
     };
   }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'staff_attendance'), where('date', '==', selectedAttendanceDate));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as StaffAttendance[];
+      setStaffAttendance(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'staff_attendance');
+    });
+    return () => unsubscribe();
+  }, [selectedAttendanceDate]);
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -407,6 +437,58 @@ export default function Payroll() {
     }
   };
 
+  const handleMarkStaffAttendance = async (staffId: string, status: 'present' | 'absent' | 'late') => {
+    try {
+      const attendanceId = `${staffId}_${selectedAttendanceDate}`;
+      const attendanceRef = doc(db, 'staff_attendance', attendanceId);
+      
+      await setDoc(attendanceRef, {
+        staffId,
+        date: selectedAttendanceDate,
+        status,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      toast.success('Attendance updated');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `staff_attendance/${staffId}`);
+    }
+  };
+
+  const fetchMonthlyAttendance = async () => {
+    setIsLoadingSummary(true);
+    try {
+      const year = summaryMonth.split('-')[0];
+      const month = summaryMonth.split('-')[1];
+      const startDate = `${year}-${month}-01`;
+      const endDate = `${year}-${month}-31`;
+      
+      const q = query(
+        collection(db, 'staff_attendance'),
+        where('date', '>=', startDate),
+        where('date', '<=', endDate)
+      );
+      
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })) as StaffAttendance[];
+      
+      setMonthlyAttendance(data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, 'staff_attendance_monthly');
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAttendanceSummaryOpen) {
+      fetchMonthlyAttendance();
+    }
+  }, [isAttendanceSummaryOpen, summaryMonth]);
+
   const handleEditStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaff) return;
@@ -572,10 +654,13 @@ export default function Payroll() {
     return a.localeCompare(b);
   });
 
-  const handlePrint = () => {
+  const handlePrint = (type: 'payslip' | 'attendance' = 'payslip') => {
+    setPrintType(type);
     document.body.classList.add('report-printing');
-    window.print();
-    document.body.classList.remove('report-printing');
+    setTimeout(() => {
+      window.print();
+      document.body.classList.remove('report-printing');
+    }, 100);
   };
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -610,7 +695,7 @@ export default function Payroll() {
 
   return (
     <DashboardLayout>
-      {/* Print Only Payslip Container */}
+      {/* Print Only Containers */}
       <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans relative overflow-hidden">
         {/* Internal Watermark */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none -rotate-45">
@@ -619,7 +704,7 @@ export default function Payroll() {
           </h1>
         </div>
 
-        {selectedRecord && (
+        {printType === 'payslip' && selectedRecord && (
           <div className="space-y-8 relative z-10">
             {/* Header */}
             <div className="flex justify-between items-start border-b-2 border-black pb-6">
@@ -722,6 +807,63 @@ export default function Payroll() {
                   This is a computer-generated payslip. No physical signature is required for its validity.
                 </p>
                 <p className="text-[10px] font-bold text-gray-500">Generated on: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {printType === 'attendance' && (
+          <div className="space-y-8 relative z-10">
+            <div className="text-center mb-8 pb-6 border-b-2 border-black">
+              <h1 className="text-2xl font-black uppercase tracking-tight text-primary">{systemConfig?.schoolName || 'School Management System'}</h1>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mt-1">Staff Attendance Summary Report</p>
+              <p className="text-xs font-bold text-gray-400 mt-2 uppercase tracking-tighter">Period: {format(new Date(summaryMonth + '-01'), 'MMMM yyyy')}</p>
+            </div>
+
+            <Table className="border border-gray-300">
+              <TableHeader className="bg-gray-100">
+                <TableRow className="hover:bg-transparent border-gray-300">
+                  <TableHead className="font-bold text-black border-r border-gray-300 text-sm">Staff Name</TableHead>
+                  <TableHead className="font-bold text-black border-r border-gray-300 text-sm">Staff ID</TableHead>
+                  <TableHead className="font-bold text-black border-r border-gray-300 text-center text-sm">Present</TableHead>
+                  <TableHead className="font-bold text-black border-r border-gray-300 text-center text-sm">Late</TableHead>
+                  <TableHead className="font-bold text-black border-r border-gray-300 text-center text-sm">Absent</TableHead>
+                  <TableHead className="font-bold text-black text-center text-sm">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staff.map(s => {
+                  const staffRecs = monthlyAttendance.filter(a => a.staffId === s.id);
+                  const present = staffRecs.filter(a => a.status === 'present').length;
+                  const late = staffRecs.filter(a => a.status === 'late').length;
+                  const absent = staffRecs.filter(a => a.status === 'absent').length;
+                  const total = present + late + absent;
+
+                  return (
+                    <TableRow key={s.id} className="hover:bg-gray-50 border-gray-300">
+                      <TableCell className="font-bold border-r border-gray-300 py-3 text-sm">{s.name}</TableCell>
+                      <TableCell className="font-mono text-xs border-r border-gray-300 py-3">{s.staffId}</TableCell>
+                      <TableCell className="text-center font-bold text-emerald-600 border-r border-gray-300 py-3">{present}</TableCell>
+                      <TableCell className="text-center font-bold text-amber-600 border-r border-gray-300 py-3">{late}</TableCell>
+                      <TableCell className="text-center font-bold text-rose-600 border-r border-gray-300 py-3">{absent}</TableCell>
+                      <TableCell className="text-center font-black bg-gray-50 py-3">{total}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            <div className="mt-16 flex justify-between items-end">
+              <div className="text-center">
+                <div className="w-40 border-b border-black mb-1 mx-auto"></div>
+                <p className="text-[10px] font-bold uppercase">Prepared By</p>
+              </div>
+              <div className="text-right text-[10px] text-gray-500 font-bold uppercase italic border-t border-gray-100 pt-4">
+                Report Generated On: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
+              </div>
+              <div className="text-center">
+                <div className="w-40 border-b border-black mb-1 mx-auto"></div>
+                <p className="text-[10px] font-bold uppercase">Administrator Signature</p>
               </div>
             </div>
           </div>
@@ -1080,6 +1222,9 @@ export default function Payroll() {
             <TabsTrigger value="staff" className="data-[state=active]:bg-primary data-[state=active]:text-white">
               Staff Directory
             </TabsTrigger>
+            <TabsTrigger value="attendance" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+              Staff Attendance
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="history" className="space-y-6">
@@ -1346,7 +1491,230 @@ export default function Payroll() {
               </Table>
             </div>
           </TabsContent>
+
+          <TabsContent value="attendance" className="space-y-6">
+            <Card className="bg-card border-border shadow-none">
+              <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-border pb-6">
+                <div>
+                  <CardTitle className="text-white">Daily Staff Attendance</CardTitle>
+                  <p className="text-sidebar-foreground text-sm">Mark and track attendance for all staff members.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-primary/30 text-primary hover:bg-primary/10 h-10 px-4"
+                    onClick={() => setIsAttendanceSummaryOpen(true)}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Attendance Summary
+                  </Button>
+                  <div className="flex items-center gap-3 bg-background p-2 rounded-lg border border-border h-10">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <Input 
+                      type="date" 
+                      value={selectedAttendanceDate} 
+                      onChange={e => setSelectedAttendanceDate(e.target.value)}
+                      className="bg-transparent border-none p-0 h-auto w-32 font-bold text-sm focus-visible:ring-0"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-sidebar-accent/30">
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="font-semibold text-sidebar-foreground text-xs uppercase tracking-widest">Staff Details</TableHead>
+                        <TableHead className="font-semibold text-sidebar-foreground text-xs uppercase tracking-widest">Role</TableHead>
+                        <TableHead className="font-semibold text-sidebar-foreground text-xs uppercase tracking-widest text-center">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStaffData.length > 0 ? (
+                        filteredStaffData.map((member) => {
+                          const record = staffAttendance.find(a => a.staffId === member.id);
+                          return (
+                            <TableRow key={member.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
+                              <TableCell>
+                                <div className="flex items-center space-x-3">
+                                  <div className="h-9 w-9 rounded-full bg-sidebar-accent/50 border border-border flex-shrink-0 overflow-hidden">
+                                    {member.photoUrl ? (
+                                      <img src={member.photoUrl} alt={member.name} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <div className="h-full w-full flex items-center justify-center text-sidebar-foreground/50 text-xs font-bold">
+                                        {member.name.charAt(0)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-white">{member.name}</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground font-mono">{member.staffId}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sidebar-foreground text-sm font-medium">{member.role}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant={record?.status === 'present' ? 'default' : 'outline'}
+                                    className={cn(
+                                      "px-3 gap-2 h-8 uppercase text-[10px] font-black tracking-widest transition-all",
+                                      record?.status === 'present' ? "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500" : "border-border text-sidebar-foreground hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/20"
+                                    )}
+                                    onClick={() => handleMarkStaffAttendance(member.id, 'present')}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    Present
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={record?.status === 'late' ? 'default' : 'outline'}
+                                    className={cn(
+                                      "px-3 gap-2 h-8 uppercase text-[10px] font-black tracking-widest transition-all",
+                                      record?.status === 'late' ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500" : "border-border text-sidebar-foreground hover:bg-amber-500/10 hover:text-amber-500 hover:border-amber-500/20"
+                                    )}
+                                    onClick={() => handleMarkStaffAttendance(member.id, 'late')}
+                                  >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    Late
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={record?.status === 'absent' ? 'default' : 'outline'}
+                                    className={cn(
+                                      "px-3 gap-2 h-8 uppercase text-[10px] font-black tracking-widest transition-all",
+                                      record?.status === 'absent' ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-500" : "border-border text-sidebar-foreground hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/20"
+                                    )}
+                                    onClick={() => handleMarkStaffAttendance(member.id, 'absent')}
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    Absent
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-24 text-center text-sidebar-foreground italic">
+                            No staff members found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Attendance Summary Dialog */}
+        <Dialog open={isAttendanceSummaryOpen} onOpenChange={setIsAttendanceSummaryOpen}>
+          <DialogContent className="max-w-4xl bg-card border-border text-foreground">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Staff Attendance Summary
+              </DialogTitle>
+              <DialogDescription className="text-sidebar-foreground">
+                Monthly attendance report for all staff members.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex items-center justify-between gap-4 mb-4 bg-sidebar-accent/30 p-4 rounded-lg border border-border no-print">
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-bold uppercase tracking-widest text-sidebar-foreground">Select Month:</label>
+                <Input 
+                  type="month" 
+                  value={summaryMonth} 
+                  onChange={e => setSummaryMonth(e.target.value)}
+                  className="bg-background border-border w-48"
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => handlePrint('attendance')}
+                className="bg-primary hover:bg-primary/90 text-white border-none"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print Report
+              </Button>
+            </div>
+
+            <div id="attendance-summary-report" className="bg-white text-black p-8 rounded-lg overflow-hidden min-h-[400px]">
+              <div className="text-center mb-8 pb-6 border-b-2 border-primary/20">
+                <h1 className="text-2xl font-black uppercase tracking-tight text-primary">{systemConfig?.schoolName || 'School Management System'}</h1>
+                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mt-1">Staff Attendance Summary Report</p>
+                <p className="text-xs font-bold text-gray-400 mt-2 uppercase tracking-tighter">Period: {format(new Date(summaryMonth + '-01'), 'MMMM yyyy')}</p>
+              </div>
+
+              <Table className="border border-gray-200">
+                <TableHeader className="bg-gray-100">
+                  <TableRow className="hover:bg-transparent border-gray-200">
+                    <TableHead className="font-bold text-black border-r border-gray-200">Staff Name</TableHead>
+                    <TableHead className="font-bold text-black border-r border-gray-200">Staff ID</TableHead>
+                    <TableHead className="font-bold text-black border-r border-gray-200 text-center">Present</TableHead>
+                    <TableHead className="font-bold text-black border-r border-gray-200 text-center">Late</TableHead>
+                    <TableHead className="font-bold text-black border-r border-gray-200 text-center">Absent</TableHead>
+                    <TableHead className="font-bold text-black text-center">Total (Work Days)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoadingSummary ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">Loading summary data...</TableCell>
+                    </TableRow>
+                  ) : staff.length > 0 ? (
+                    staff.map(s => {
+                      const staffRecs = monthlyAttendance.filter(a => a.staffId === s.id);
+                      const present = staffRecs.filter(a => a.status === 'present').length;
+                      const late = staffRecs.filter(a => a.status === 'late').length;
+                      const absent = staffRecs.filter(a => a.status === 'absent').length;
+                      const total = present + late + absent;
+
+                      return (
+                        <TableRow key={s.id} className="hover:bg-gray-50 border-gray-200">
+                          <TableCell className="font-bold border-r border-gray-200">{s.name}</TableCell>
+                          <TableCell className="font-mono text-xs border-r border-gray-200">{s.staffId}</TableCell>
+                          <TableCell className="text-center font-bold text-emerald-600 border-r border-gray-200">{present}</TableCell>
+                          <TableCell className="text-center font-bold text-amber-600 border-r border-gray-200">{late}</TableCell>
+                          <TableCell className="text-center font-bold text-rose-600 border-r border-gray-200">{absent}</TableCell>
+                          <TableCell className="text-center font-black bg-gray-50">{total}</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">No staff records found</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              <div className="mt-12 flex justify-between items-end no-screen-only print:flex">
+                <div className="text-center">
+                  <div className="w-32 border-b border-black mb-1 mx-auto"></div>
+                  <p className="text-[10px] font-bold uppercase">Prepared By</p>
+                </div>
+                <div className="text-right text-[10px] text-gray-500 font-bold uppercase italic">
+                  Report Generated On: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}
+                </div>
+                <div className="text-center">
+                  <div className="w-32 border-b border-black mb-1 mx-auto"></div>
+                  <p className="text-[10px] font-bold uppercase">Administrator</p>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="no-print">
+              <Button onClick={() => setIsAttendanceSummaryOpen(false)} variant="outline" className="border-border">Close Report</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Staff Dialog */}
         <Dialog open={isEditStaffOpen} onOpenChange={setIsEditStaffOpen}>
@@ -1648,7 +2016,7 @@ export default function Payroll() {
             </div>
 
             <DialogFooter className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-4 flex sm:justify-between gap-2">
-              <Button variant="outline" onClick={handlePrint} className="border-gray-300 text-gray-700 hover:bg-gray-100">
+              <Button variant="outline" onClick={() => handlePrint('payslip')} className="border-gray-300 text-gray-700 hover:bg-gray-100">
                 <Download className="w-4 h-4 mr-2" />
                 Print Payslip (PDF)
               </Button>
