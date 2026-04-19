@@ -318,7 +318,7 @@ export default function Library() {
         bookTitle: book.title,
         studentId: student.id,
         studentName: student.name,
-        studentClass: cls ? `${cls.name} - ${cls.section}` : 'N/A',
+        studentClass: cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'N/A',
         issueDate: issueDate.toISOString(),
         dueDate: dueDate.toISOString(),
         status: 'issued'
@@ -408,7 +408,7 @@ export default function Library() {
         bookTitle: book.title,
         studentId: selectedIssue.studentId,
         studentName: student.name,
-        studentClass: cls ? `${cls.name} - ${cls.section}` : 'N/A',
+        studentClass: cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'N/A',
         dueDate: selectedIssue.dueDate,
         status: selectedIssue.status,
         returnDate: selectedIssue.status === 'returned' ? (selectedIssue.returnDate || new Date().toISOString()) : null
@@ -531,7 +531,10 @@ export default function Library() {
                         <SelectTrigger className="bg-background border-border">
                           <SelectValue placeholder="Choose a class">
                             {issueSelectedClassId && classes.find(c => c.id === issueSelectedClassId) 
-                              ? `${classes.find(c => c.id === issueSelectedClassId)?.name} - ${classes.find(c => c.id === issueSelectedClassId)?.section}`
+                              ? (() => {
+                                  const c = classes.find(cl => cl.id === issueSelectedClassId);
+                                  return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : null;
+                                })()
                               : null}
                           </SelectValue>
                         </SelectTrigger>
@@ -548,7 +551,9 @@ export default function Library() {
                           {classes
                             .filter(c => c.name.toLowerCase().includes(classSearch.toLowerCase()) || c.section.toLowerCase().includes(classSearch.toLowerCase()))
                             .map(cls => (
-                              <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                              <SelectItem key={cls.id} value={cls.id}>
+                                {cls.name}{cls.section ? ` - ${cls.section}` : ''}
+                              </SelectItem>
                             ))}
                         </SelectContent>
                       </Select>
@@ -1100,7 +1105,10 @@ export default function Library() {
                       <SelectTrigger className="bg-background border-border">
                         <SelectValue placeholder="Choose a class">
                           {editIssueSelectedClassId && classes.find(c => c.id === editIssueSelectedClassId) 
-                            ? `${classes.find(c => c.id === editIssueSelectedClassId)?.name} - ${classes.find(c => c.id === editIssueSelectedClassId)?.section}`
+                            ? (() => {
+                                const c = classes.find(cl => cl.id === editIssueSelectedClassId);
+                                return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : null;
+                              })()
                             : null}
                         </SelectValue>
                       </SelectTrigger>
@@ -1117,7 +1125,7 @@ export default function Library() {
                         {classes
                           .filter(c => c.name.toLowerCase().includes(editClassSearch.toLowerCase()) || c.section.toLowerCase().includes(editClassSearch.toLowerCase()))
                           .map(cls => (
-                            <SelectItem key={cls.id} value={cls.id}>{cls.name} - {cls.section}</SelectItem>
+                            <SelectItem key={cls.id} value={cls.id}>{cls.name}{cls.section ? ` - ${cls.section}` : ''}</SelectItem>
                           ))}
                       </SelectContent>
                     </Select>

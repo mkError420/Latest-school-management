@@ -468,7 +468,7 @@ export default function Students() {
     const headers = ['Student ID', 'Roll Number', 'Name', 'Class', 'Guardian Name', 'Relation', 'Guardian Phone', 'Blood Group', 'Status'];
     const csvData = filteredStudents.map(student => {
       const cls = classes.find(c => c.id === student.classId);
-      const classInfo = cls ? `${cls.name} - ${cls.section}` : student.classId;
+      const classInfo = cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : student.classId;
       return [
         student.studentId || '',
         student.rollNumber,
@@ -616,14 +616,17 @@ export default function Students() {
                           <SelectTrigger className="w-full bg-background border-border">
                             <SelectValue placeholder="Select Class">
                               {newStudent.classId && classes.find(c => c.id === newStudent.classId) 
-                                ? `${classes.find(c => c.id === newStudent.classId)?.name} - ${classes.find(c => c.id === newStudent.classId)?.section}`
+                                ? (() => {
+                                    const c = classes.find(cl => cl.id === newStudent.classId);
+                                    return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : undefined;
+                                  })()
                                 : undefined}
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
                             {classes.map((cls) => (
                               <SelectItem key={cls.id} value={cls.id}>
-                                {cls.name} - {cls.section}
+                                {cls.name}{cls.section ? ` - ${cls.section}` : ''}
                               </SelectItem>
                             ))}
                             {classes.length === 0 && (
@@ -739,7 +742,10 @@ export default function Students() {
                     {selectedClassId === 'all' && 'All Classes'}
                     {selectedClassId === 'unassigned' && 'Unassigned'}
                     {selectedClassId !== 'all' && selectedClassId !== 'unassigned' && classes.find(c => c.id === selectedClassId)
-                      ? `${classes.find(c => c.id === selectedClassId)?.name}${classes.find(c => c.id === selectedClassId)?.section ? ` - ${classes.find(c => c.id === selectedClassId)?.section}` : ''}`
+                      ? (() => {
+                          const c = classes.find(cl => cl.id === selectedClassId);
+                          return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : undefined;
+                        })()
                       : undefined}
                   </SelectValue>
                 </div>

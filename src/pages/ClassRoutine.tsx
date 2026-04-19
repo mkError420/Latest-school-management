@@ -330,8 +330,8 @@ export default function ClassRoutine() {
                 <SelectContent className="bg-sidebar border-border text-white">
                   <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={`${cls.name} - ${cls.section}`}>
-                      {cls.name} - {cls.section}
+                    <SelectItem key={cls.id} value={cls.section ? `${cls.name} - ${cls.section}` : cls.name}>
+                      {cls.name}{cls.section ? ` - ${cls.section}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -389,7 +389,9 @@ export default function ClassRoutine() {
                         >
                           <option value="" disabled className="text-black">Select Class</option>
                           {classes.map(c => (
-                            <option key={c.id} value={`${c.name} - ${c.section}`} className="text-black">{c.name} - {c.section}</option>
+                            <option key={c.id} value={c.section ? `${c.name} - ${c.section}` : c.name} className="text-black">
+                              {c.name}{c.section ? ` - ${c.section}` : ''}
+                            </option>
                           ))}
                         </select>
                       </div>

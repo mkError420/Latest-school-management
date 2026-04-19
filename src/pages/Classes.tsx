@@ -447,7 +447,7 @@ export default function Classes() {
             <DialogHeader>
               <DialogTitle className="text-white">Confirm Deletion</DialogTitle>
               <DialogDescription className="text-sidebar-foreground">
-                Are you sure you want to delete <span className="text-white font-semibold">{selectedClass?.name} - {selectedClass?.section}</span>? This will not delete students assigned to this class, but they will no longer be associated with it.
+                Are you sure you want to delete <span className="text-white font-semibold">{selectedClass?.name}{selectedClass?.section ? ` - ${selectedClass.section}` : ''}</span>? This will not delete students assigned to this class, but they will no longer be associated with it.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 sm:gap-0">

@@ -143,7 +143,7 @@ export default function Attendance() {
           const cls = classes.find(c => c.id === log.classId);
           acc[key] = {
             date: log.date,
-            className: cls ? `${cls.name} - ${cls.section}` : 'Loading...',
+            className: cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'Loading...',
             createdAt: log.createdAt,
             records: 0,
             present: 0
@@ -259,7 +259,7 @@ export default function Attendance() {
     setIsSaving(true);
     try {
       const selectedCls = classes.find(c => c.id === selectedClass);
-      const className = selectedCls ? `${selectedCls.name} - ${selectedCls.section}` : (selectedClass === 'all' ? 'All Classes' : selectedClass);
+      const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? ` - ${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All Classes' : selectedClass);
       const dateStr = format(date, 'yyyy-MM-dd');
       
       const batch = Object.entries(attendance).map(([studentId, status]) => {
@@ -293,13 +293,13 @@ export default function Attendance() {
     }
 
     const selectedCls = classes.find(c => c.id === selectedClass);
-    const className = selectedCls ? `${selectedCls.name}-${selectedCls.section}` : (selectedClass === 'all' ? 'All_Classes' : 'Class');
+    const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? `-${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All_Classes' : 'Class');
     const dateStr = format(date, 'yyyy-MM-dd');
 
     const headers = ['Roll Number', 'Student Name', 'Status', 'Date', 'Class'];
     const csvData = students.map(student => {
       const studentClass = classes.find(c => c.id === student.classId);
-      const studentClassName = studentClass ? `${studentClass.name}-${studentClass.section}` : 'N/A';
+      const studentClassName = studentClass ? `${studentClass.name}${studentClass.section ? `-${studentClass.section}` : ''}` : 'N/A';
       return [
         student.rollNumber,
         student.name,
@@ -349,7 +349,10 @@ export default function Attendance() {
                   {selectedClass === 'all' 
                     ? 'All Classes' 
                     : selectedClass && classes.find(c => c.id === selectedClass)
-                      ? `${classes.find(c => c.id === selectedClass)?.name} - ${classes.find(c => c.id === selectedClass)?.section}`
+                      ? (() => {
+                          const c = classes.find(cl => cl.id === selectedClass);
+                          return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : 'Select Class';
+                        })()
                       : "Select Class"}
                 </SelectValue>
               </SelectTrigger>
@@ -357,7 +360,7 @@ export default function Attendance() {
                 <SelectItem value="all">All Classes</SelectItem>
                 {classes.map((cls) => (
                   <SelectItem key={cls.id} value={cls.id}>
-                    {cls.name} - {cls.section}
+                    {cls.name}{cls.section ? ` - ${cls.section}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -582,7 +582,10 @@ export default function Exams() {
                 <p className="text-sm font-semibold capitalize whitespace-nowrap">{reportExamType.replace('_', ' ')}</p>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest hover:bg-none mt-2">Class Section</p>
                 <p className="text-sm font-semibold whitespace-nowrap">
-                  {classes.find(c => c.id === reportClassId)?.name}{classes.find(c => c.id === reportClassId)?.section ? ` - ${classes.find(c => c.id === reportClassId)?.section}` : ''}
+                  {(() => {
+                    const c = classes.find(cl => cl.id === reportClassId);
+                    return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : 'Loading...';
+                  })()}
                 </p>
               </div>
             </div>
@@ -1269,7 +1272,10 @@ export default function Exams() {
                         <SelectTrigger className="w-full bg-background border-border">
                           <SelectValue>
                             {selectedExam.classId && classes.find(c => c.id === selectedExam.classId) 
-                              ? `${classes.find(c => c.id === selectedExam.classId)?.name}${classes.find(c => c.id === selectedExam.classId)?.section ? ` - ${classes.find(c => c.id === selectedExam.classId)?.section}` : ''}`
+                              ? (() => {
+                                  const c = classes.find(cl => cl.id === selectedExam.classId);
+                                  return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : undefined;
+                                })()
                               : undefined}
                           </SelectValue>
                         </SelectTrigger>
