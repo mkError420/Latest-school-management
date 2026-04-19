@@ -45,6 +45,7 @@ export default function ClassRoutine() {
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [classes, setClasses] = useState<{id: string, name: string, section: string}[]>([]);
   const [teachers, setTeachers] = useState<{id: string, name: string}[]>([]);
+  const [subjects, setSubjects] = useState<{id: string, name: string, code: string}[]>([]);
   const [newRoutine, setNewRoutine] = useState({
     day: 'Monday',
     className: '',
@@ -90,6 +91,16 @@ export default function ClassRoutine() {
       setClasses(classData);
     });
 
+    const subjectQ = query(collection(db, 'subjects'), orderBy('name'));
+    const unsubscribeSubjects = onSnapshot(subjectQ, (snapshot) => {
+      const subjectData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+        code: doc.data().code
+      }));
+      setSubjects(subjectData);
+    });
+
     let unsubscribeStaff: (() => void) | undefined;
     if (isAdmin || isTeacher) {
       const staffQ = query(collection(db, 'staff'));
@@ -108,6 +119,7 @@ export default function ClassRoutine() {
     return () => {
       unsubscribe();
       unsubscribeClasses();
+      unsubscribeSubjects();
       if (unsubscribeStaff) unsubscribeStaff();
     };
   }, [isAdmin, isTeacher]);
@@ -383,12 +395,19 @@ export default function ClassRoutine() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="subject">Subject</Label>
-                        <Input 
+                        <select 
                           id="subject" 
-                          placeholder="e.g. Mathematics"
+                          className="w-full flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                           value={newRoutine.subject}
                           onChange={(e) => setNewRoutine({...newRoutine, subject: e.target.value})}
-                        />
+                        >
+                          <option value="" disabled className="text-black">Select Subject</option>
+                          {subjects.map(s => (
+                            <option key={s.id} value={s.name} className="text-black">
+                              {s.name} {s.code ? `(${s.code})` : ''}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="teacher">Teacher Name</Label>
