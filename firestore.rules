@@ -4,41 +4,10 @@ service cloud.firestore {
     // ===============================================================
     // Assumed Data Model
     // ===============================================================
-    //
-    // Collection: users
-    // Fields: uid, email, displayName, role (admin, teacher, parent, student), createdAt
-    //
-    // Collection: students
-    // Fields: name, rollNumber, classId, guardianPhone, status, etc.
-    //
-    // Collection: attendance
-    // Fields: studentId, classId, date, status, markedBy
-    //
-    // Collection: fees
-    // Fields: studentId, amount, type, status, date
-    //
-    // Collection: exams
-    // Fields: subject, classId, date, time, type, status, totalMarks, createdAt
-    //
-    // Collection: results
-    // Fields: studentId, studentName, examId, marksObtained, grade, remarks, updatedAt
-    //
-    // Collection: library_books
-    // Fields: title, author, total, available, isbn, category
-    //
-    // Collection: library_issues
-    // Fields: bookId, bookTitle, studentId, studentName, studentClass, issueDate, dueDate, returnDate, status
-    //
-    // Collection: staff
-    // Fields: name, role, salary, joinDate, status
-    //
-    // Collection: payroll
-    // Fields: staffId, staffName, role, month, amount, bonus, deductions, netSalary, status, paymentDate, paymentMethod
-    //
-    // Collection: notifications
-    // Fields: recipientId, title, message, type, read, createdAt
-    //
-    // ===============================================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
     // Helper Functions
     function isAuthenticated() {
@@ -50,15 +19,18 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Use get() to fetch the user document. If it doesn't exist, this will return null.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function hasRole(role) {
-      return isAuthenticated() && getUserData().role == role;
+      // Safely check for role using get() with a fallback to avoid errors if the field/doc is missing
+      return isAuthenticated() && getUserData().get('role', 'none') == role;
     }
 
     function isAdmin() {
-      return hasRole('admin') || request.auth.token.email == "mk.rabbani.cse@gmail.com";
+      // Put the email check first for immediate admin access regardless of DB state
+      return isAuthenticated() && (request.auth.token.email == "mk.rabbani.cse@gmail.com" || hasRole('admin'));
     }
 
     function isTeacher() {
@@ -139,6 +111,13 @@ service cloud.firestore {
              data.endTime is string && data.endTime.size() > 0;
     }
 
+    function isValidSubject(data) {
+      return data.keys().hasAll(['name', 'className']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.className is string && data.className.size() > 0 &&
+             (!data.keys().contains('code') || data.code is string);
+    }
+
     // Rules
     match /users/{uid} {
       allow read: if isAuthenticated();
@@ -154,7 +133,7 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if isAdmin() || isTeacher();
+      allow read: if isAuthenticated();
       allow write: if isAdmin() || isTeacher();
     }
 
@@ -217,6 +196,12 @@ service cloud.firestore {
     match /routine/{routineId} {
       allow read: if isAuthenticated();
       allow create, update: if (isAdmin() || isTeacher()) && isValidRoutine(request.resource.data);
+      allow delete: if isAdmin() || isTeacher();
+    }
+
+    match /subjects/{subjectId} {
+      allow read: if isAuthenticated();
+      allow create, update: if (isAdmin() || isTeacher()) && isValidSubject(request.resource.data);
       allow delete: if isAdmin() || isTeacher();
     }
   }

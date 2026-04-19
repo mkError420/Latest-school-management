@@ -253,9 +253,21 @@
         "teacher": { "type": "string" }
       },
       "required": ["day", "className", "subject", "startTime", "endTime"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "School subjects associated with specific classes.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "className": { "type": "string" }
+      },
+      "required": ["name", "className"]
     }
   },
   "firestore": {
+    "/subjects/{subjectId}": { "schema": "Subject", "description": "Subject definitions" },
     "/routine/{routineId}": { "schema": "Routine", "description": "Class routines" },
     "/users/{uid}": { "schema": "User", "description": "User profiles" },
     "/config/system": { "schema": "SystemConfig", "description": "Global settings" },

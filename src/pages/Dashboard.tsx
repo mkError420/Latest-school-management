@@ -154,100 +154,108 @@ export default function Dashboard() {
   }, [studentDocs, filterYear, filterMonth]);
 
   useEffect(() => {
-    // Upcoming Exams
+    if (!profile) return;
+
+    const unsubscribes: (() => void)[] = [];
+
+    // Upcoming Exams - Accessible to all authenticated users
     const examsQ = query(
       collection(db, 'exams'), 
       where('status', '==', 'scheduled'),
       orderBy('date', 'asc'),
       limit(5)
     );
-    
-    const unsubscribeExams = onSnapshot(examsQ, (snapshot) => {
+    unsubscribes.push(onSnapshot(examsQ, (snapshot) => {
       setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }));
 
-    // Recent Transactions
-    const transactionsQ = query(
-      collection(db, 'fees'),
-      orderBy('date', 'desc'),
-      limit(5)
-    );
-
-    const unsubscribeTransactions = onSnapshot(transactionsQ, (snapshot) => {
-      setRecentTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    // Total Students & Trends
-    const studentsQ = query(collection(db, 'students'));
-    const unsubscribeStudents = onSnapshot(studentsQ, (snapshot) => {
-      const studentData = snapshot.docs.map(doc => doc.data());
-      setStudentDocs(studentData);
-      
-      const total = studentData.length;
-      const now = new Date();
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const studentLastMonth = studentData.filter(s => {
-        const admissionDate = s.admissionDate || s.admittedAt || s.createdAt;
-        return admissionDate && new Date(admissionDate) < lastMonth;
-      }).length;
-      const growth = studentLastMonth > 0 ? ((total - studentLastMonth) / studentLastMonth) * 100 : 100;
-
-      setStats(prev => ({ 
-        ...prev, 
-        totalStudents: total, 
-        growthRate: growth
+    // Data only for Admin and Teachers
+    if (profile.role === 'admin' || profile.role === 'teacher') {
+      // Recent Transactions
+      const transactionsQ = query(
+        collection(db, 'fees'),
+        orderBy('date', 'desc'),
+        limit(5)
+      );
+      unsubscribes.push(onSnapshot(transactionsQ, (snapshot) => {
+        setRecentTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       }));
-    });
 
-    // Staff Count
-    const staffQ = query(collection(db, 'staff'));
-    const unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
-      setStats(prev => ({ ...prev, totalStaff: snapshot.docs.length }));
-    });
+      // Total Students & Trends
+      const studentsQ = query(collection(db, 'students'));
+      unsubscribes.push(onSnapshot(studentsQ, (snapshot) => {
+        const studentData = snapshot.docs.map(doc => doc.data());
+        setStudentDocs(studentData);
+        
+        const total = studentData.length;
+        const now = new Date();
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const studentLastMonth = studentData.filter(s => {
+          const admissionDate = s.admissionDate || s.admittedAt || s.createdAt;
+          return admissionDate && new Date(admissionDate) < lastMonth;
+        }).length;
+        const growth = studentLastMonth > 0 ? ((total - studentLastMonth) / studentLastMonth) * 100 : 100;
 
-    // Classes Count
-    const classesQ = query(collection(db, 'classes'));
-    const unsubscribeClasses = onSnapshot(classesQ, (snapshot) => {
-      setStats(prev => ({ ...prev, totalClasses: snapshot.docs.length }));
-    });
+        setStats(prev => ({ 
+          ...prev, 
+          totalStudents: total, 
+          growthRate: growth
+        }));
+      }));
 
-    // Revenue (Fees Collected)
-    const feesQ = query(collection(db, 'fees'), where('status', '==', 'paid'));
-    const unsubscribeFees = onSnapshot(feesQ, (snapshot) => {
-      const docs = snapshot.docs.map(doc => doc.data());
-      setFeeDocs(docs);
-      const total = docs.reduce((acc, d) => acc + (d.amount || 0), 0);
-      
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthly = docs.filter(d => d.date && new Date(d.date) >= monthStart).reduce((acc, d) => acc + (d.amount || 0), 0);
-      
-      setStats(prev => ({ ...prev, totalRevenue: total, monthlyRevenue: monthly }));
-    });
+      // Staff Count
+      const staffQ = query(collection(db, 'staff'));
+      unsubscribes.push(onSnapshot(staffQ, (snapshot) => {
+        setStats(prev => ({ ...prev, totalStaff: snapshot.docs.length }));
+      }));
 
-    // Cost (Payroll)
-    const payrollQ = query(collection(db, 'payroll'), where('status', '==', 'paid'));
-    const unsubscribePayroll = onSnapshot(payrollQ, (snapshot) => {
-      const docs = snapshot.docs.map(doc => doc.data());
-      setPayrollDocs(docs);
-      const total = docs.reduce((acc, d) => acc + (d.netSalary || 0), 0);
-      
-      const now = new Date();
-      const currentMonthStr = format(now, 'MMMM yyyy');
-      const monthly = docs.filter(d => d.month === currentMonthStr).reduce((acc, d) => acc + (d.netSalary || 0), 0);
-      
-      setStats(prev => ({ ...prev, totalCost: total, monthlyCost: monthly }));
-    });
+      // Classes Count
+      const classesQ = query(collection(db, 'classes'));
+      unsubscribes.push(onSnapshot(classesQ, (snapshot) => {
+        setStats(prev => ({ ...prev, totalClasses: snapshot.docs.length }));
+      }));
 
-    // Library Issues
-    const libraryQ = query(collection(db, 'library_issues'), where('status', '==', 'issued'));
-    const unsubscribeLibrary = onSnapshot(libraryQ, (snapshot) => {
-      setStats(prev => ({ ...prev, libraryIssues: snapshot.docs.length }));
-    });
+      // Library Issues
+      const libraryQ = query(collection(db, 'library_issues'), where('status', '==', 'issued'));
+      unsubscribes.push(onSnapshot(libraryQ, (snapshot) => {
+        setStats(prev => ({ ...prev, libraryIssues: snapshot.docs.length }));
+      }));
+    }
 
-    // Attendance
+    // Revenue and Payroll - Admin only
+    if (profile.role === 'admin') {
+      // Revenue (Fees Collected)
+      const feesQ = query(collection(db, 'fees'), where('status', '==', 'paid'));
+      unsubscribes.push(onSnapshot(feesQ, (snapshot) => {
+        const docs = snapshot.docs.map(doc => doc.data());
+        setFeeDocs(docs);
+        const total = docs.reduce((acc, d) => acc + (d.amount || 0), 0);
+        
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthly = docs.filter(d => d.date && new Date(d.date) >= monthStart).reduce((acc, d) => acc + (d.amount || 0), 0);
+        
+        setStats(prev => ({ ...prev, totalRevenue: total, monthlyRevenue: monthly }));
+      }));
+
+      // Cost (Payroll)
+      const payrollQ = query(collection(db, 'payroll'), where('status', '==', 'paid'));
+      unsubscribes.push(onSnapshot(payrollQ, (snapshot) => {
+        const docs = snapshot.docs.map(doc => doc.data());
+        setPayrollDocs(docs);
+        const total = docs.reduce((acc, d) => acc + (d.netSalary || 0), 0);
+        
+        const now = new Date();
+        const currentMonthStr = format(now, 'MMMM yyyy');
+        const monthly = docs.filter(d => d.month === currentMonthStr).reduce((acc, d) => acc + (d.netSalary || 0), 0);
+        
+        setStats(prev => ({ ...prev, totalCost: total, monthlyCost: monthly }));
+      }));
+    }
+
+    // Attendance - Accessible to all authenticated users
     const attendanceQ = query(collection(db, 'attendance'), limit(200));
-    const unsubscribeAttendance = onSnapshot(attendanceQ, (snapshot) => {
+    unsubscribes.push(onSnapshot(attendanceQ, (snapshot) => {
       if (snapshot.empty) {
         setStats(prev => ({ ...prev, avgAttendance: 95.0 }));
         return;
@@ -255,20 +263,12 @@ export default function Dashboard() {
       const present = snapshot.docs.filter(d => d.data().status === 'present').length;
       const avg = (present / snapshot.docs.length) * 100;
       setStats(prev => ({ ...prev, avgAttendance: avg }));
-    });
+    }));
 
     return () => {
-      unsubscribeExams();
-      unsubscribeTransactions();
-      unsubscribeStudents();
-      unsubscribeStaff();
-      unsubscribeClasses();
-      unsubscribeFees();
-      unsubscribePayroll();
-      unsubscribeLibrary();
-      unsubscribeAttendance();
+      unsubscribes.forEach(unsub => unsub());
     };
-  }, []);
+  }, [profile]);
 
   const StatCard = ({ title, value, trend, trendDown }: any) => (
     <Card className="bg-card border-border rounded-xl p-5 flex flex-col shadow-none">

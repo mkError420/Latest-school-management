@@ -90,24 +90,27 @@ export default function ClassRoutine() {
       setClasses(classData);
     });
 
-    const staffQ = query(collection(db, 'staff'));
-    const unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
-      const staffData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name,
-        role: doc.data().role,
-        status: doc.data().status
-      }));
-      const activeTeachers = staffData.filter(s => s.role.toLowerCase() === 'teacher' && s.status === 'active');
-      setTeachers(activeTeachers);
-    });
+    let unsubscribeStaff: (() => void) | undefined;
+    if (isAdmin || isTeacher) {
+      const staffQ = query(collection(db, 'staff'));
+      unsubscribeStaff = onSnapshot(staffQ, (snapshot) => {
+        const staffData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name,
+          role: doc.data().role,
+          status: doc.data().status
+        }));
+        const activeTeachers = staffData.filter(s => s.role.toLowerCase() === 'teacher' && s.status === 'active');
+        setTeachers(activeTeachers);
+      });
+    }
 
     return () => {
       unsubscribe();
       unsubscribeClasses();
-      unsubscribeStaff();
+      if (unsubscribeStaff) unsubscribeStaff();
     };
-  }, []);
+  }, [isAdmin, isTeacher]);
 
   const handlePrint = () => {
     document.body.classList.add('report-printing');

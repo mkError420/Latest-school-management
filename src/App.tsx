@@ -18,6 +18,7 @@ import Fees from '@/src/pages/Fees';
 import Exams from '@/src/pages/Exams';
 import Library from '@/src/pages/Library';
 import ClassRoutine from '@/src/pages/ClassRoutine';
+import Subjects from '@/src/pages/Subjects';
 import Payroll from '@/src/pages/Payroll';
 import Settings from '@/src/pages/Settings';
 import Unauthorized from '@/src/pages/Unauthorized';
@@ -75,6 +76,12 @@ export default function App() {
           <Route path="/routine" element={
             <ProtectedRoute>
               <ClassRoutine />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/subjects" element={
+            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+              <Subjects />
             </ProtectedRoute>
           } />
           
