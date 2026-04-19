@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { 
   Table, 
   TableHeader, 
@@ -31,7 +32,7 @@ interface RoutineEntry {
 
 export default function ClassRoutine() {
   const [routine, setRoutine] = useState<RoutineEntry[]>([]);
-  const { isAdmin, isTeacher } = useAuth();
+  const { isAdmin, isTeacher, systemConfig } = useAuth();
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [classes, setClasses] = useState<{id: string, name: string, section: string}[]>([]);
@@ -101,7 +102,9 @@ export default function ClassRoutine() {
   }, []);
 
   const handlePrint = () => {
+    document.body.classList.add('report-printing');
     window.print();
+    document.body.classList.remove('report-printing');
   };
 
   const dayOptions = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -168,7 +171,93 @@ export default function ClassRoutine() {
   };
 
   return (
-    <DashboardLayout>
+    <>
+      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans relative overflow-hidden">
+        <div className="space-y-8 relative z-10">
+          {/* Watermarks */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -z-10 rotate-[-45deg]">
+             <span className="text-[120px] font-black uppercase whitespace-nowrap">{systemConfig?.schoolName || 'EDUFLOW'}</span>
+          </div>
+          {systemConfig?.schoolLogoUrl && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none -z-20">
+              <img src={systemConfig.schoolLogoUrl} alt="Watermark" className="w-[500px] h-[500px] object-contain" referrerPolicy="no-referrer" />
+            </div>
+          )}
+
+          {/* Header */}
+          <div className="flex justify-between items-start border-b-2 border-black pb-6">
+            <div className="flex gap-4">
+              {systemConfig?.schoolLogoUrl && (
+                <img src={systemConfig.schoolLogoUrl} alt="Logo" className="h-20 w-auto object-contain" referrerPolicy="no-referrer" />
+              )}
+              <div className="space-y-1">
+                <h1 className="text-2xl font-bold uppercase tracking-tight">Class Routine</h1>
+                <h2 className="text-xl font-semibold text-gray-800">{systemConfig?.schoolName || 'School Management System'}</h2>
+                <p className="text-sm text-gray-600">{systemConfig?.address || '123 Education Lane, Learning City'}</p>
+                <p className="text-sm text-gray-600">
+                  Phone: {systemConfig?.phone || '+880 1234 567890'} | Email: {systemConfig?.email || 'info@school.edu'}
+                </p>
+              </div>
+            </div>
+            <div className="text-right space-y-1">
+              <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2 uppercase">Official Schedule</div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Academic Year</p>
+              <p className="text-sm font-semibold">{systemConfig?.academicYear || '2023-2024'}</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Printed On</p>
+              <p className="text-sm font-semibold">{format(new Date(), 'MMMM dd, yyyy')}</p>
+            </div>
+          </div>
+
+          {/* Routine Table */}
+          <div className="space-y-6">
+            {dayOptions.map(day => {
+              const dayEntries = routine.filter(r => r.day === day);
+              if (dayEntries.length === 0) return null;
+              
+              return (
+                <div key={day} className="break-inside-avoid">
+                  <h3 className="text-lg font-bold text-black border-l-4 border-black pl-3 mb-3 bg-gray-100 py-1 uppercase tracking-wider">{day}</h3>
+                  <Table className="border border-black">
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-black font-bold border border-black h-10">Class</TableHead>
+                        <TableHead className="text-black font-bold border border-black h-10">Subject</TableHead>
+                        <TableHead className="text-black font-bold border border-black h-10">Teacher</TableHead>
+                        <TableHead className="text-black font-bold border border-black h-10 text-right">Time Range</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dayEntries.map(entry => (
+                        <TableRow key={entry.id} className="border-black">
+                          <TableCell className="text-black border border-black py-2 font-medium">{entry.className}</TableCell>
+                          <TableCell className="text-black border border-black py-2">{entry.subject}</TableCell>
+                          <TableCell className="text-black border border-black py-2">{entry.teacher}</TableCell>
+                          <TableCell className="text-black border border-black py-2 text-right font-mono text-sm">{entry.startTime} - {entry.endTime}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="mt-12 flex justify-between items-end">
+            <div className="space-y-4">
+              <div className="w-48 border-b border-black"></div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Principal Signature</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-gray-400 italic">
+                This is a computer-generated schedule. No physical signature is required for its validity.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DashboardLayout>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center no-print">
           <h2 className="text-3xl font-bold text-white">Class Routine</h2>
@@ -352,5 +441,6 @@ export default function ClassRoutine() {
         </Card>
       </div>
     </DashboardLayout>
+    </>
   );
 }

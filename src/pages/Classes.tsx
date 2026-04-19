@@ -237,7 +237,7 @@ export default function Classes() {
                     <Select 
                       required 
                       value={newClass.teacher} 
-                      onValueChange={val => setNewClass({...newClass, teacher: val})}
+                      onValueChange={val => setNewClass({...newClass, teacher: val || ''})}
                     >
                       <SelectTrigger className="w-full bg-background border-border">
                         <SelectValue placeholder="Select a teacher" />
@@ -395,7 +395,7 @@ export default function Classes() {
                     <Select 
                       required 
                       value={selectedClass.teacher || ''} 
-                      onValueChange={val => setSelectedClass({...selectedClass, teacher: val})}
+                      onValueChange={val => setSelectedClass({...selectedClass, teacher: val || ''})}
                     >
                       <SelectTrigger className="w-full bg-background border-border">
                         <SelectValue placeholder="Select a teacher">

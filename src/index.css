@@ -127,12 +127,21 @@
 }
 
 @layer utilities {
-@media print {
+  @media print {
     body, html {
       background-color: white !important;
       color: black !important;
+      overflow: visible !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
-    
+
+    body.report-printing #root,
+    body.report-printing [role="dialog"],
+    body.report-printing [data-radix-portal] {
+      visibility: hidden !important;
+    }
+
     .no-print, 
     button, 
     nav, 
@@ -187,6 +196,7 @@
     color: black !important;
     padding: 0 !important;
     margin: 0 !important;
+    z-index: 9999 !important;
   }
 }
 
@@ -200,7 +210,7 @@
       display: none !important;
     }
 
-    /* Ensure the portal container is visible */
+    /* Ensure the portal container is visible if needed */
     [data-radix-portal], [data-slot="dialog-portal"] {
       position: static !important;
       display: block !important;
