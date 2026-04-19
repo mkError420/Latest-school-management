@@ -582,7 +582,7 @@ export default function Exams() {
                       </th>
                     ))}
                     <th className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase w-12">Total</th>
-                    <th className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase w-12">GPA</th>
+                    <th className="border border-black px-1 py-2 text-center text-[10px] font-bold uppercase w-12">GPA(5.00)</th>
                   </tr>
                 </thead>
                 <tbody>

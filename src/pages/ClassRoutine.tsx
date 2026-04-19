@@ -105,16 +105,27 @@ export default function ClassRoutine() {
       return;
     }
 
-    // Check for teacher schedule collision
-    const collision = routine.some(entry =>
+    // Check for schedule collisions
+    const teacherCollision = routine.some(entry =>
       entry.id !== editingRoutineId &&
       entry.day === newRoutine.day &&
       entry.teacher === newRoutine.teacher &&
       (newRoutine.startTime < entry.endTime && entry.startTime < newRoutine.endTime)
     );
 
-    if (collision) {
+    const classCollision = routine.some(entry =>
+      entry.id !== editingRoutineId &&
+      entry.day === newRoutine.day &&
+      entry.className === newRoutine.className &&
+      (newRoutine.startTime < entry.endTime && entry.startTime < newRoutine.endTime)
+    );
+
+    if (teacherCollision) {
       toast.error('This teacher is already assigned to another class at this time');
+      return;
+    }
+    if (classCollision) {
+      toast.error('This class already has a subject scheduled at this time');
       return;
     }
 
