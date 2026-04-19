@@ -343,6 +343,22 @@ export default function Payroll() {
       const amount = selectedStaff.salary;
       const bonus = Number(newPayroll.bonus);
       const deductions = Number(newPayroll.deductions);
+
+      if (isNaN(bonus) || bonus < 0) {
+        toast.error('Bonus amount must be a valid non-negative number');
+        return;
+      }
+
+      if (isNaN(deductions) || deductions < 0) {
+        toast.error('Deductions amount must be a valid non-negative number');
+        return;
+      }
+
+      if (deductions > amount + bonus) {
+        toast.error('Deductions cannot exceed the total earnings (Salary + Bonus)');
+        return;
+      }
+
       const netSalary = amount + bonus - deductions;
 
       await addDoc(collection(db, 'payroll'), {
@@ -996,6 +1012,8 @@ export default function Payroll() {
                         <label className="text-sm font-medium text-sidebar-foreground">Bonus Amount (৳)</label>
                         <Input 
                           type="number" 
+                          min="0"
+                          step="0.01"
                           value={newPayroll.bonus} 
                           onChange={e => setNewPayroll({...newPayroll, bonus: e.target.value})}
                           className="bg-background border-border"
@@ -1007,6 +1025,8 @@ export default function Payroll() {
                         <label className="text-sm font-medium text-sidebar-foreground">Deductions (৳)</label>
                         <Input 
                           type="number" 
+                          min="0"
+                          step="0.01"
                           value={newPayroll.deductions} 
                           onChange={e => setNewPayroll({...newPayroll, deductions: e.target.value})}
                           className="bg-background border-border"
