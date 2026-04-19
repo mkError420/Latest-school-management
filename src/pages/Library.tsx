@@ -23,6 +23,21 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell,
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -472,6 +487,52 @@ export default function Library() {
     available: books.reduce((acc, b) => acc + b.available, 0)
   };
 
+  const categoryData = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    books.forEach(book => {
+      counts[book.category] = (counts[book.category] || 0) + book.total;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [books]);
+
+  const issueStatsData = React.useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyDataMap: Record<string, { month: string, issues: number, timestamp: number }> = {};
+    
+    // Initialize last 6 months
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = months[d.getMonth()];
+      monthlyDataMap[m] = { month: m, issues: 0, timestamp: d.getTime() };
+    }
+
+    issues.forEach(issue => {
+      const d = new Date(issue.issueDate);
+      const m = months[d.getMonth()];
+      if (monthlyDataMap[m]) {
+        monthlyDataMap[m].issues++;
+      }
+    });
+
+    return Object.values(monthlyDataMap).sort((a, b) => a.timestamp - b.timestamp);
+  }, [issues]);
+
+  const availabilityData = React.useMemo(() => {
+    return books
+      .sort((a, b) => (b.total - a.total))
+      .slice(0, 6)
+      .map(book => ({
+        name: book.title.length > 15 ? book.title.substring(0, 12) + '...' : book.title,
+        fullTitle: book.title,
+        total: book.total,
+        available: book.available,
+        issued: book.total - book.available
+      }));
+  }, [books]);
+
+  const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f472b6'];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -705,6 +766,7 @@ export default function Library() {
           <TabsList className="bg-sidebar-accent/50 p-1 rounded-lg mb-6 border border-border">
             <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-white">Book Inventory</TabsTrigger>
             <TabsTrigger value="issues" className="data-[state=active]:bg-primary data-[state=active]:text-white">Issued Books</TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="inventory" className="space-y-6">
@@ -970,6 +1032,96 @@ export default function Library() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-card border-border shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-white">Books by Category</CardTitle>
+                  <CardDescription className="text-sidebar-foreground">Overall distribution of books in inventory</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                      >
+                        {categoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border-border shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-white">Monthly Issuance Trend</CardTitle>
+                  <CardDescription className="text-sidebar-foreground">Library activity over the last 6 months</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={issueStatsData}>
+                      <defs>
+                        <linearGradient id="colorIssues" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                      <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Area type="monotone" dataKey="issues" stroke="#3b82f6" fillOpacity={1} fill="url(#colorIssues)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border-border shadow-none lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-white">Top Books Availability</CardTitle>
+                  <CardDescription className="text-sidebar-foreground">Stock status of most popular titles</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={availabilityData} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" />
+                      <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                        itemStyle={{ color: '#fff' }}
+                        cursor={{ fill: '#334155' }}
+                      />
+                      <Legend 
+                        verticalAlign="top" 
+                        align="right" 
+                        wrapperStyle={{ paddingBottom: '20px' }}
+                      />
+                      <Bar dataKey="available" name="Available" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="issued" name="Issued" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
