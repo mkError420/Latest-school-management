@@ -300,7 +300,7 @@ export default function Fees() {
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Student Details</h3>
                 <div className="space-y-1">
                   <p className="text-base font-bold">{selectedFee.studentName}</p>
-                  <p className="text-sm text-gray-700">Roll Number: <span className="font-semibold">{selectedFee.rollNumber}</span></p>
+                  <p className="text-sm text-gray-700">Roll Number: <span className="font-semibold">{selectedFee.rollNumber || students.find(s => s.id === selectedFee.studentId)?.rollNumber || 'N/A'}</span></p>
                   <p className="text-sm text-gray-700">Class: <span className="font-semibold">{classes.find(c => c.id === selectedFee.classId)?.name}</span></p>
                 </div>
               </div>
@@ -766,7 +766,7 @@ export default function Fees() {
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-1">Student Details</h3>
                       <div className="space-y-1">
                         <p className="text-base font-bold">{selectedFee.studentName}</p>
-                        <p className="text-sm text-gray-700">Roll Number: <span className="font-semibold">{selectedFee.rollNumber || students.find(s => s.id === selectedFee.studentId)?.rollNumber}</span></p>
+                        <p className="text-sm text-gray-700">Roll Number: <span className="font-semibold">{selectedFee.rollNumber || students.find(s => s.id === selectedFee.studentId)?.rollNumber || 'N/A'}</span></p>
                         <p className="text-sm text-gray-700">Class: <span className="font-semibold">{classes.find(c => c.id === selectedFee.classId)?.name}</span></p>
                       </div>
                     </div>
