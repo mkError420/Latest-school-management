@@ -182,92 +182,106 @@ export default function ClassRoutine() {
     }
   };
 
+  const timeSlots = Array.from(new Set(filteredRoutine.map(r => `${r.startTime} - ${r.endTime}`)))
+    .sort((a, b) => {
+      const timeA = a.split(' - ')[0];
+      const timeB = b.split(' - ')[0];
+      return timeA.localeCompare(timeB);
+    });
+
   return (
     <>
-      <div className="print-only p-8 max-w-[210mm] mx-auto bg-white text-black font-sans relative overflow-hidden">
-        <div className="space-y-8 relative z-10">
-          {/* Watermarks */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none -z-10 rotate-[-45deg]">
-             <span className="text-[120px] font-black uppercase whitespace-nowrap">{systemConfig?.schoolName || 'EDUFLOW'}</span>
-          </div>
-          {systemConfig?.schoolLogoUrl && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none -z-20">
-              <img src={systemConfig.schoolLogoUrl} alt="Watermark" className="w-[500px] h-[500px] object-contain" referrerPolicy="no-referrer" />
-            </div>
-          )}
-
-          {/* Header */}
-          <div className="flex justify-between items-start border-b-2 border-black pb-6">
-            <div className="flex gap-4">
-              {systemConfig?.schoolLogoUrl && (
-                <img src={systemConfig.schoolLogoUrl} alt="Logo" className="h-20 w-auto object-contain" referrerPolicy="no-referrer" />
-              )}
-              <div className="space-y-1">
-                <h1 className="text-2xl font-bold uppercase tracking-tight">Class Routine</h1>
-                <h2 className="text-xl font-semibold text-gray-800">{systemConfig?.schoolName || 'School Management System'}</h2>
-                <p className="text-sm text-gray-600">{systemConfig?.address || '123 Education Lane, Learning City'}</p>
-                <p className="text-sm text-gray-600">
-                  Phone: {systemConfig?.phone || '+880 1234 567890'} | Email: {systemConfig?.email || 'info@school.edu'}
-                </p>
+      <div className="print-only p-8 max-w-[297mm] mx-auto bg-white text-black font-sans relative overflow-hidden min-h-screen">
+        {/* Colorful Grid Print View */}
+        <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white min-h-[90vh]">
+          {/* Vibrant Header */}
+          <div className="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 p-8 flex justify-between items-center relative gap-4">
+            <h1 className="text-6xl font-black text-white italic drop-shadow-[4px_4px_0px_rgba(0,0,0,0.2)] tracking-tighter">
+              Class Schedule
+            </h1>
+            
+            <div className="bg-white/95 rounded-xl p-4 min-w-[300px] shadow-lg border-2 border-white/20">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <span className="font-bold text-gray-500 min-w-[80px] uppercase text-xs tracking-widest">Name :</span>
+                  <span className="font-bold text-indigo-900 text-lg">{selectedClass !== 'all' ? selectedClass : 'General Schedule'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-500 min-w-[80px] uppercase text-xs tracking-widest">Year :</span>
+                  <span className="font-bold text-indigo-900 text-lg">{systemConfig?.academicYear || '2023-2024'}</span>
+                </div>
               </div>
             </div>
-            <div className="text-right space-y-1">
-              <div className="bg-black text-white px-3 py-1 text-xs font-bold inline-block mb-2 uppercase">Official Schedule</div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Academic Year</p>
-              <p className="text-sm font-semibold">{systemConfig?.academicYear || '2023-2024'}</p>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">Printed On</p>
-              <p className="text-sm font-semibold">{format(new Date(), 'MMMM dd, yyyy')}</p>
-            </div>
+            
+            {/* Logo in top right if available */}
+            {systemConfig?.schoolLogoUrl && (
+              <img src={systemConfig.schoolLogoUrl} alt="Logo" className="absolute -top-4 -right-4 h-32 w-32 opacity-10 rotate-12" />
+            )}
           </div>
 
-          {/* Routine Table */}
-          <Table className="border border-black">
-            <TableHeader>
-              <TableRow className="bg-gray-50 border-black">
-                <TableHead className="text-black font-bold border border-black h-10 w-[20%]">Class</TableHead>
-                <TableHead className="text-black font-bold border border-black h-10 w-[30%]">Subject</TableHead>
-                <TableHead className="text-black font-bold border border-black h-10 w-[25%]">Teacher</TableHead>
-                <TableHead className="text-black font-bold border border-black h-10 w-[25%] text-right">Time Range</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dayOptions.map(day => {
-                const dayEntries = filteredRoutine.filter(r => r.day === day);
-                if (dayEntries.length === 0) return null;
-                
-                return (
-                  <React.Fragment key={day}>
-                    {/* Day Header Row */}
-                    <TableRow className="bg-gray-100 border-black break-inside-avoid">
-                      <TableCell colSpan={4} className="text-black font-bold border border-black py-2 uppercase tracking-widest text-left pl-4">
-                        <span className="border-l-4 border-black pl-2">{day}</span>
-                      </TableCell>
-                    </TableRow>
-                    {/* Entries for the Day */}
-                    {dayEntries.map(entry => (
-                      <TableRow key={entry.id} className="border-black break-inside-avoid">
-                        <TableCell className="text-black border border-black py-2 font-medium">{entry.className}</TableCell>
-                        <TableCell className="text-black border border-black py-2">{entry.subject}</TableCell>
-                        <TableCell className="text-black border border-black py-2">{entry.teacher}</TableCell>
-                        <TableCell className="text-black border border-black py-2 text-right font-mono text-sm">{entry.startTime} - {entry.endTime}</TableCell>
-                      </TableRow>
-                    ))}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+          {/* Grid Container */}
+          <div className="p-8 bg-gradient-to-br from-indigo-50 to-purple-50 flex-grow min-h-[80vh]">
+            <div className="grid grid-cols-8 gap-3">
+              {/* Header: Time + Days */}
+              <div className="bg-cyan-400 text-white rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-lg h-14 shadow-md border-b-4 border-cyan-600">
+                Time
+              </div>
+              {dayOptions.map((day, idx) => (
+                <div 
+                  key={day} 
+                  className={`rounded-xl flex items-center justify-center font-black uppercase tracking-widest text-lg h-14 shadow-md border-b-4 ${
+                    idx % 2 === 0 ? 'bg-pink-300 text-pink-900 border-pink-400' : 'bg-cyan-300 text-cyan-900 border-cyan-400'
+                  }`}
+                >
+                  {day}
+                </div>
+              ))}
 
-          {/* Footer */}
-          <div className="mt-12 flex justify-between items-end">
+              {/* Rows */}
+              {timeSlots.map((slot, rowIdx) => (
+                <React.Fragment key={slot}>
+                  {/* Time Row Label */}
+                  <div className={`rounded-xl flex items-center justify-center font-bold text-lg h-24 shadow-sm border-b-2 ${
+                    rowIdx % 2 === 0 ? 'bg-pink-100 text-pink-800 border-pink-200' : 'bg-cyan-100 text-cyan-800 border-cyan-200'
+                  }`}>
+                    {slot}
+                  </div>
+                  
+                  {/* Day Cells */}
+                  {dayOptions.map((day) => {
+                    const entries = filteredRoutine.filter(r => r.day === day && `${r.startTime} - ${r.endTime}` === slot);
+                    return (
+                      <div key={`${day}-${slot}`} className="bg-white rounded-xl shadow-inner border border-white p-2 min-h-[96px] flex flex-col items-center justify-center text-center">
+                        {entries.map(entry => (
+                          <div key={entry.id} className="space-y-1">
+                            <p className="font-black text-indigo-900 text-sm leading-tight uppercase">{entry.subject}</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase overflow-hidden whitespace-nowrap text-ellipsis max-w-[100px]">{entry.teacher}</p>
+                            {selectedClass === 'all' && (
+                              <p className="text-[10px] font-black text-cyan-600">{entry.className}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+          
+          {/* Signature and Footer */}
+          <div className="p-8 flex justify-between items-end bg-white border-t-2 border-indigo-50">
             <div className="space-y-4">
-              <div className="w-48 border-b border-black"></div>
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Principal Signature</p>
+              <div className="w-64 h-0.5 bg-indigo-900/10 mb-2"></div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-900/40">Principal Signature</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-gray-400 italic">
-                This is a computer-generated schedule. No physical signature is required for its validity.
-              </p>
+               <p className="text-xs font-bold text-indigo-900/50 uppercase tracking-widest">
+                 {systemConfig?.schoolName || 'Education Management'}
+               </p>
+               <p className="text-[10px] text-gray-400 italic mt-1">
+                 Official document generated on {format(new Date(), 'dd MMMM yyyy')}
+               </p>
             </div>
           </div>
         </div>
