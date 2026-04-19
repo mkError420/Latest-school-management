@@ -94,11 +94,18 @@ interface Class {
   section: string;
 }
 
+interface Subject {
+  id: string;
+  name: string;
+  code: string;
+}
+
 export default function Exams() {
   const { systemConfig } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -223,10 +230,20 @@ export default function Exams() {
       setStudents(studentData);
     });
 
+    const subjectsQuery = query(collection(db, 'subjects'), orderBy('name'));
+    const unsubscribeSubjects = onSnapshot(subjectsQuery, (snapshot) => {
+      const subjectData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Subject[];
+      setSubjects(subjectData);
+    });
+
     return () => {
       unsubscribe();
       unsubscribeClasses();
       unsubscribeStudents();
+      unsubscribeSubjects();
     };
   }, []);
 
@@ -831,13 +848,21 @@ export default function Exams() {
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-sidebar-foreground">Subject</label>
-                      <Input 
-                        required 
+                      <Select 
                         value={newExam.subject || ''} 
-                        onChange={e => setNewExam({...newExam, subject: e.target.value})}
-                        placeholder="Mathematics" 
-                        className="bg-background border-border"
-                      />
+                        onValueChange={val => setNewExam({...newExam, subject: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select Subject" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {subjects.map((sub) => (
+                            <SelectItem key={sub.id} value={sub.name}>
+                              {sub.name} {sub.code ? `(${sub.code})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -1218,12 +1243,21 @@ export default function Exams() {
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-sidebar-foreground">Subject</label>
-                    <Input 
-                      required 
+                    <Select 
                       value={selectedExam.subject || ''} 
-                      onChange={e => setSelectedExam({...selectedExam, subject: e.target.value})}
-                      className="bg-background border-border"
-                    />
+                      onValueChange={val => setSelectedExam({...selectedExam, subject: val || ''})}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Select Subject" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border">
+                        {subjects.map((sub) => (
+                          <SelectItem key={sub.id} value={sub.name}>
+                            {sub.name} {sub.code ? `(${sub.code})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
