@@ -47,23 +47,45 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     navigate('/login');
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'teacher', 'parent', 'student'] },
-    { name: 'Classes', href: '/classes', icon: GraduationCap, roles: ['admin', 'teacher'] },
-    { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
-    { name: 'Attendance', href: '/attendance', icon: CalendarCheck, roles: ['admin', 'teacher'] },
-    { name: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['admin', 'teacher'] },
-    { name: 'Fees', href: '/fees', icon: CreditCard, roles: ['admin', 'parent'] },
-    { name: 'Exams', href: '/exams', icon: GraduationCap, roles: ['admin', 'teacher', 'student', 'parent'] },
-    { name: 'Library', href: '/library', icon: Library, roles: ['admin', 'teacher', 'student'] },
-    { name: 'Class Routine', href: '/routine', icon: Clock3, roles: ['admin', 'teacher', 'student', 'parent'] },
-    { name: 'Payroll', href: '/payroll', icon: Banknote, roles: ['admin'] },
-    { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'teacher', 'parent', 'student'] },
+  const navigationGroups = [
+    {
+      title: 'Management',
+      roles: ['admin', 'teacher', 'parent', 'student'],
+      items: [
+        { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'teacher', 'parent', 'student'] },
+      ]
+    },
+    {
+      title: 'Academic',
+      roles: ['admin', 'teacher', 'parent', 'student'],
+      items: [
+        { name: 'Classes', href: '/classes', icon: GraduationCap, roles: ['admin', 'teacher'] },
+        { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
+        { name: 'Attendance', href: '/attendance', icon: CalendarCheck, roles: ['admin', 'teacher'] },
+        { name: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['admin', 'teacher'] },
+        { name: 'Class Routine', href: '/routine', icon: Clock3, roles: ['admin', 'teacher', 'student', 'parent'] },
+        { name: 'Exams', href: '/exams', icon: GraduationCap, roles: ['admin', 'teacher', 'student', 'parent'] },
+      ]
+    },
+    {
+      title: 'Staff Payroll',
+      roles: ['admin'],
+      items: [
+        { name: 'Staff Directory', href: '/payroll?tab=staff', icon: Users, roles: ['admin'] },
+        { name: 'Payroll History', href: '/payroll?tab=history', icon: Banknote, roles: ['admin'] },
+        { name: 'Staff Attendance', href: '/payroll?tab=attendance', icon: CalendarCheck, roles: ['admin'] },
+      ]
+    },
+    {
+      title: 'Institutional',
+      roles: ['admin', 'teacher', 'parent', 'student'],
+      items: [
+        { name: 'Fees', href: '/fees', icon: CreditCard, roles: ['admin', 'parent'] },
+        { name: 'Library', href: '/library', icon: Library, roles: ['admin', 'teacher', 'student'] },
+        { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'teacher', 'parent', 'student'] },
+      ]
+    }
   ];
-
-  const filteredNavigation = navigation.filter(item => 
-    profile && item.roles.includes(profile.role)
-  );
 
   const NavContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -84,26 +106,43 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </>
         )}
       </div>
-      <nav className="flex-1 space-y-1">
-        <div className="px-6 mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">Main Menu</p>
-        </div>
-        {filteredNavigation.map((item) => {
-          const isActive = location.pathname === item.href;
+      <nav className="flex-1 space-y-8 overflow-y-auto custom-scrollbar">
+        {navigationGroups.map((group) => {
+          const filteredItems = group.items.filter(item => 
+            profile && item.roles.includes(profile.role)
+          );
+          
+          if (filteredItems.length === 0) return null;
+
           return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={cn(
-                "flex items-center px-6 py-3 text-[13px] font-medium transition-all relative",
-                isActive 
-                  ? "bg-sidebar-accent text-white border-r-3 border-primary" 
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-white"
-              )}
-            >
-              <item.icon className="w-4 h-4 mr-3" />
-              {item.name}
-            </Link>
+            <div key={group.title} className="space-y-1">
+              <div className="px-6 mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600/80">{group.title}</p>
+              </div>
+              {filteredItems.map((item) => {
+                const isActive = location.pathname === item.href.split('?')[0] && 
+                                (!item.href.includes('?tab=') || location.search.includes(item.href.split('?')[1]));
+                
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn(
+                      "flex items-center px-6 py-2.5 text-[12px] font-medium transition-all relative group",
+                      isActive 
+                        ? "bg-primary/10 text-primary border-r-2 border-primary" 
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
+                    )}
+                  >
+                    <item.icon className={cn(
+                      "w-4 h-4 mr-3 transition-colors",
+                      isActive ? "text-primary" : "text-sidebar-foreground/40 group-hover:text-white"
+                    )} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </nav>

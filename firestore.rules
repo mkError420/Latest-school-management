@@ -30,7 +30,11 @@ service cloud.firestore {
 
     function isAdmin() {
       // Put the email check first for immediate admin access regardless of DB state
-      return isAuthenticated() && (request.auth.token.email == "mk.rabbani.cse@gmail.com" || hasRole('admin'));
+      return isAuthenticated() && (
+        request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
+        request.auth.token.email == "jakir995627@gmail.com" || 
+        hasRole('admin')
+      );
     }
 
     function isTeacher() {

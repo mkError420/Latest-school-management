@@ -78,6 +78,7 @@ import { db, storage, handleFirestoreError, OperationType } from '@/src/lib/fire
 import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface Staff {
@@ -123,6 +124,12 @@ interface StaffAttendance {
 
 export default function Payroll() {
   const { systemConfig } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'history';
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
   const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1214,7 +1221,7 @@ export default function Payroll() {
           </div>
         </div>
 
-        <Tabs defaultValue="history" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-card border border-border p-1">
             <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-white">
               Payroll History

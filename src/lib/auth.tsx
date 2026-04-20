@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     systemConfig,
     loading,
-    isAdmin: profile?.role === 'admin',
+    isAdmin: profile?.role === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com',
     isTeacher: profile?.role === 'teacher',
     isParent: profile?.role === 'parent',
     isStudent: profile?.role === 'student',
