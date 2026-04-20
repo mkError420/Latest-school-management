@@ -10,7 +10,8 @@ import {
   Activity,
   UserCheck2,
   UserPlus2,
-  Users2
+  Users2,
+  Search
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -31,6 +32,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   Select, 
   SelectContent, 
@@ -71,6 +73,7 @@ export default function Attendance() {
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
@@ -322,6 +325,11 @@ export default function Attendance() {
     toast.success('Attendance exported successfully');
   };
 
+  const filteredStudents = students.filter(student => 
+    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -426,8 +434,30 @@ export default function Attendance() {
         {/* Student Roster Row */}
         <div className="bg-card rounded-xl border border-border overflow-hidden shadow-none">
           <div className="p-5 border-b border-border flex justify-between items-center bg-sidebar-accent/5">
-             <h3 className="text-sm font-bold text-white uppercase tracking-tight">Student Roster</h3>
+             <div className="flex items-center gap-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-tight">Student Roster</h3>
+              <div className="relative w-64 hidden sm:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-foreground/50" />
+                <Input 
+                  placeholder="Search by name or roll..." 
+                  className="pl-9 h-8 bg-background/50 border-border text-[11px] uppercase font-bold tracking-wider"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+             </div>
              <span className="text-[10px] text-sidebar-foreground font-black uppercase tracking-widest opacity-60">Status: Active Selection</span>
+          </div>
+          <div className="p-4 sm:hidden border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sidebar-foreground/50" />
+              <Input 
+                placeholder="Search by name or roll..." 
+                className="pl-10 bg-background/50 border-border text-[11px] uppercase font-bold tracking-wider"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
           <Table>
             <TableHeader className="bg-sidebar-accent/20">
@@ -438,8 +468,8 @@ export default function Attendance() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.length > 0 ? (
-                students.map((student) => (
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((student) => (
                   <TableRow key={student.id} className="border-border hover:bg-white/[0.02] transition-colors group">
                     <TableCell className="font-bold text-sidebar-foreground uppercase tracking-tighter">{student.rollNumber}</TableCell>
                     <TableCell className="font-extrabold text-white text-[13px] uppercase tracking-tight">{student.name}</TableCell>
