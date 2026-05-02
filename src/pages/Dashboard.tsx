@@ -6,10 +6,14 @@ import {
   UserCheck, 
   CreditCard, 
   TrendingUp, 
+  TrendingDown,
   Calendar, 
   BookOpen,
   AlertCircle,
-  CalendarCheck
+  CalendarCheck,
+  DollarSign,
+  GraduationCap,
+  Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -50,9 +54,13 @@ const data = [
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
-  const { profile, isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
-  const hasFinanceAccess = isAdmin || roleDefinition?.permissions.fees !== 'none' || roleDefinition?.permissions.payroll !== 'none';
-  const hasStaffAccess = isAdmin || isTeacher || isStaff || !!roleDefinition;
+  const { profile, isAdmin, isTeacher, isStaff, roleDefinition, isStudent, isParent } = useAuth();
+  const hasFinanceAccess = isAdmin || roleDefinition?.permissions.fees === 'full' || roleDefinition?.permissions.payroll === 'full';
+  const hasStaffAccess = isAdmin || isTeacher || isStaff || (roleDefinition && roleDefinition.permissions.students !== 'none');
+  
+  const [studentProfile, setStudentProfile] = useState<any>(null);
+  const [myAttendance, setMyAttendance] = useState<any[]>([]);
+  const [myFees, setMyFees] = useState<any[]>([]);
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
@@ -67,6 +75,7 @@ export default function Dashboard() {
     monthlyRevenue: 0,
     monthlyCost: 0,
     avgAttendance: 0,
+    personalAttendance: 0,
     libraryIssues: 0,
     totalStudents: 0,
     totalStaff: 0,
@@ -76,8 +85,25 @@ export default function Dashboard() {
     financialTrend: [] as any[]
   });
 
+  // Fetch Student/Personal Profile for non-staff
+  useEffect(() => {
+    if (!profile || hasStaffAccess) return;
+
+    // Try to find a student record that matches this user
+    // We'll search by name as a fallback if email isn't in student record yet
+    const studentsQ = query(collection(db, 'students'), where('name', '==', profile.displayName));
+    const unsub = onSnapshot(studentsQ, (snap) => {
+      if (!snap.empty) {
+        setStudentProfile({ id: snap.docs[0].id, ...snap.docs[0].data() });
+      }
+    });
+
+    return () => unsub();
+  }, [profile, hasStaffAccess]);
+
   // Derived Financial Trend
   useEffect(() => {
+    if (!hasFinanceAccess || feeDocs.length === 0) return;
     const now = new Date();
     const trend: any[] = [];
     
@@ -105,11 +131,11 @@ export default function Dashboard() {
     }
 
     setStats(prev => ({ ...prev, financialTrend: trend }));
-  }, [feeDocs, payrollDocs]);
+  }, [feeDocs, payrollDocs, hasFinanceAccess]);
 
   // Derived Admission Trend with Filter
   useEffect(() => {
-    if (studentDocs.length === 0) return;
+    if (studentDocs.length === 0 || !hasStaffAccess) return;
 
     const filteredTrend: any[] = [];
     const year = parseInt(filterYear);
@@ -161,12 +187,12 @@ export default function Dashboard() {
 
     const unsubscribes: (() => void)[] = [];
 
-    // Upcoming Exams - Accessible to all authenticated users
-    const examsQ = query(
-      collection(db, 'exams'), 
-      where('status', '==', 'scheduled'),
-      orderBy('date', 'asc')
-    );
+    // Upcoming Exams - Accessible to all authenticated users (Personalized for students)
+    const examConstraints = [where('status', '==', 'scheduled'), orderBy('date', 'asc'), limit(5)];
+    if (!hasStaffAccess && studentProfile?.classId) {
+      examConstraints.unshift(where('classId', '==', studentProfile.classId));
+    }
+    const examsQ = query(collection(db, 'exams'), ...examConstraints);
     unsubscribes.push(onSnapshot(examsQ, (snapshot) => {
       setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
@@ -236,6 +262,20 @@ export default function Dashboard() {
       }, (error) => {
         console.error("Dashboard Library Listener Error:", error);
       }));
+
+      // Attendance - All students summary
+      const attendanceQ = query(collection(db, 'attendance'), limit(200));
+      unsubscribes.push(onSnapshot(attendanceQ, (snapshot) => {
+        if (snapshot.empty) {
+          setStats(prev => ({ ...prev, avgAttendance: 95.0 }));
+          return;
+        }
+        const present = snapshot.docs.filter(d => d.data().status === 'present').length;
+        const avg = (present / snapshot.docs.length) * 100;
+        setStats(prev => ({ ...prev, avgAttendance: avg }));
+      }, (error) => {
+        console.error("Dashboard Attendance Listener Error:", error);
+      }));
     }
 
     // Revenue and Payroll - Admin and users with finance access
@@ -273,33 +313,48 @@ export default function Dashboard() {
       }));
     }
 
-    // Attendance - Accessible to all authenticated users
-    const attendanceQ = query(collection(db, 'attendance'), limit(200));
-    unsubscribes.push(onSnapshot(attendanceQ, (snapshot) => {
-      if (snapshot.empty) {
-        setStats(prev => ({ ...prev, avgAttendance: 95.0 }));
-        return;
-      }
-      const present = snapshot.docs.filter(d => d.data().status === 'present').length;
-      const avg = (present / snapshot.docs.length) * 100;
-      setStats(prev => ({ ...prev, avgAttendance: avg }));
-    }, (error) => {
-      console.error("Dashboard Attendance Listener Error:", error);
-    }));
+    if (!hasStaffAccess && studentProfile) {
+      // Data specifically for THIS student
+      const myFeesQ = query(collection(db, 'fees'), where('studentId', '==', studentProfile.id));
+      unsubscribes.push(onSnapshot(myFeesQ, (snapshot) => {
+        const fees = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMyFees(fees);
+        setRecentTransactions(fees.slice(0, 5));
+      }));
+
+      const myAttendanceQ = query(collection(db, 'attendance'), where('studentId', '==', studentProfile.id));
+      unsubscribes.push(onSnapshot(myAttendanceQ, (snapshot) => {
+        const att = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        setMyAttendance(att);
+        const present = att.filter((a: any) => a.status === 'present').length;
+        const avg = att.length > 0 ? (present / att.length) * 100 : 0;
+        setStats(prev => ({ ...prev, personalAttendance: avg }));
+      }));
+    }
 
     return () => {
       unsubscribes.forEach(unsub => unsub());
     };
-  }, [profile]);
+  }, [profile, hasStaffAccess, studentProfile]);
 
-  const StatCard = ({ title, value, trend, trendDown }: any) => (
-    <Card className="bg-card border-border rounded-xl p-5 flex flex-col shadow-none">
-      <div className="flex justify-between items-start mb-5">
-        <span className="text-sm font-semibold text-white">{title}</span>
+  const StatCard = ({ title, value, trend, trendDown, icon: Icon }: any) => (
+    <Card className="bg-card border-border rounded-xl p-5 flex flex-col shadow-none relative overflow-hidden group hover:border-primary/30 transition-all">
+      {Icon && (
+        <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
+          <Icon className="w-24 h-24 text-primary" />
+        </div>
+      )}
+      <div className="flex justify-between items-start mb-5 relative z-10">
+        <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground opacity-60">{title}</span>
+        {Icon && (
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <Icon className="w-4 h-4" />
+          </div>
+        )}
       </div>
-      <div className="text-[28px] font-bold text-white mb-1">{value}</div>
+      <div className="text-[28px] font-bold text-white mb-1 relative z-10">{value}</div>
       {trend !== undefined && (
-        <div className={cn("text-xs flex items-center gap-1", trendDown ? "text-rose-500" : "text-emerald-500")}>
+        <div className={cn("text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 relative z-10", trendDown ? "text-rose-500" : "text-emerald-500")}>
           {trendDown ? "↓" : "↑"} {trend}
         </div>
       )}
@@ -308,337 +363,469 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard 
-            title="Institutional Revenue" 
-            value={`৳${(stats.totalRevenue / 1000).toFixed(1)}k`} 
-            trend={`৳${(stats.monthlyRevenue / 1000).toFixed(1)}k this month`} 
-          />
-          <StatCard 
-            title="Institutional Cost" 
-            value={`৳${(stats.totalCost / 1000).toFixed(1)}k`} 
-            trend={`৳${(stats.monthlyCost / 1000).toFixed(1)}k this month`} 
-            trendDown
-          />
-          <StatCard 
-            title="Net Balance" 
-            value={`৳${((stats.totalRevenue - stats.totalCost) / 1000).toFixed(1)}k`} 
-            trend={stats.monthlyRevenue >= stats.monthlyCost ? "Monthly Surplus" : "Monthly Deficit"}
-            trendDown={stats.monthlyRevenue < stats.monthlyCost}
-          />
-          <StatCard 
-            title="Total Students" 
-            value={stats.totalStudents.toLocaleString()} 
-            trend={`${stats.growthRate.toFixed(1)}% growth`}
-          />
+      <div className="space-y-8">
+        {/* Welcome Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-black text-white uppercase tracking-tighter sm:text-4xl">
+              {hasStaffAccess ? 'Nexus Workspace' : 'Student Hub'}
+            </h1>
+            <p className="text-sidebar-foreground text-sm font-medium opacity-60 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              Welcome back, <span className="text-primary font-black uppercase tracking-tight">{profile?.displayName || 'Authorized User'}</span>.
+              {!hasStaffAccess && studentProfile && ` • ${studentProfile.rollNumber} • Class ${studentProfile.classId}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden md:block">
+              <p className="text-[10px] text-sidebar-foreground font-black uppercase tracking-widest opacity-60">System Status</p>
+              <p className="text-xs font-bold text-emerald-500 uppercase">Synchronized</p>
+            </div>
+            <div className="h-10 w-[1px] bg-border hidden md:block" />
+            <div className="flex -space-x-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-sidebar-accent overflow-hidden shadow-xl ring-2 ring-background">
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 120}`} alt="User" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
+        {/* Dynamic Stats Architecture */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
-            <div className="p-3 bg-primary/10 rounded-lg text-primary">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Staff</p>
-              <p className="text-xl font-bold text-white">{stats.totalStaff}</p>
-            </div>
-          </Card>
-          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
-            <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Avg Attendance</p>
-              <p className="text-xl font-bold text-white">{stats.avgAttendance.toFixed(1)}%</p>
-            </div>
-          </Card>
-          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
-            <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Library Issues</p>
-              <p className="text-xl font-bold text-white">{stats.libraryIssues}</p>
-            </div>
-          </Card>
-          <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none">
-            <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-500">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Classes</p>
-              <p className="text-xl font-bold text-white">{stats.totalClasses}</p>
-            </div>
-          </Card>
+          {hasFinanceAccess ? (
+            <>
+              <StatCard 
+                title="Revenue Stream" 
+                value={`৳${(stats.totalRevenue / 1000).toFixed(1)}k`} 
+                trend={`৳${(stats.monthlyRevenue / 1000).toFixed(1)}k this month`} 
+                icon={DollarSign}
+              />
+              <StatCard 
+                title="Operational Burn" 
+                value={`৳${(stats.totalCost / 1000).toFixed(1)}k`} 
+                trend={`৳${(stats.monthlyCost / 1000).toFixed(1)}k this month`} 
+                trendDown
+                icon={TrendingDown}
+              />
+              <StatCard 
+                title="Net Surplus" 
+                value={`৳${((stats.totalRevenue - stats.totalCost) / 1000).toFixed(1)}k`} 
+                trend={stats.monthlyRevenue >= stats.monthlyCost ? "Monthly Surplus" : "Monthly Deficit"}
+                trendDown={stats.monthlyRevenue < stats.monthlyCost}
+                icon={TrendingUp}
+              />
+            </>
+          ) : (
+            <>
+              <StatCard 
+                title="Academic Presence" 
+                value={`${stats.personalAttendance.toFixed(1)}%`} 
+                trend={`${myAttendance.length} Total Logs`}
+                icon={UserCheck}
+                trendDown={stats.personalAttendance < 85}
+              />
+              <StatCard 
+                title="Financial Standing" 
+                value={`৳${myFees.filter(f => f.status === 'paid').reduce((acc, f) => acc + (f.amount || 0), 0).toLocaleString()}`} 
+                trend={`${myFees.filter(f => f.status === 'pending').length} Pending Payments`}
+                icon={CreditCard}
+                trendDown={myFees.filter(f => f.status === 'pending').length > 0}
+              />
+            </>
+          )}
+
+          {hasStaffAccess ? (
+            <StatCard 
+              title="Student Population" 
+              value={stats.totalStudents.toLocaleString()} 
+              trend={`${stats.growthRate.toFixed(1)}% annual growth`}
+              icon={Users}
+            />
+          ) : (
+            <>
+              <StatCard 
+                title="Academic Milestones" 
+                value={upcomingExams.length.toString()} 
+                trend="Assessment cycles active"
+                icon={GraduationCap}
+              />
+              <StatCard 
+                title="Learning Resources" 
+                value="24" 
+                trend="8 new modules"
+                icon={BookOpen}
+              />
+            </>
+          )}
+
+          {hasStaffAccess && !hasFinanceAccess && (
+            <>
+              <StatCard 
+                title="Global Attendance" 
+                value={`${stats.avgAttendance.toFixed(1)}%`} 
+                trend="Institutional avg"
+                icon={UserCheck}
+              />
+              <StatCard 
+                title="Infrastructure" 
+                value={stats.totalClasses.toString()} 
+                trend="Active class sessions"
+                icon={Calendar}
+              />
+            </>
+          )}
         </div>
+
+        {hasStaffAccess && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none group hover:border-primary/30 transition-all">
+              <div className="p-3 bg-primary/10 rounded-lg text-primary group-hover:scale-110 transition-transform">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider opacity-60">Total Staff</p>
+                <p className="text-xl font-bold text-white">{stats.totalStaff}</p>
+              </div>
+            </Card>
+            <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none group hover:border-primary/30 transition-all">
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500 group-hover:scale-110 transition-transform">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider opacity-60">Avg Attendance</p>
+                <p className="text-xl font-bold text-white">{stats.avgAttendance.toFixed(1)}%</p>
+              </div>
+            </Card>
+            <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none group hover:border-primary/30 transition-all">
+              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 group-hover:scale-110 transition-transform">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider opacity-60">Library Issues</p>
+                <p className="text-xl font-bold text-white">{stats.libraryIssues}</p>
+              </div>
+            </Card>
+            <Card className="bg-card border-border rounded-xl p-4 flex items-center gap-4 shadow-none group hover:border-primary/30 transition-all">
+              <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-500 group-hover:scale-110 transition-transform">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider opacity-60">Total Classes</p>
+                <p className="text-xl font-bold text-white">{stats.totalClasses}</p>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <TrendingUp className="w-24 h-24 text-primary" />
-            </div>
-            <div className="flex justify-between items-center mb-6 relative z-10">
-              <div>
-                <span className="text-sm font-semibold text-white">Financial Performance</span>
-                <p className="text-[11px] text-sidebar-foreground mt-0.5">Revenue vs Operational Cost</p>
+          {hasFinanceAccess && (
+            <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative group hover:border-primary/30 transition-all">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                <TrendingUp className="w-24 h-24 text-primary" />
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Revenue</span>
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground opacity-60">Financial Performance</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight">Revenue vs Operational Cost</h3>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Cost</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Revenue</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-rose-500" />
+                    <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Cost</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="h-[260px] w-full relative z-10">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.financialTrend}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
-                    dy={12}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
-                    tickFormatter={(v) => `৳${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`}
-                  />
-                  <Tooltip 
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
-                            <p className="text-[11px] font-bold text-white mb-2 uppercase tracking-widest">{label}</p>
-                            <div className="space-y-1">
-                              <p className="text-[11px] flex justify-between gap-4">
-                                <span className="text-sidebar-foreground">Revenue:</span>
-                                <span className="text-primary font-bold">৳{payload[0].value?.toLocaleString()}</span>
-                              </p>
-                              <p className="text-[11px] flex justify-between gap-4">
-                                <span className="text-sidebar-foreground">Cost:</span>
-                                <span className="text-rose-500 font-bold">৳{payload[1].value?.toLocaleString()}</span>
+              <div className="h-[260px] w-full relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.financialTrend}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
+                      tickFormatter={(v) => `৳${(v/1000).toFixed(0)}k`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                      itemStyle={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: '900' }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                    <Area type="monotone" dataKey="cost" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorCost)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+
+          {!hasStaffAccess && (
+            <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative group hover:border-primary/30 transition-all">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Activity className="w-24 h-24 text-primary" />
+              </div>
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground opacity-60">Academic Metrics</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight">Attendance Consistency</h3>
+                </div>
+              </div>
+              <div className="h-[260px] w-full relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={myAttendance.slice(-10).map((a, i) => ({ name: format(new Date(a.date), 'MMM dd'), status: a.status === 'present' ? 100 : a.status === 'late' ? 50 : 0 }))}>
+                    <defs>
+                      <linearGradient id="colorAtt" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} domain={[0, 100]} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                      formatter={(value: any) => [value === 100 ? 'Present' : value === 50 ? 'Late' : 'Absent', 'Status']}
+                    />
+                    <Area type="monotone" dataKey="status" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorAtt)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+
+          {hasStaffAccess && !hasFinanceAccess && (
+            <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 shadow-none overflow-hidden relative group hover:border-primary/30 transition-all">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                <TrendingUp className="w-24 h-24 text-primary" />
+              </div>
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-sidebar-foreground opacity-60">Operations</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight">Student Admissions</h3>
+                </div>
+                <Select value={filterYear} onValueChange={(val) => val && setFilterYear(val)}>
+                  <SelectTrigger className="w-[100px] bg-sidebar-accent/50 border-border text-[10px] font-bold uppercase h-8">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - i).toString()).map(year => (
+                      <SelectItem key={year} value={year} className="text-[10px] font-bold text-foreground">{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="h-[260px] w-full relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.admissionTrend}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#1A1D23', border: '1px solid rgba(255,255,255,0.1)' }} />
+                    <Bar dataKey="students" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+
+          {hasFinanceAccess && (
+            <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <div>
+                  <span className="text-sm font-semibold text-white">Net Profit Trend</span>
+                  <p className="text-[11px] text-sidebar-foreground mt-0.5">Institution Sustainability</p>
+                </div>
+                <div className="px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                  <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Health: Positive</span>
+                </div>
+              </div>
+              <div className="h-[260px] w-full relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.financialTrend}>
+                    <defs>
+                      <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10 }}
+                      dy={12}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10 }}
+                      tickFormatter={(v) => `৳${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
+                              <p className="text-[11px] font-bold text-white mb-2 uppercase tracking-widest">{label}</p>
+                              <p className="text-[13px] font-bold text-emerald-500">
+                                ৳{payload[0].value?.toLocaleString()}
                               </p>
                             </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#3b82f6" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorRev)" 
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="cost" 
-                    stroke="#ef4444" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorCost)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="profit" 
+                      stroke="#10b981" 
+                      strokeWidth={4}
+                      fillOpacity={1} 
+                      fill="url(#colorProfit)" 
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4, stroke: '#111827' }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
 
-          <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
-            <div className="flex justify-between items-center mb-6 relative z-10">
-              <div>
-                <span className="text-sm font-semibold text-white">Net Profit Trend</span>
-                <p className="text-[11px] text-sidebar-foreground mt-0.5">Institution Sustainability</p>
+          {hasStaffAccess && (
+            <Card className="lg:col-span-2 lg:row-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
+              <div className="absolute -top-12 -left-12 p-8 opacity-5">
+                <Users className="w-48 h-48 text-primary" />
               </div>
-              <div className="px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Health: Positive</span>
-              </div>
-            </div>
-            <div className="h-[260px] w-full relative z-10">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.financialTrend}>
-                  <defs>
-                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
-                    dy={12}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10 }}
-                    tickFormatter={(v) => `৳${v >= 1000 ? (v/1000).toFixed(0)+'k' : v}`}
-                  />
-                  <Tooltip 
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-[#1A1D23]/90 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-2xl">
-                            <p className="text-[11px] font-bold text-white mb-2 uppercase tracking-widest">{label}</p>
-                            <p className="text-[13px] font-bold text-emerald-500">
-                              ৳{payload[0].value?.toLocaleString()}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="profit" 
-                    stroke="#10b981" 
-                    strokeWidth={4}
-                    fillOpacity={1} 
-                    fill="url(#colorProfit)" 
-                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4, stroke: '#111827' }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          <Card className="lg:col-span-2 lg:row-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none overflow-hidden relative">
-            <div className="absolute -top-12 -left-12 p-8 opacity-5">
-              <Users className="w-48 h-48 text-primary" />
-            </div>
-            <div className="flex justify-between items-center mb-6 relative z-10">
-              <div>
-                <span className="text-sm font-semibold text-white">Student Admission Trends</span>
-                <p className="text-[11px] text-sidebar-foreground mt-0.5">
-                  {filterMonth === 'all' ? `${filterYear} Enrollment` : `${format(new Date(2000, parseInt(filterMonth)), 'MMMM')} ${filterYear} Daily`}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Growth</p>
-                  <p className={cn("text-xs font-bold", stats.growthRate >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                    {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate.toFixed(1)}%
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <div>
+                  <span className="text-sm font-semibold text-white">Student Admission Trends</span>
+                  <p className="text-[11px] text-sidebar-foreground mt-0.5">
+                    {filterMonth === 'all' ? `${filterYear} Enrollment` : `${format(new Date(2000, parseInt(filterMonth)), 'MMMM')} ${filterYear} Daily`}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                   <Select value={filterYear} onValueChange={(val) => val && setFilterYear(val)}>
-                      <SelectTrigger className="h-7 w-20 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-wider">
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['2024', '2025', '2026'].map(year => (
-                          <SelectItem key={year} value={year} className="text-[10px] uppercase font-bold tracking-wider">{year}</SelectItem>
-                        ))}
-                      </SelectContent>
-                   </Select>
-                   <Select value={filterMonth} onValueChange={(val) => val && setFilterMonth(val)}>
-                      <SelectTrigger className="h-7 w-24 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-wider">
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="text-[10px] uppercase font-bold tracking-wider">All Months</SelectItem>
-                        {Array.from({ length: 12 }).map((_, i) => (
-                          <SelectItem key={i} value={i.toString()} className="text-[10px] uppercase font-bold tracking-wider">
-                            {format(new Date(2000, i), 'MMMM')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                   </Select>
+                <div className="flex items-center gap-4">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-wider">Growth</p>
+                    <p className={cn("text-xs font-bold", stats.growthRate >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                      {stats.growthRate >= 0 ? '+' : ''}{stats.growthRate.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={filterYear} onValueChange={(val) => val && setFilterYear(val)}>
+                        <SelectTrigger className="h-7 w-20 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-wider">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {['2024', '2025', '2026'].map(year => (
+                            <SelectItem key={year} value={year} className="text-[10px] uppercase font-bold tracking-wider">{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={filterMonth} onValueChange={(val) => val && setFilterMonth(val)}>
+                        <SelectTrigger className="h-7 w-24 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-wider">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all" className="text-[10px] uppercase font-bold tracking-wider">All Months</SelectItem>
+                          {Array.from({ length: 12 }).map((_, i) => (
+                            <SelectItem key={i} value={i.toString()} className="text-[10px] uppercase font-bold tracking-wider">
+                              {format(new Date(2000, i), 'MMMM')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex-1 min-h-[240px] w-full relative z-10">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.admissionTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#1f2937" opacity={0.5} />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
-                    dy={15}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
-                    dx={-10}
-                  />
-                  <Tooltip 
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-[#1A1D23]/95 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] scale-110 mb-8">
-                            <p className="text-[10px] font-black text-sidebar-foreground mb-1 uppercase tracking-[0.2em]">{label}</p>
-                            <p className="text-[18px] font-black text-white flex items-baseline gap-1">
-                              {payload[0].value}
-                              <span className="text-[10px] text-primary uppercase tracking-widest font-bold">Students</span>
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="students" 
-                    stroke="#3b82f6" 
-                    strokeWidth={4}
-                    fillOpacity={1} 
-                    fill="url(#colorStudents)" 
-                    dot={{ fill: '#1e293b', stroke: '#3b82f6', strokeWidth: 2, r: 4, fillOpacity: 1 }}
-                    activeDot={{ r: 7, strokeWidth: 0, fill: '#60a5fa' }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+              
+              <div className="flex-1 min-h-[240px] w-full relative z-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.admissionTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#1f2937" opacity={0.5} />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
+                      dy={15}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 600 }}
+                      dx={-10}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-[#1A1D23]/95 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] scale-110 mb-8">
+                              <p className="text-[10px] font-black text-sidebar-foreground mb-1 uppercase tracking-[0.2em]">{label}</p>
+                              <p className="text-[18px] font-black text-white flex items-baseline gap-1">
+                                {payload[0].value}
+                                <span className="text-[10px] text-primary uppercase tracking-widest font-bold">Students</span>
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="students" 
+                      stroke="#3b82f6" 
+                      strokeWidth={4}
+                      fillOpacity={1} 
+                      fill="url(#colorStudents)" 
+                      dot={{ fill: '#1e293b', stroke: '#3b82f6', strokeWidth: 2, r: 4, fillOpacity: 1 }}
+                      activeDot={{ r: 7, strokeWidth: 0, fill: '#60a5fa' }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
 
-            <div className="mt-6 flex gap-8 relative z-10 border-t border-border pt-4">
-              <div>
-                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Students</p>
-                <p className="text-2xl font-bold text-white">{stats.totalStudents.toLocaleString()}</p>
+              <div className="mt-6 flex gap-8 relative z-10 border-t border-border pt-4">
+                <div>
+                  <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Total Students</p>
+                  <p className="text-2xl font-bold text-white">{stats.totalStudents.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Active Enrollment</p>
+                  <p className="text-2xl font-bold text-emerald-500">Live</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] text-sidebar-foreground uppercase font-bold tracking-wider">Active Enrollment</p>
-                <p className="text-2xl font-bold text-emerald-500">Live</p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
 
           <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -693,50 +880,52 @@ export default function Dashboard() {
 
           <Card className="lg:col-span-2 bg-card border-border rounded-xl p-5 flex flex-col shadow-none relative overflow-hidden">
              <div className="absolute top-0 right-0 p-8 opacity-5">
-              <CreditCard className="w-24 h-24 text-emerald-500" />
-            </div>
-            <div className="flex justify-between items-center mb-5 relative z-10">
-              <span className="text-sm font-semibold text-white">Recent Transactions</span>
-              <div className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-500 font-bold uppercase tracking-wider border border-emerald-500/20">
-                Live Audit
-              </div>
-            </div>
-            <div className="space-y-0 relative z-10">
-              {recentTransactions.length > 0 ? recentTransactions.map((tx, i) => (
-                <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full border flex items-center justify-center transition-all",
-                      tx.status === 'paid' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : 
-                      tx.status === 'pending' ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
-                      "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                    )}>
-                      <TrendingUp className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-[13px] font-extrabold text-white uppercase tracking-tight">{tx.studentName}</h4>
-                      <p className="text-[11px] text-sidebar-foreground uppercase tracking-widest font-bold opacity-60">
-                        {tx.type} Fee • ৳{tx.amount.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={cn(
-                    "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
-                    tx.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : 
-                    tx.status === 'pending' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
-                    "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                  )}>
-                    {tx.status}
-                  </div>
-                </div>
-              )) : (
-                <div className="py-12 text-center text-sidebar-foreground text-sm">
-                   <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
-                   <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No recent transactions</p>
-                </div>
-              )}
-            </div>
-          </Card>
+               <CreditCard className="w-24 h-24 text-emerald-500" />
+             </div>
+             <div className="flex justify-between items-center mb-5 relative z-10">
+               <span className="text-sm font-semibold text-white">{hasStaffAccess ? 'Recent Transactions' : 'My Recent Payments'}</span>
+               <div className="px-2 py-0.5 bg-emerald-500/10 rounded text-[10px] text-emerald-500 font-bold uppercase tracking-wider border border-emerald-500/20">
+                 {hasStaffAccess ? 'Live Audit' : 'Payment History'}
+               </div>
+             </div>
+             <div className="space-y-0 relative z-10">
+               {recentTransactions.length > 0 ? recentTransactions.map((tx, i) => (
+                 <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
+                   <div className="flex items-center gap-4">
+                     <div className={cn(
+                       "w-10 h-10 rounded-full border flex items-center justify-center transition-all",
+                       tx.status === 'paid' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : 
+                       tx.status === 'pending' ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                       "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                     )}>
+                       <TrendingUp className="w-4 h-4" />
+                     </div>
+                     <div>
+                       <h4 className="text-[13px] font-extrabold text-white uppercase tracking-tight">
+                         {hasStaffAccess ? tx.studentName : tx.type + ' Fee'}
+                       </h4>
+                       <p className="text-[11px] text-sidebar-foreground uppercase tracking-widest font-bold opacity-60">
+                         {hasStaffAccess ? `${tx.type} Fee • ৳${tx.amount.toLocaleString()}` : (tx.date ? format(new Date(tx.date), 'MMM dd, yyyy') : 'No Date') + ` • ৳${tx.amount.toLocaleString()}`}
+                       </p>
+                     </div>
+                   </div>
+                   <div className={cn(
+                     "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                     tx.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : 
+                     tx.status === 'pending' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" :
+                     "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                   )}>
+                     {tx.status}
+                   </div>
+                 </div>
+               )) : (
+                 <div className="py-12 text-center text-sidebar-foreground text-sm">
+                    <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
+                    <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No recent records</p>
+                 </div>
+               )}
+             </div>
+           </Card>
         </div>
       </div>
     </DashboardLayout>
