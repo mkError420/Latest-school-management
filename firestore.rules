@@ -151,85 +151,92 @@ service cloud.firestore {
 
     match /config/system {
       allow read: if true;
-      allow write: if isAdmin() && isValidSystemConfig(request.resource.data);
+      allow create, update: if isAdmin() && isValidSystemConfig(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /config/{document=**} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /roles/{roleId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() && isValidRole(request.resource.data);
+      allow create, update: if isAdmin() && isValidRole(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /students/{studentId} {
       allow read: if isSignedIn();
-      allow write: if (isAdmin() || isTeacher()) && isValidStudent(request.resource.data);
+      allow create, update: if (isAdmin() || isTeacher()) && isValidStudent(request.resource.data);
       allow delete: if isAdmin() || isTeacher();
     }
 
     match /classes/{classId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isTeacher();
+      allow create, update, delete: if isAdmin() || isTeacher();
     }
 
     match /attendance/{attendanceId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isTeacher();
+      allow create, update, delete: if isAdmin() || isTeacher();
     }
 
     match /exams/{examId} {
       allow read: if isSignedIn();
-      allow write: if (isAdmin() || isTeacher()) && isValidExam(request.resource.data);
+      allow create, update: if (isAdmin() || isTeacher()) && isValidExam(request.resource.data);
+      allow delete: if isAdmin() || isTeacher();
     }
 
     match /results/{resultId} {
       allow read: if isSignedIn();
-      allow write: if (isAdmin() || isTeacher()) && isValidResult(request.resource.data);
+      allow create, update: if (isAdmin() || isTeacher()) && isValidResult(request.resource.data);
+      allow delete: if isAdmin() || isTeacher();
     }
 
     match /routine/{routineId} {
       allow read: if isSignedIn();
-      allow write: if (isAdmin() || isTeacher()) && isValidRoutine(request.resource.data);
+      allow create, update: if (isAdmin() || isTeacher()) && isValidRoutine(request.resource.data);
       allow delete: if isAdmin() || isTeacher();
     }
 
     match /subjects/{subjectId} {
       allow read: if isSignedIn();
-      allow write: if (isAdmin() || isTeacher()) && isValidSubject(request.resource.data);
+      allow create, update: if (isAdmin() || isTeacher()) && isValidSubject(request.resource.data);
       allow delete: if isAdmin() || isTeacher();
     }
 
     match /library_books/{bookId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isTeacher();
+      allow create, update, delete: if isAdmin() || isTeacher();
     }
 
     match /library_issues/{issueId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isTeacher();
+      allow create, update, delete: if isAdmin() || isTeacher();
     }
 
     match /fees/{feeId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /staff/{staffId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() && isValidStaff(request.resource.data);
+      allow create, update: if isAdmin() && isValidStaff(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /staff_attendance/{id} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() && isValidStaffAttendance(request.resource.data);
+      allow create, update: if isAdmin() && isValidStaffAttendance(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /payroll/{payrollId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() && isValidPayroll(request.resource.data);
+      allow create, update: if isAdmin() && isValidPayroll(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /notifications/{id} {
