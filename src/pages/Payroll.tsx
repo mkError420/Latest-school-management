@@ -123,7 +123,7 @@ interface StaffAttendance {
 }
 
 export default function Payroll() {
-  const { systemConfig } = useAuth();
+  const { systemConfig, isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'history';
 
@@ -884,340 +884,335 @@ export default function Payroll() {
             <p className="text-sidebar-foreground">Manage staff salaries and payment history.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="border-border text-sidebar-foreground hover:bg-sidebar-accent"
-              onClick={handleExportCSV}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
-              <DialogTrigger render={
-                <Button size="sm" variant="outline" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Staff
-                </Button>
-              } />
-              <DialogContent className="bg-card border-border text-foreground">
-                <form onSubmit={handleAddStaff}>
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Add New Staff Member</DialogTitle>
-                    <DialogDescription className="text-sidebar-foreground">Register a new employee to the payroll system.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="flex justify-center mb-2">
-                      <div className="relative group">
-                        <div className="w-24 h-24 rounded-full bg-sidebar-accent flex items-center justify-center overflow-hidden border-2 border-dashed border-border group-hover:border-primary transition-colors">
-                          {photoPreview ? (
-                            <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                          ) : (
-                            <UserPlus className="w-10 h-10 text-sidebar-foreground" />
-                          )}
+            {isAdmin && (
+              <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
+                <DialogTrigger render={
+                  <Button size="sm" variant="outline" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Staff
+                  </Button>
+                } />
+                <DialogContent className="bg-card border-border text-foreground">
+                  <form onSubmit={handleAddStaff}>
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Add New Staff Member</DialogTitle>
+                      <DialogDescription className="text-sidebar-foreground">Register a new employee to the payroll system.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      {/* ... existing fields ... */}
+                      <div className="flex justify-center mb-2">
+                        <div className="relative group">
+                          <div className="w-24 h-24 rounded-full bg-sidebar-accent flex items-center justify-center overflow-hidden border-2 border-dashed border-border group-hover:border-primary transition-colors">
+                            {photoPreview ? (
+                              <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <UserPlus className="w-10 h-10 text-sidebar-foreground" />
+                            )}
+                          </div>
+                          <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:bg-primary/90 transition-transform hover:scale-110">
+                            <Plus className="w-4 h-4" />
+                            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                          </label>
                         </div>
-                        <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:bg-primary/90 transition-transform hover:scale-110">
-                          <Plus className="w-4 h-4" />
-                          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                        </label>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
-                      <Input 
-                        required 
-                        value={newStaff.name} 
-                        onChange={e => setNewStaff({...newStaff, name: e.target.value})}
-                        placeholder="John Doe" 
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Role</label>
-                        <Select value={newStaff.role} onValueChange={val => setNewStaff({...newStaff, role: val || 'Teacher'})}>
-                          <SelectTrigger className="bg-background border-border text-foreground">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value="Teacher">Teacher</SelectItem>
-                            <SelectItem value="Admin">Administrator</SelectItem>
-                            <SelectItem value="Accountant">Accountant</SelectItem>
-                            <SelectItem value="Librarian">Librarian</SelectItem>
-                            <SelectItem value="Support Staff">Support Staff</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Department</label>
+                        <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
                         <Input 
                           required 
-                          value={newStaff.department} 
-                          onChange={e => setNewStaff({...newStaff, department: e.target.value})}
-                          placeholder="Science / Admin" 
+                          value={newStaff.name} 
+                          onChange={e => setNewStaff({...newStaff, name: e.target.value})}
+                          placeholder="John Doe" 
                           className="bg-background border-border"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Phone Number</label>
-                        <Input 
-                          required 
-                          placeholder="01712xxxxxx" 
-                          value={newStaff.phone || ''} 
-                          onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Emergency Contact</label>
-                        <Input 
-                          placeholder="017xxxxxxxx" 
-                          value={newStaff.emergencyContact || ''} 
-                          onChange={e => setNewStaff({...newStaff, emergencyContact: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
-                        <Select value={newStaff.bloodGroup || ''} onValueChange={val => setNewStaff({...newStaff, bloodGroup: val || ''})}>
-                          <SelectTrigger className="bg-background border-border text-foreground">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value="A+">A+</SelectItem>
-                            <SelectItem value="A-">A-</SelectItem>
-                            <SelectItem value="B+">B+</SelectItem>
-                            <SelectItem value="B-">B-</SelectItem>
-                            <SelectItem value="O+">O+</SelectItem>
-                            <SelectItem value="O-">O-</SelectItem>
-                            <SelectItem value="AB+">AB+</SelectItem>
-                            <SelectItem value="AB-">AB-</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">NID Number</label>
-                        <Input 
-                          required 
-                          placeholder="19xxxxxxxx" 
-                          value={newStaff.nid || ''} 
-                          onChange={e => setNewStaff({...newStaff, nid: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Base Salary (৳)</label>
-                        <Input 
-                          type="number" 
-                          required 
-                          value={newStaff.salary} 
-                          onChange={e => setNewStaff({...newStaff, salary: e.target.value})}
-                          placeholder="25000" 
-                          className="bg-background border-border"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Joining Date</label>
-                        <Input 
-                          type="date" 
-                          required 
-                          value={newStaff.joinDate} 
-                          onChange={e => setNewStaff({...newStaff, joinDate: e.target.value})}
-                          className="bg-background border-border text-foreground"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Address</label>
-                      <Input 
-                        placeholder="House #123, Road #4, Dhaka" 
-                        value={newStaff.address || ''} 
-                        onChange={e => setNewStaff({...newStaff, address: e.target.value})}
-                        className="bg-background border-border"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading || isPhotoProcessing}>Cancel</Button>
-                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading || isPhotoProcessing}>
-                      {isUploading ? 'Adding...' : isPhotoProcessing ? 'Processing...' : 'Add Staff'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isProcessPayrollOpen} onOpenChange={(open) => {
-              setIsProcessPayrollOpen(open);
-              if (!open) {
-                setProcessPayrollRole('all');
-                setProcessPayrollSearch('');
-              }
-            }}>
-              <DialogTrigger render={
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Process Payroll
-                </Button>
-              } />
-              <DialogContent className="bg-card border-border text-foreground">
-                <form onSubmit={handleProcessPayroll}>
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Process Monthly Salary</DialogTitle>
-                    <DialogDescription className="text-sidebar-foreground">Record a salary payment for an employee.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Filter by Role</label>
-                        <Select value={processPayrollRole} onValueChange={val => {
-                          setProcessPayrollRole(val || 'all');
-                          setNewPayroll({...newPayroll, staffId: ''});
-                        }}>
-                          <SelectTrigger className="bg-background border-border">
-                            <SelectValue placeholder="All Roles" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value="all">All Roles</SelectItem>
-                            <SelectItem value="Teacher">Teacher</SelectItem>
-                            <SelectItem value="Admin">Administrator</SelectItem>
-                            <SelectItem value="Accountant">Accountant</SelectItem>
-                            <SelectItem value="Librarian">Librarian</SelectItem>
-                            <SelectItem value="Support Staff">Support Staff</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Search Staff</label>
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-sidebar-foreground" />
-                          <Input
-                            placeholder="Type to search..."
-                            value={processPayrollSearch}
-                            onChange={e => setProcessPayrollSearch(e.target.value)}
-                            className="bg-background border-border pl-9"
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Role</label>
+                          <Select value={newStaff.role} onValueChange={val => setNewStaff({...newStaff, role: val || 'Teacher'})}>
+                            <SelectTrigger className="bg-background border-border text-foreground">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <SelectItem value="Teacher">Teacher</SelectItem>
+                              <SelectItem value="Admin">Administrator</SelectItem>
+                              <SelectItem value="Accountant">Accountant</SelectItem>
+                              <SelectItem value="Librarian">Librarian</SelectItem>
+                              <SelectItem value="Support Staff">Support Staff</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Department</label>
+                          <Input 
+                            required 
+                            value={newStaff.department} 
+                            onChange={e => setNewStaff({...newStaff, department: e.target.value})}
+                            placeholder="Science / Admin" 
+                            className="bg-background border-border"
                           />
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Phone Number</label>
+                          <Input 
+                            required 
+                            placeholder="01712xxxxxx" 
+                            value={newStaff.phone || ''} 
+                            onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">NID Number</label>
+                          <Input 
+                            required 
+                            placeholder="19xxxxxxxx" 
+                            value={newStaff.nid || ''} 
+                            onChange={e => setNewStaff({...newStaff, nid: e.target.value})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Emergency Contact</label>
+                          <Input 
+                            placeholder="017xxxxxxxx" 
+                            value={newStaff.emergencyContact || ''} 
+                            onChange={e => setNewStaff({...newStaff, emergencyContact: e.target.value})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                          <Select value={newStaff.bloodGroup || ''} onValueChange={val => setNewStaff({...newStaff, bloodGroup: val || ''})}>
+                            <SelectTrigger className="bg-background border-border text-foreground">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <SelectItem value="A+">A+</SelectItem>
+                              <SelectItem value="A-">A-</SelectItem>
+                              <SelectItem value="B+">B+</SelectItem>
+                              <SelectItem value="B-">B-</SelectItem>
+                              <SelectItem value="O+">O+</SelectItem>
+                              <SelectItem value="O-">O-</SelectItem>
+                              <SelectItem value="AB+">AB+</SelectItem>
+                              <SelectItem value="AB-">AB-</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Base Salary (৳)</label>
+                          <Input 
+                            type="number" 
+                            required 
+                            value={newStaff.salary} 
+                            onChange={e => setNewStaff({...newStaff, salary: e.target.value})}
+                            placeholder="25000" 
+                            className="bg-background border-border"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Joining Date</label>
+                          <Input 
+                            type="date" 
+                            required 
+                            value={newStaff.joinDate} 
+                            onChange={e => setNewStaff({...newStaff, joinDate: e.target.value})}
+                            className="bg-background border-border text-foreground"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Address</label>
+                        <Input 
+                          placeholder="House #123, Road #4, Dhaka" 
+                          value={newStaff.address || ''} 
+                          onChange={e => setNewStaff({...newStaff, address: e.target.value})}
+                          className="bg-background border-border"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Select Staff</label>
-                      <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val || ''})}>
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Select Employee">
-                            {newPayroll.staffId && staff.find(s => s.id === newPayroll.staffId) 
-                              ? staff.find(s => s.id === newPayroll.staffId)?.name 
-                              : undefined}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                          {sortedRoles.map((role) => {
-                            const roleStaff = staffByRole[role]
-                              .filter(s => s.status === 'active')
-                              .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
-                              .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase()));
-                            
-                            if (roleStaff.length === 0) return null;
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setIsAddStaffOpen(false)} className="border-border text-sidebar-foreground" disabled={isUploading || isPhotoProcessing}>Cancel</Button>
+                      <Button type="submit" className="bg-primary hover:bg-primary/90 text-white" disabled={isUploading || isPhotoProcessing}>
+                        {isUploading ? 'Adding...' : isPhotoProcessing ? 'Processing...' : 'Add Staff'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
 
-                            return (
-                              <SelectGroup key={role}>
-                                <SelectLabel className="bg-sidebar-accent/30 text-primary font-bold uppercase text-[10px] tracking-widest">{role}</SelectLabel>
-                                {roleStaff.map(s => (
-                                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                ))}
-                                <SelectSeparator className="opacity-50" />
-                              </SelectGroup>
-                            );
-                          })}
-                          {Object.keys(staffByRole).length === 0 && (
-                            <div className="p-2 text-center text-xs text-sidebar-foreground">No matching staff found</div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+            {isAdmin && (
+              <Dialog open={isProcessPayrollOpen} onOpenChange={(open) => {
+                setIsProcessPayrollOpen(open);
+                if (!open) {
+                  setProcessPayrollRole('all');
+                  setProcessPayrollSearch('');
+                }
+              }}>
+                <DialogTrigger render={
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Process Payroll
+                  </Button>
+                } />
+                <DialogContent className="bg-card border-border text-foreground">
+                  <form onSubmit={handleProcessPayroll}>
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Process Monthly Salary</DialogTitle>
+                      <DialogDescription className="text-sidebar-foreground">Record a salary payment for an employee.</DialogDescription>
+                    </DialogHeader>
+                    {/* ... fields ... */}
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Filter by Role</label>
+                          <Select value={processPayrollRole} onValueChange={val => {
+                            setProcessPayrollRole(val || 'all');
+                            setNewPayroll({...newPayroll, staffId: ''});
+                          }}>
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue placeholder="All Roles" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <SelectItem value="all">All Roles</SelectItem>
+                              <SelectItem value="Teacher">Teacher</SelectItem>
+                              <SelectItem value="Admin">Administrator</SelectItem>
+                              <SelectItem value="Accountant">Accountant</SelectItem>
+                              <SelectItem value="Librarian">Librarian</SelectItem>
+                              <SelectItem value="Support Staff">Support Staff</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Search Staff</label>
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-sidebar-foreground" />
+                            <Input
+                              placeholder="Type to search..."
+                              value={processPayrollSearch}
+                              onChange={e => setProcessPayrollSearch(e.target.value)}
+                              className="bg-background border-border pl-9"
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Bonus Type</label>
-                        <Select value={newPayroll.bonusType} onValueChange={val => setNewPayroll({...newPayroll, bonusType: val || 'Performance Bonus'})}>
+                        <label className="text-sm font-medium text-sidebar-foreground">Select Staff</label>
+                        <Select value={newPayroll.staffId} onValueChange={val => setNewPayroll({...newPayroll, staffId: val || ''})}>
                           <SelectTrigger className="bg-background border-border">
-                            <SelectValue />
+                            <SelectValue placeholder="Select Employee">
+                              {newPayroll.staffId && staff.find(s => s.id === newPayroll.staffId) 
+                                ? staff.find(s => s.id === newPayroll.staffId)?.name 
+                                : undefined}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
-                            <SelectItem value="Performance Bonus">Performance Bonus</SelectItem>
-                            <SelectItem value="Festival Bonus">Festival Bonus</SelectItem>
-                            <SelectItem value="Others">Others</SelectItem>
+                            {sortedRoles.map((role) => {
+                              const roleStaff = staffByRole[role]
+                                .filter(s => s.status === 'active')
+                                .filter(s => processPayrollRole === 'all' || s.role === processPayrollRole)
+                                .filter(s => s.name.toLowerCase().includes(processPayrollSearch.toLowerCase()));
+                              
+                              if (roleStaff.length === 0) return null;
+
+                              return (
+                                <SelectGroup key={role}>
+                                  <SelectLabel className="bg-sidebar-accent/30 text-primary font-bold uppercase text-[10px] tracking-widest">{role}</SelectLabel>
+                                  {roleStaff.map(s => (
+                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                  ))}
+                                  <SelectSeparator className="opacity-50" />
+                                </SelectGroup>
+                              );
+                            })}
+                            {Object.keys(staffByRole).length === 0 && (
+                              <div className="p-2 text-center text-xs text-sidebar-foreground">No matching staff found</div>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Bonus Amount (৳)</label>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          step="0.01"
-                          value={newPayroll.bonus} 
-                          onChange={e => setNewPayroll({...newPayroll, bonus: e.target.value})}
-                          className="bg-background border-border"
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Bonus Type</label>
+                          <Select value={newPayroll.bonusType} onValueChange={val => setNewPayroll({...newPayroll, bonusType: val || 'Performance Bonus'})}>
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <SelectItem value="Performance Bonus">Performance Bonus</SelectItem>
+                              <SelectItem value="Festival Bonus">Festival Bonus</SelectItem>
+                              <SelectItem value="Others">Others</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Bonus Amount (৳)</label>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            value={newPayroll.bonus} 
+                            onChange={e => setNewPayroll({...newPayroll, bonus: e.target.value})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Deductions (৳)</label>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            value={newPayroll.deductions} 
+                            onChange={e => setNewPayroll({...newPayroll, deductions: e.target.value})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Payment Method</label>
+                          <Select value={newPayroll.paymentMethod} onValueChange={val => setNewPayroll({...newPayroll, paymentMethod: val || 'Bank Transfer'})}>
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                              <SelectItem value="Cash">Cash</SelectItem>
+                              <SelectItem value="Cheque">Cheque</SelectItem>
+                              <SelectItem value="Mobile Banking">Mobile Banking</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Status</label>
+                          <Select value={newPayroll.status} onValueChange={(val: any) => setNewPayroll({...newPayroll, status: val || 'paid'})}>
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <SelectItem value="paid">Paid</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Deductions (৳)</label>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          step="0.01"
-                          value={newPayroll.deductions} 
-                          onChange={e => setNewPayroll({...newPayroll, deductions: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Payment Method</label>
-                        <Select value={newPayroll.paymentMethod} onValueChange={val => setNewPayroll({...newPayroll, paymentMethod: val || 'Bank Transfer'})}>
-                          <SelectTrigger className="bg-background border-border">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Cheque">Cheque</SelectItem>
-                            <SelectItem value="Mobile Banking">Mobile Banking</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Status</label>
-                        <Select value={newPayroll.status} onValueChange={(val: any) => setNewPayroll({...newPayroll, status: val || 'paid'})}>
-                          <SelectTrigger className="bg-background border-border">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsProcessPayrollOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
-                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Confirm Payment</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setIsProcessPayrollOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                      <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Confirm Payment</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
@@ -1322,13 +1317,15 @@ export default function Payroll() {
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Payslip
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                                  onClick={() => handleDeletePayroll(record.id)}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Record
-                                </DropdownMenuItem>
+                                {isAdmin && (
+                                  <DropdownMenuItem 
+                                    className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                    onClick={() => handleDeletePayroll(record.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Record
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1462,25 +1459,29 @@ export default function Payroll() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="text-primary hover:bg-primary/10 h-8 w-8"
-                                  onClick={() => {
-                                    setEditingStaff(s);
-                                    setIsEditStaffOpen(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
-                                  onClick={() => handleDeleteStaff(s.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                {isAdmin && (
+                                  <>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="text-primary hover:bg-primary/10 h-8 w-8"
+                                      onClick={() => {
+                                        setEditingStaff(s);
+                                        setIsEditStaffOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="text-rose-500 hover:bg-rose-500/10 h-8 w-8"
+                                      onClick={() => handleDeleteStaff(s.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

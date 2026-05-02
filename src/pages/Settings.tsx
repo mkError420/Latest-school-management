@@ -99,7 +99,12 @@ export default function Settings() {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Partial<Role> | null>(null);
-  const [newUserFormData, setNewUserFormData] = useState({
+  const [newUserFormData, setNewUserFormData] = useState<{
+    email: string;
+    password: string;
+    displayName: string;
+    role: string;
+  }>({
     email: '',
     password: '',
     displayName: '',
@@ -793,7 +798,7 @@ export default function Settings() {
                                   <Label className="text-[10px] font-black uppercase tracking-widest text-sidebar-foreground">Access Authority Role</Label>
                                   <Select 
                                     value={newUserFormData.role} 
-                                    onValueChange={val => setNewUserFormData({...newUserFormData, role: val})}
+                                    onValueChange={val => setNewUserFormData({...newUserFormData, role: val as string})}
                                   >
                                     <SelectTrigger className="bg-white/5 border-white/10 h-10 text-[10px] uppercase font-bold tracking-widest">
                                       <SelectValue placeholder="Select role" />
