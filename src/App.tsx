@@ -62,7 +62,7 @@ export default function App() {
           } />
           
           <Route path="/fees" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'teacher', 'staff']}>
               <Fees />
             </ProtectedRoute>
           } />
@@ -92,13 +92,13 @@ export default function App() {
           } />
           
           <Route path="/payroll" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'staff']}>
               <Payroll />
             </ProtectedRoute>
           } />
           
           <Route path="/settings" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'staff']}>
               <Settings />
             </ProtectedRoute>
           } />

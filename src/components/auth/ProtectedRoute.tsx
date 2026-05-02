@@ -8,11 +8,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, profile, loading, isAdmin } = useAuth();
+  const { user, profile, loading, isAdmin, isTeacher, isStaff, isStudent, isParent } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen font-mono text-sidebar-foreground">Loading Security Context...</div>;
   }
 
   if (!user) {
@@ -30,8 +30,13 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
 
     const isAuthorized = allowedRoles.some(role => {
-      if (role === 'admin') return isAdmin;
-      return role.toLowerCase() === profile.role.toLowerCase();
+      const lowerRole = role.toLowerCase();
+      if (lowerRole === 'admin') return isAdmin;
+      if (lowerRole === 'teacher') return isTeacher;
+      if (lowerRole === 'staff') return isStaff;
+      if (lowerRole === 'student') return isStudent;
+      if (lowerRole === 'parent') return isParent;
+      return lowerRole === profile.role.toLowerCase();
     });
 
     if (!isAuthorized) {

@@ -91,7 +91,8 @@ const DEFAULT_PERMISSIONS: Role['permissions'] = {
 };
 
 export default function Settings() {
-  const { profile, user, isAdmin } = useAuth();
+  const { profile, user, isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
+  const hasSettingsAccess = isAdmin || roleDefinition?.permissions.settings === 'full';
   const [isSaving, setIsSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -442,8 +443,8 @@ export default function Settings() {
             <TabsTrigger value="profile" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Profile</TabsTrigger>
             <TabsTrigger value="notifications" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Notifications</TabsTrigger>
             <TabsTrigger value="security" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Security</TabsTrigger>
-            {isAdmin && <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Users</TabsTrigger>}
-            {isAdmin && <TabsTrigger value="system" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">System</TabsTrigger>}
+            {hasSettingsAccess && <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Users</TabsTrigger>}
+            {hasSettingsAccess && <TabsTrigger value="system" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">System</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
