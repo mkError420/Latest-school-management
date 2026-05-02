@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from '@/src/lib/auth';
+import { AuthProvider, useAuth } from '@/src/lib/auth';
 import { ProtectedRoute } from '@/src/components/auth/ProtectedRoute';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -23,6 +23,12 @@ import Payroll from '@/src/pages/Payroll';
 import Settings from '@/src/pages/Settings';
 import Unauthorized from '@/src/pages/Unauthorized';
 
+function DashboardRedirect() {
+  const { profile } = useAuth();
+  if (profile?.role === 'admin') return <Dashboard />;
+  return <Navigate to="/classes" replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -32,25 +38,25 @@ export default function App() {
           <Route path="/unauthorized" element={<Unauthorized />} />
           
           <Route path="/" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Dashboard />
+            <ProtectedRoute>
+              <DashboardRedirect />
             </ProtectedRoute>
           } />
           
           <Route path="/classes" element={
-            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+            <ProtectedRoute>
               <Classes />
             </ProtectedRoute>
           } />
           
           <Route path="/students" element={
-            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+            <ProtectedRoute>
               <Students />
             </ProtectedRoute>
           } />
           
           <Route path="/attendance" element={
-            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+            <ProtectedRoute>
               <Attendance />
             </ProtectedRoute>
           } />
@@ -62,7 +68,7 @@ export default function App() {
           } />
           
           <Route path="/exams" element={
-            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+            <ProtectedRoute>
               <Exams />
             </ProtectedRoute>
           } />
@@ -80,7 +86,7 @@ export default function App() {
           } />
           
           <Route path="/subjects" element={
-            <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+            <ProtectedRoute>
               <Subjects />
             </ProtectedRoute>
           } />

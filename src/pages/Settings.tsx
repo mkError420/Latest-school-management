@@ -108,7 +108,7 @@ export default function Settings() {
     email: '',
     password: '',
     displayName: '',
-    role: 'student'
+    role: 'admin'
   });
   const [formData, setFormData] = useState({
     displayName: '',
@@ -754,6 +754,18 @@ export default function Settings() {
                         <p className="text-[10px] text-sidebar-foreground font-medium uppercase tracking-widest opacity-60">Manage individual staff and student login permissions.</p>
                       </div>
                       <div className="flex items-center gap-3">
+                        <Button 
+                          variant="outline"
+                          size="sm" 
+                          onClick={() => {
+                            const element = document.getElementById('role-architecture');
+                            element?.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className="border-white/10 text-sidebar-foreground uppercase font-black text-[10px] tracking-widest h-9 px-4 hover:bg-white/5"
+                        >
+                          <Shield className="w-3.5 h-3.5 mr-2" />
+                          Role Configuration
+                        </Button>
                         <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
                           <DialogTrigger asChild>
                             <Button 
@@ -804,11 +816,7 @@ export default function Settings() {
                                       <SelectValue placeholder="Select role" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1D23] border-white/10">
-                                      <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest">Admin</SelectItem>
-                                      <SelectItem value="teacher" className="text-[10px] uppercase font-bold tracking-widest">Teacher</SelectItem>
-                                      <SelectItem value="staff" className="text-[10px] uppercase font-bold tracking-widest">Staff</SelectItem>
-                                      <SelectItem value="student" className="text-[10px] uppercase font-bold tracking-widest">Student</SelectItem>
-                                      <SelectItem value="parent" className="text-[10px] uppercase font-bold tracking-widest">Parent</SelectItem>
+                                      <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest">Admin (Full Access)</SelectItem>
                                       {roles.map(r => (
                                         <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name}</SelectItem>
                                       ))}
@@ -909,10 +917,6 @@ export default function Settings() {
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1D23] border-white/10">
                                       <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest">Admin</SelectItem>
-                                      <SelectItem value="teacher" className="text-[10px] uppercase font-bold tracking-widest">Teacher</SelectItem>
-                                      <SelectItem value="staff" className="text-[10px] uppercase font-bold tracking-widest">Staff</SelectItem>
-                                      <SelectItem value="student" className="text-[10px] uppercase font-bold tracking-widest">Student</SelectItem>
-                                      <SelectItem value="parent" className="text-[10px] uppercase font-bold tracking-widest">Parent</SelectItem>
                                       {roles.map(r => (
                                         <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name}</SelectItem>
                                       ))}
@@ -946,7 +950,7 @@ export default function Settings() {
                   </div>
 
                   {/* Staff Role Architecture */}
-                  <div className="pt-12 border-t border-white/5 space-y-6">
+                  <div id="role-architecture" className="pt-12 border-t border-white/5 space-y-6 scroll-mt-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-1">Staff Role Architecture</h3>

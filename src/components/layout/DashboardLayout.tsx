@@ -59,12 +59,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       title: 'Academic',
       roles: ['admin', 'teacher', 'parent', 'student', 'staff'],
       items: [
-        { name: 'Classes', href: '/classes', icon: GraduationCap, roles: ['admin', 'teacher'] },
-        { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
-        { name: 'Attendance', href: '/attendance', icon: CalendarCheck, roles: ['admin', 'teacher'] },
-        { name: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['admin', 'teacher'] },
-        { name: 'Class Routine', href: '/routine', icon: Clock3, roles: ['admin', 'teacher', 'student', 'parent'] },
-        { name: 'Exams', href: '/exams', icon: GraduationCap, roles: ['admin', 'teacher', 'student', 'parent'] },
+        { name: 'Classes', href: '/classes', icon: GraduationCap, roles: ['admin', 'teacher', 'parent', 'student', 'staff'] },
+        { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher', 'parent', 'student', 'staff'] },
+        { name: 'Attendance', href: '/attendance', icon: CalendarCheck, roles: ['admin', 'teacher', 'parent', 'student', 'staff'] },
+        { name: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['admin', 'teacher', 'parent', 'student', 'staff'] },
+        { name: 'Class Routine', href: '/routine', icon: Clock3, roles: ['admin', 'teacher', 'student', 'parent', 'staff'] },
+        { name: 'Exams', href: '/exams', icon: GraduationCap, roles: ['admin', 'teacher', 'student', 'parent', 'staff'] },
       ]
     },
     {
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       roles: ['admin', 'teacher', 'parent', 'student', 'staff'],
       items: [
         { name: 'Fees', href: '/fees', icon: CreditCard, roles: ['admin'] },
-        { name: 'Library', href: '/library', icon: Library, roles: ['admin', 'teacher', 'student'] },
+        { name: 'Library', href: '/library', icon: Library, roles: ['admin', 'teacher', 'student', 'parent', 'staff'] },
         { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
       ]
     }
@@ -114,31 +114,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             if (!profile) return false;
             
             // 1. Admin always sees everything
-            if (profile.role === 'admin') return true;
+            if (profile.role === 'admin' || profile.role === 'Admin') return true;
 
-            // Strict check: Dashboard, Fees, Settings are ONLY for Admin
-            const restrictedPages = ['Dashboard', 'Fees', 'Settings'];
-            if (restrictedPages.includes(item.name) && profile.role !== 'admin') return false;
-
-            // 2. Check Static Role Mappings
-            const isAuthorized = item.roles.some(r => r.toLowerCase() === profile.role.toLowerCase());
-            if (isAuthorized) return true;
-
-            // 3. Check Dynamic Role Permissions
+            // 2. If we have a role definition, check permissions
             if (roleDefinition?.permissions) {
               const perms = roleDefinition.permissions;
               const name = item.name.toLowerCase();
               
-              if (name.includes('student') && perms.students !== 'none') return true;
-              if (name.includes('class') && perms.students !== 'none') return true;
-              if (name.includes('attendance') && perms.attendance !== 'none') return true;
-              if (name.includes('subject') && perms.students !== 'none') return true;
-              if (name.includes('exam') && perms.exams !== 'none') return true;
-              if (name.includes('library') && perms.library !== 'none') return true;
-              if (name.includes('payroll') && perms.payroll !== 'none') return true;
-              if (name.includes('staff') && perms.staff !== 'none') return true;
-              if (name.includes('routine') && (perms.students !== 'none' || perms.staff !== 'none')) return true;
+              if (name === 'dashboard') return false; // Only admin
+              if (name === 'classes' && perms.students !== 'none') return true;
+              if (name === 'students' && perms.students !== 'none') return true;
+              if (name === 'attendance' && perms.attendance !== 'none') return true;
+              if (name === 'subjects' && perms.students !== 'none') return true;
+              if (name === 'class routine' && perms.students !== 'none') return true;
+              if (name === 'exams' && perms.exams !== 'none') return true;
+              if (name === 'library' && perms.library !== 'none') return true;
+              if (name === 'staff directory' && perms.staff !== 'none') return true;
+              if (name === 'payroll history' && perms.payroll !== 'none') return true;
+              if (name === 'staff attendance' && perms.staff !== 'none') return true;
+              if (name === 'fees' && perms.fees !== 'none') return true;
+              if (name === 'settings' && perms.settings !== 'none') return true;
+              
+              return false;
             }
+
+            // 3. Fallback for non-admin users without a dynamic role definition
+            // Default "Staff/Teacher" access if no custom role is defined
+            const publicPages = ['Classes', 'Students', 'Attendance', 'Subjects', 'Class Routine', 'Exams', 'Library'];
+            if (publicPages.includes(item.name)) return true;
 
             return false;
           });
@@ -243,7 +246,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem onClick={() => navigate('/settings')} className="hover:bg-sidebar-accent">Profile Settings</DropdownMenuItem>
+                  {profile?.role === 'admin' && (
+                    <DropdownMenuItem onClick={() => navigate('/settings')} className="hover:bg-sidebar-accent">Profile Settings</DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleLogout} className="text-rose-500 hover:bg-sidebar-accent">Logout</DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
