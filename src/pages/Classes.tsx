@@ -48,6 +48,7 @@ import { collection, onSnapshot, addDoc, query, orderBy, deleteDoc, doc, updateD
 import { db } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/src/lib/auth';
 
 interface Class {
   id: string;
@@ -65,6 +66,7 @@ interface Teacher {
 }
 
 export default function Classes() {
+  const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
   const [classes, setClasses] = useState<Class[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,87 +197,89 @@ export default function Classes() {
             <h1 className="text-2xl font-bold text-white">Class Management</h1>
             <p className="text-sidebar-foreground">Define and manage school classes and sections.</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger render={
-              <Button className="bg-primary hover:bg-primary/90 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Add New Class
-              </Button>
-            } />
-            <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
-              <form onSubmit={handleAddClass}>
-                <DialogHeader>
-                  <DialogTitle className="text-white">Create New Class</DialogTitle>
-                  <DialogDescription className="text-sidebar-foreground">
-                    Define a new class and assign a teacher.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
+          {(isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full') && (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger render={
+                <Button className="bg-primary hover:bg-primary/90 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New Class
+                </Button>
+              } />
+              <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+                <form onSubmit={handleAddClass}>
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Create New Class</DialogTitle>
+                    <DialogDescription className="text-sidebar-foreground">
+                      Define a new class and assign a teacher.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Class Name</label>
+                        <Input 
+                          required 
+                          value={newClass.name} 
+                          onChange={e => setNewClass({...newClass, name: e.target.value})}
+                          placeholder="e.g. Class 10" 
+                          className="bg-background border-border"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-sidebar-foreground">Section <span className="text-xs opacity-50">(Optional)</span></label>
+                        <Input 
+                          value={newClass.section} 
+                          onChange={e => setNewClass({...newClass, section: e.target.value})}
+                          placeholder="e.g. A" 
+                          className="bg-background border-border"
+                        />
+                      </div>
+                    </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Class Name</label>
-                      <Input 
+                      <label className="text-sm font-medium text-sidebar-foreground">Class Teacher</label>
+                      <Select 
                         required 
-                        value={newClass.name} 
-                        onChange={e => setNewClass({...newClass, name: e.target.value})}
-                        placeholder="e.g. Class 10" 
-                        className="bg-background border-border"
-                      />
+                        value={newClass.teacher} 
+                        onValueChange={val => setNewClass({...newClass, teacher: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border">
+                          <SelectValue placeholder="Select a teacher" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          {teachers.length === 0 ? (
+                            <SelectItem value="none" disabled>No teachers found</SelectItem>
+                          ) : (
+                            teachers.map(teacher => {
+                              const count = getTeacherClassCount(teacher.name);
+                              const isMaxedOut = count >= 2;
+                              return (
+                                <SelectItem key={teacher.id} value={teacher.name} disabled={isMaxedOut && newClass.teacher !== teacher.name}>
+                                  {teacher.name} {isMaxedOut ? '(Max Assigned)' : `(${count}/2 assigned)`}
+                                </SelectItem>
+                              );
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Section <span className="text-xs opacity-50">(Optional)</span></label>
+                      <label className="text-sm font-medium text-sidebar-foreground">Room Number</label>
                       <Input 
-                        value={newClass.section} 
-                        onChange={e => setNewClass({...newClass, section: e.target.value})}
-                        placeholder="e.g. A" 
+                        value={newClass.roomNumber} 
+                        onChange={e => setNewClass({...newClass, roomNumber: e.target.value})}
+                        placeholder="e.g. 101" 
                         className="bg-background border-border"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Class Teacher</label>
-                    <Select 
-                      required 
-                      value={newClass.teacher} 
-                      onValueChange={val => setNewClass({...newClass, teacher: val || ''})}
-                    >
-                      <SelectTrigger className="w-full bg-background border-border">
-                        <SelectValue placeholder="Select a teacher" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        {teachers.length === 0 ? (
-                          <SelectItem value="none" disabled>No teachers found</SelectItem>
-                        ) : (
-                          teachers.map(teacher => {
-                            const count = getTeacherClassCount(teacher.name);
-                            const isMaxedOut = count >= 2;
-                            return (
-                              <SelectItem key={teacher.id} value={teacher.name} disabled={isMaxedOut && newClass.teacher !== teacher.name}>
-                                {teacher.name} {isMaxedOut ? '(Max Assigned)' : `(${count}/2 assigned)`}
-                              </SelectItem>
-                            );
-                          })
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Room Number</label>
-                    <Input 
-                      value={newClass.roomNumber} 
-                      onChange={e => setNewClass({...newClass, roomNumber: e.target.value})}
-                      placeholder="e.g. 101" 
-                      className="bg-background border-border"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
-                  <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Create Class</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Create Class</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="flex items-center gap-4 bg-card p-4 rounded-xl border border-border">
@@ -297,46 +301,48 @@ export default function Classes() {
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <GraduationCap className="w-6 h-6 text-primary" />
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={
-                    <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  } />
-                  <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>Class Options</DropdownMenuLabel>
-                      <DropdownMenuItem 
-                        className="hover:bg-sidebar-accent cursor-pointer"
-                        onSelect={() => {
-                          setSelectedClass(cls);
-                          setIsEditDialogOpen(true);
-                        }}
-                        onClick={() => {
-                          setSelectedClass(cls);
-                          setIsEditDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Class
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                        onSelect={() => {
-                          setSelectedClass(cls);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                        onClick={() => {
-                          setSelectedClass(cls);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Class
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {(isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full') && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={
+                      <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    } />
+                    <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>Class Options</DropdownMenuLabel>
+                        <DropdownMenuItem 
+                          className="hover:bg-sidebar-accent cursor-pointer"
+                          onSelect={() => {
+                            setSelectedClass(cls);
+                            setIsEditDialogOpen(true);
+                          }}
+                          onClick={() => {
+                            setSelectedClass(cls);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Class
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                          onSelect={() => {
+                            setSelectedClass(cls);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                          onClick={() => {
+                            setSelectedClass(cls);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Class
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
               <h3 className="text-xl font-bold text-white mb-1">{cls.name}{cls.section ? ` - ${cls.section}` : ''}</h3>
               <div className="space-y-2 mt-4">

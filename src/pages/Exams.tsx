@@ -101,7 +101,10 @@ interface Subject {
 }
 
 export default function Exams() {
-  const { systemConfig } = useAuth();
+  const { profile, isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
+  
+  // Consolidated permission check
+  const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions?.exams === 'full';
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -487,19 +490,23 @@ export default function Exams() {
                       <TableRow key={student.id} className="border-border hover:bg-sidebar-accent/20 transition-colors">
                         <TableCell className="text-sidebar-foreground font-medium">{student.rollNumber}</TableCell>
                         <TableCell className="text-white font-semibold">{student.name}</TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number"
-                            max={gradingExam.totalMarks}
-                            min={0}
-                            value={result.marks || ''}
-                            onChange={(e) => setGradingResults(prev => ({
-                              ...prev,
-                              [student.id]: { ...prev[student.id], marks: e.target.value }
-                            }))}
-                            className="bg-background border-border h-9"
-                            placeholder="0"
-                          />
+                        <TableCell className="text-center">
+                          {hasFullAccess ? (
+                            <Input 
+                              type="number"
+                              max={gradingExam.totalMarks}
+                              min={0}
+                              value={result.marks || ''}
+                              onChange={(e) => setGradingResults(prev => ({
+                                ...prev,
+                                [student.id]: { ...prev[student.id], marks: e.target.value }
+                              }))}
+                              className="bg-background border-border h-9"
+                              placeholder="0"
+                            />
+                          ) : (
+                            <span className="text-white font-medium">{result.marks || '-'}</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={cn(
@@ -512,15 +519,19 @@ export default function Exams() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Input 
-                            value={result.remarks || ''}
-                            onChange={(e) => setGradingResults(prev => ({
-                              ...prev,
-                              [student.id]: { ...prev[student.id], remarks: e.target.value }
-                            }))}
-                            className="bg-background border-border h-9"
-                            placeholder="Good performance"
-                          />
+                          {hasFullAccess ? (
+                            <Input 
+                              value={result.remarks || ''}
+                              onChange={(e) => setGradingResults(prev => ({
+                                ...prev,
+                                [student.id]: { ...prev[student.id], remarks: e.target.value }
+                              }))}
+                              className="bg-background border-border h-9"
+                              placeholder="Good performance"
+                            />
+                          ) : (
+                            <span className="text-sidebar-foreground text-sm">{result.remarks || '-'}</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -839,7 +850,8 @@ export default function Exams() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            {hasFullAccess && (
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger render={
                 <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
                   <Plus className="w-4 h-4 mr-2" />
@@ -956,6 +968,7 @@ export default function Exams() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
@@ -1079,7 +1092,8 @@ export default function Exams() {
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <DropdownMenu>
+                                  {hasFullAccess && (
+                                    <DropdownMenu>
                                     <DropdownMenuTrigger render={
                                       <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
                                         <MoreHorizontal className="w-4 h-4" />
@@ -1118,6 +1132,7 @@ export default function Exams() {
                                       </DropdownMenuGroup>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
+                                )}
                                 </TableCell>
                               </TableRow>
                             ))}

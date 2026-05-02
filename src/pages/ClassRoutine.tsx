@@ -39,7 +39,8 @@ interface RoutineEntry {
 
 export default function ClassRoutine() {
   const [routine, setRoutine] = useState<RoutineEntry[]>([]);
-  const { isAdmin, isTeacher, systemConfig } = useAuth();
+  const { isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
+  const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full';
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string>('all');
@@ -343,7 +344,7 @@ export default function ClassRoutine() {
               Print Routine
             </Button>
             
-            {(isAdmin || isTeacher) && (
+            {hasFullAccess && (
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 if (!open) {
                   setEditingRoutineId(null);
@@ -471,7 +472,7 @@ export default function ClassRoutine() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:hidden">
                     {dayEntries.map(entry => (
                       <div key={entry.id} className="bg-sidebar p-4 rounded-lg border border-border relative group">
-                        {(isAdmin || isTeacher) && (
+                        {hasFullAccess && (
                           <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                             <Button 
                               variant="ghost" 

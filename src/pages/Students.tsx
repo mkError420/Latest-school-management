@@ -97,7 +97,7 @@ interface Class {
 }
 
 export default function Students() {
-  const { isAdmin, roleDefinition } = useAuth();
+  const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [systemConfig, setSystemConfig] = useState<any>(null);
@@ -536,6 +536,8 @@ export default function Students() {
     });
   }
 
+  const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full';
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -554,7 +556,7 @@ export default function Students() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            {(isAdmin || roleDefinition?.permissions.students === 'full') && (
+            {hasFullAccess && (
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger render={
                   <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
@@ -885,7 +887,7 @@ export default function Students() {
                                       <Eye className="w-4 h-4 mr-2" />
                                       View Profile
                                     </DropdownMenuItem>
-                                    {(isAdmin || roleDefinition?.permissions.students === 'full') && (
+                                    {hasFullAccess && (
                                       <>
                                         <DropdownMenuItem 
                                           className="hover:bg-sidebar-accent cursor-pointer"

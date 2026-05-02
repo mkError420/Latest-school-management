@@ -36,17 +36,21 @@ service cloud.firestore {
       return isSignedIn() && getUserData().get('role', 'none') == role;
     }
 
+    function isStaff() {
+      return isSignedIn() && !(getUserData().get('role', 'none') in ['student', 'parent', 'Student', 'Parent', 'none']);
+    }
+
     function isAdmin() {
       // Put the email check first for immediate admin access regardless of DB state
       return isSignedIn() && (
         request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
         request.auth.token.email == "jakir995627@gmail.com" || 
-        hasRole('admin')
+        hasRole('admin') || hasRole('Admin')
       );
     }
 
     function isTeacher() {
-      return hasRole('teacher');
+      return hasRole('teacher') || hasRole('Teacher') || isStaff();
     }
 
     function isParent() {

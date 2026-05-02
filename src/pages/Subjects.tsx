@@ -52,7 +52,8 @@ export default function Subjects() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const { isAdmin } = useAuth();
+  const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
+  const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full';
 
   const [formData, setFormData] = useState({
     name: '',
@@ -139,7 +140,7 @@ export default function Subjects() {
             <p className="text-sidebar-foreground">Manage and organize school subjects.</p>
           </div>
 
-          {isAdmin && (
+          {hasFullAccess && (
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               if (!open) resetForm();
               setIsDialogOpen(open);
@@ -231,7 +232,7 @@ export default function Subjects() {
                         <TableCell className="text-sidebar-foreground font-mono">{subject.code || 'N/A'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            {isAdmin && (
+                            {hasFullAccess && (
                               <>
                                 <Button 
                                   variant="ghost" 

@@ -70,7 +70,7 @@ interface Class {
 }
 
 export default function Attendance() {
-  const { isAdmin, roleDefinition } = useAuth();
+  const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [classes, setClasses] = useState<Class[]>([]);
@@ -261,7 +261,10 @@ export default function Attendance() {
   };
 
   const saveAttendance = async () => {
-    if (!isAdmin && roleDefinition?.permissions.attendance !== 'full') {
+    // Grant full access for the academic sections as per user request
+    const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.attendance === 'full';
+    
+    if (!hasFullAccess) {
       toast.error('Unauthorized: You do not have permission to mark attendance.');
       return;
     }
@@ -337,7 +340,7 @@ export default function Attendance() {
     student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const isEditable = isAdmin || roleDefinition?.permissions.attendance === 'full';
+  const isEditable = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.attendance === 'full';
 
   return (
     <DashboardLayout>
