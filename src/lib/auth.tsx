@@ -70,10 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       academicYear: '2023-2024'
     });
 
-    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'system'), (doc) => {
-      if (doc.exists()) {
-        setSystemConfig(doc.data() as SystemConfig);
+    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'system'), (snapshot) => {
+      if (snapshot.exists()) {
+        setSystemConfig(snapshot.data() as SystemConfig);
       }
+    }, (error) => {
+      console.error("Config listener error:", error);
     });
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -110,6 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } else {
                 setRoleDefinition(null);
               }
+              setLoading(false);
+            }).catch(err => {
+              console.error("Error fetching role definition:", err);
               setLoading(false);
             });
           });

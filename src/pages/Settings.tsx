@@ -246,7 +246,7 @@ export default function Settings() {
       }, { merge: true });
       toast.success('Cloud backup initiated successfully');
     } catch (error) {
-      toast.error('Backup failed');
+      handleFirestoreError(error, OperationType.UPDATE, 'config/system');
     } finally {
       setIsSaving(false);
     }
@@ -286,8 +286,7 @@ export default function Settings() {
         toast.info('Data integrity verified: No inconsistent IDs found', { id: toastId });
       }
     } catch (error) {
-      console.error('Migration failed:', error);
-      toast.error('Data migration failed', { id: toastId });
+      handleFirestoreError(error, OperationType.WRITE, 'students (batch)');
     } finally {
       setIsSaving(false);
     }
@@ -316,8 +315,7 @@ export default function Settings() {
       setIsRoleDialogOpen(false);
       setEditingRole(null);
     } catch (error) {
-      console.error('Error saving role:', error);
-      toast.error('Failed to save role configuration');
+      handleFirestoreError(error, editingRole.id ? OperationType.UPDATE : OperationType.CREATE, `roles/${editingRole.id || 'new'}`);
     } finally {
       setIsSaving(false);
     }
@@ -364,14 +362,18 @@ export default function Settings() {
       const newUid = userCredential.user.uid;
 
       // Create profile in Firestore
-      await setDoc(doc(db, 'users', newUid), {
-        uid: newUid,
-        email: newUserFormData.email,
-        displayName: newUserFormData.displayName,
-        role: newUserFormData.role,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+      try {
+        await setDoc(doc(db, 'users', newUid), {
+          uid: newUid,
+          email: newUserFormData.email,
+          displayName: newUserFormData.displayName,
+          role: newUserFormData.role,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err: any) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${newUid}`);
+      }
 
       toast.success('Digital identity established successfully', { id: toastId });
       setIsAddUserDialogOpen(false);
@@ -402,7 +404,23 @@ export default function Settings() {
       await deleteDoc(doc(db, 'roles', id));
       toast.success('Role decommissioned');
     } catch (error) {
-      toast.error('Failed to delete role');
+      handleFirestoreError(error, OperationType.DELETE, `roles/${id}`);
+    }
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    if (user.email === 'mk.rabbani.cse@gmail.com' || user.email === 'jakir995627@gmail.com') {
+      toast.error('This ultimate administrative identity cannot be decommissioned.');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to decommission the digital identity for ${user.displayName}? This action will strictly revoke institutional access.`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'users', user.id));
+      toast.success('Digital identity decommissioned successfully');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${user.id}`);
     }
   };
 
@@ -897,12 +915,23 @@ export default function Settings() {
                                   </Select>
                                 </TableCell>
                                 <TableCell className="text-right pr-6">
-                                  <Badge variant="outline" className={cn(
-                                    "text-[9px] font-black uppercase tracking-tighter border-none",
-                                    u.role === 'admin' ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary"
-                                  )}>
-                                    {u.role || 'No Role'}
-                                  </Badge>
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Badge variant="outline" className={cn(
+                                      "text-[9px] font-black uppercase tracking-tighter border-none",
+                                      u.role === 'admin' ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary"
+                                    )}>
+                                      {u.role || 'No Role'}
+                                    </Badge>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                      onClick={() => handleDeleteUser(u)}
+                                      disabled={u.email === 'mk.rabbani.cse@gmail.com' || u.email === 'jakir995627@gmail.com'}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}

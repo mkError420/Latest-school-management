@@ -167,6 +167,8 @@ export default function Dashboard() {
     );
     unsubscribes.push(onSnapshot(examsQ, (snapshot) => {
       setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Dashboard Exams Listener Error:", error);
     }));
 
     // Classes - Accessible to all authenticated users for data resolution
@@ -175,6 +177,8 @@ export default function Dashboard() {
       const classData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setClasses(classData);
       setStats(prev => ({ ...prev, totalClasses: classData.length }));
+    }, (error) => {
+      console.error("Dashboard Classes Listener Error:", error);
     }));
 
     // Data only for Admin and Teachers
@@ -187,6 +191,8 @@ export default function Dashboard() {
       );
       unsubscribes.push(onSnapshot(transactionsQ, (snapshot) => {
         setRecentTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, (error) => {
+        console.error("Dashboard Transactions Listener Error:", error);
       }));
 
       // Total Students & Trends
@@ -209,18 +215,24 @@ export default function Dashboard() {
           totalStudents: total, 
           growthRate: growth
         }));
+      }, (error) => {
+        console.error("Dashboard Students Listener Error:", error);
       }));
 
       // Staff Count
       const staffQ = query(collection(db, 'staff'));
       unsubscribes.push(onSnapshot(staffQ, (snapshot) => {
         setStats(prev => ({ ...prev, totalStaff: snapshot.docs.length }));
+      }, (error) => {
+        console.error("Dashboard Staff Listener Error:", error);
       }));
 
       // Library Issues
       const libraryQ = query(collection(db, 'library_issues'), where('status', '==', 'issued'));
       unsubscribes.push(onSnapshot(libraryQ, (snapshot) => {
         setStats(prev => ({ ...prev, libraryIssues: snapshot.docs.length }));
+      }, (error) => {
+        console.error("Dashboard Library Listener Error:", error);
       }));
     }
 
@@ -238,6 +250,8 @@ export default function Dashboard() {
         const monthly = docs.filter(d => d.date && new Date(d.date) >= monthStart).reduce((acc, d) => acc + (d.amount || 0), 0);
         
         setStats(prev => ({ ...prev, totalRevenue: total, monthlyRevenue: monthly }));
+      }, (error) => {
+        console.error("Dashboard Fees Listener Error:", error);
       }));
 
       // Cost (Payroll)
@@ -252,6 +266,8 @@ export default function Dashboard() {
         const monthly = docs.filter(d => d.month === currentMonthStr).reduce((acc, d) => acc + (d.netSalary || 0), 0);
         
         setStats(prev => ({ ...prev, totalCost: total, monthlyCost: monthly }));
+      }, (error) => {
+        console.error("Dashboard Payroll Listener Error:", error);
       }));
     }
 
@@ -265,6 +281,8 @@ export default function Dashboard() {
       const present = snapshot.docs.filter(d => d.data().status === 'present').length;
       const avg = (present / snapshot.docs.length) * 100;
       setStats(prev => ({ ...prev, avgAttendance: avg }));
+    }, (error) => {
+      console.error("Dashboard Attendance Listener Error:", error);
     }));
 
     return () => {

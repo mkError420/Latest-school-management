@@ -32,7 +32,7 @@ export default function App() {
           <Route path="/unauthorized" element={<Unauthorized />} />
           
           <Route path="/" element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Dashboard />
             </ProtectedRoute>
           } />
@@ -92,7 +92,7 @@ export default function App() {
           } />
           
           <Route path="/settings" element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin']}>
               <Settings />
             </ProtectedRoute>
           } />
