@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, isAdmin } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,10 +19,18 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && profile) {
-    const isActuallyAdmin = profile.role === 'admin' || profile.role === 'Admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com';
+  if (allowedRoles) {
+    if (!profile) {
+      // If we have a user but no profile, they are effectively unauthorized until the profile loads
+      // Unless they are one of the hardcoded admins
+      if (isAdmin) {
+        return <>{children}</>;
+      }
+      return <Navigate to="/unauthorized" replace />;
+    }
+
     const isAuthorized = allowedRoles.some(role => {
-      if (role === 'admin') return isActuallyAdmin;
+      if (role === 'admin') return isAdmin;
       return role.toLowerCase() === profile.role.toLowerCase();
     });
 

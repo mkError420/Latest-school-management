@@ -24,8 +24,8 @@ import Settings from '@/src/pages/Settings';
 import Unauthorized from '@/src/pages/Unauthorized';
 
 function DashboardRedirect() {
-  const { isAdmin } = useAuth();
-  if (isAdmin) return <Dashboard />;
+  const { isAdmin, isTeacher, isStaff } = useAuth();
+  if (isAdmin || isTeacher || isStaff) return <Dashboard />;
   return <Navigate to="/classes" replace />;
 }
 

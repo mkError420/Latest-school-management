@@ -816,9 +816,13 @@ export default function Settings() {
                                       <SelectValue placeholder="Select role" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-[#1A1D23] border-white/10">
-                                      <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest">Admin (Full Access)</SelectItem>
+                                      <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest text-primary">Admin (Full Access)</SelectItem>
+                                      <SelectItem value="teacher" className="text-[10px] uppercase font-bold tracking-widest">Teacher (Standard)</SelectItem>
+                                      <SelectItem value="staff" className="text-[10px] uppercase font-bold tracking-widest">Staff (Standard)</SelectItem>
+                                      <SelectItem value="student" className="text-[10px] uppercase font-bold tracking-widest">Student</SelectItem>
+                                      <SelectItem value="parent" className="text-[10px] uppercase font-bold tracking-widest">Parent</SelectItem>
                                       {roles.map(r => (
-                                        <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name}</SelectItem>
+                                        <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name} (Custom)</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>

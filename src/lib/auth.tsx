@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export type UserRole = 'admin' | 'teacher' | 'parent' | 'student' | 'staff';
@@ -102,21 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(userData);
 
         // Fetch role definition if exists
-        if (userData.role && userData.role !== 'admin') {
-          // Find role by name or ID
-          import('firebase/firestore').then(({ collection, query, where, getDocs, limit }) => {
-            const roleQ = query(collection(db, 'roles'), where('name', '==', userData.role), limit(1));
-            getDocs(roleQ).then(snap => {
-              if (!snap.empty) {
-                setRoleDefinition({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserRoleDefinition);
-              } else {
-                setRoleDefinition(null);
-              }
-              setLoading(false);
-            }).catch(err => {
-              console.error("Error fetching role definition:", err);
-              setLoading(false);
-            });
+        const roleName = userData.role;
+        if (roleName && roleName.toLowerCase() !== 'admin') {
+          // Find role by name
+          const roleQ = query(collection(db, 'roles'), where('name', '==', roleName), limit(1));
+          getDocs(roleQ).then(snap => {
+            if (!snap.empty) {
+              setRoleDefinition({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserRoleDefinition);
+            } else {
+              setRoleDefinition(null);
+            }
+            setLoading(false);
+          }).catch(err => {
+            console.error("Error fetching role definition:", err);
+            setLoading(false);
           });
         } else {
           setRoleDefinition(null);
@@ -141,11 +140,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     roleDefinition,
     systemConfig,
     loading,
-    isAdmin: profile?.role === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com',
-    isTeacher: profile?.role === 'teacher' || profile?.role === 'Teacher',
-    isParent: profile?.role === 'parent',
-    isStudent: profile?.role === 'student' || profile?.role === 'Student',
-    isStaff: profile?.role === 'staff' || profile?.role === 'Staff',
+    isAdmin: profile?.role?.toLowerCase() === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com',
+    isTeacher: profile?.role?.toLowerCase() === 'teacher',
+    isParent: profile?.role?.toLowerCase() === 'parent',
+    isStudent: profile?.role?.toLowerCase() === 'student',
+    isStaff: profile?.role ? !['student', 'parent'].includes(profile.role.toLowerCase()) : false,
   };
 
   return (
