@@ -4,7 +4,7 @@ import { useAuth, UserRole } from '@/src/lib/auth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: UserRole[];
+  allowedRoles?: string[];
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {

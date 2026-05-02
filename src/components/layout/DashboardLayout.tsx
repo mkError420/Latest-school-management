@@ -50,14 +50,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigationGroups = [
     {
       title: 'Management',
-      roles: ['admin', 'teacher', 'parent', 'student'],
+      roles: ['admin', 'teacher', 'parent', 'student', 'staff'],
       items: [
-        { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'teacher', 'parent', 'student'] },
+        { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'teacher', 'parent', 'student', 'staff'] },
       ]
     },
     {
       title: 'Academic',
-      roles: ['admin', 'teacher', 'parent', 'student'],
+      roles: ['admin', 'teacher', 'parent', 'student', 'staff'],
       items: [
         { name: 'Classes', href: '/classes', icon: GraduationCap, roles: ['admin', 'teacher'] },
         { name: 'Students', href: '/students', icon: Users, roles: ['admin', 'teacher'] },
@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     },
     {
       title: 'Staff Payroll',
-      roles: ['admin'],
+      roles: ['admin', 'staff'],
       items: [
         { name: 'Staff Directory', href: '/payroll?tab=staff', icon: Users, roles: ['admin'] },
         { name: 'Payroll History', href: '/payroll?tab=history', icon: Banknote, roles: ['admin'] },
@@ -78,11 +78,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     },
     {
       title: 'Institutional',
-      roles: ['admin', 'teacher', 'parent', 'student'],
+      roles: ['admin', 'teacher', 'parent', 'student', 'staff'],
       items: [
         { name: 'Fees', href: '/fees', icon: CreditCard, roles: ['admin', 'parent'] },
         { name: 'Library', href: '/library', icon: Library, roles: ['admin', 'teacher', 'student'] },
-        { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'teacher', 'parent', 'student'] },
+        { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'teacher', 'parent', 'student', 'staff'] },
       ]
     }
   ];
@@ -108,9 +108,39 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
       <nav className="flex-1 space-y-8 overflow-y-auto custom-scrollbar">
         {navigationGroups.map((group) => {
-          const filteredItems = group.items.filter(item => 
-            profile && item.roles.includes(profile.role)
-          );
+          const { roleDefinition } = useAuth();
+          
+          const filteredItems = group.items.filter(item => {
+            if (!profile) return false;
+            
+            // 1. Admin always sees everything
+            if (profile.role === 'admin') return true;
+
+            // 2. Check Static Role Mappings
+            const isAuthorized = item.roles.some(r => r.toLowerCase() === profile.role.toLowerCase());
+            if (isAuthorized) return true;
+
+            // 3. Check Dynamic Role Permissions
+            if (roleDefinition?.permissions) {
+              const perms = roleDefinition.permissions;
+              const name = item.name.toLowerCase();
+              
+              if (name.includes('dashboard')) return true;
+              if (name.includes('student') && perms.students !== 'none') return true;
+              if (name.includes('class') && perms.students !== 'none') return true;
+              if (name.includes('attendance') && perms.attendance !== 'none') return true;
+              if (name.includes('subject') && perms.students !== 'none') return true;
+              if (name.includes('exam') && perms.exams !== 'none') return true;
+              if (name.includes('fee') && perms.fees !== 'none') return true;
+              if (name.includes('library') && perms.library !== 'none') return true;
+              if (name.includes('payroll') && perms.payroll !== 'none') return true;
+              if (name.includes('staff') && perms.staff !== 'none') return true;
+              if (name.includes('setting') && perms.settings !== 'none') return true;
+              if (name.includes('routine') && (perms.students !== 'none' || perms.staff !== 'none')) return true;
+            }
+
+            return false;
+          });
           
           if (filteredItems.length === 0) return null;
 

@@ -23,6 +23,7 @@ import {
   UserPlus,
   X
 } from 'lucide-react';
+import { useAuth } from '@/src/lib/auth';
 import { format, subMonths } from 'date-fns';
 import { 
   Table, 
@@ -96,6 +97,7 @@ interface Class {
 }
 
 export default function Students() {
+  const { isAdmin, roleDefinition } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [systemConfig, setSystemConfig] = useState<any>(null);
@@ -552,13 +554,14 @@ export default function Students() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger render={
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Student
-                </Button>
-              } />
+            {(isAdmin || roleDefinition?.permissions.students === 'full') && (
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger render={
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Student
+                  </Button>
+                } />
               <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
                 <form onSubmit={handleAddStudent}>
                   <DialogHeader>
@@ -743,6 +746,7 @@ export default function Students() {
                 </form>
               </DialogContent>
             </Dialog>
+          )}
           </div>
         </div>
 
@@ -881,26 +885,30 @@ export default function Students() {
                                       <Eye className="w-4 h-4 mr-2" />
                                       View Profile
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="hover:bg-sidebar-accent cursor-pointer"
-                                      onClick={() => {
-                                        setSelectedStudent(student);
-                                        setIsEditDialogOpen(true);
-                                      }}
-                                    >
-                                      <Edit className="w-4 h-4 mr-2" />
-                                      Edit Details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                                      onClick={() => {
-                                        setSelectedStudent(student);
-                                        setIsDeleteDialogOpen(true);
-                                      }}
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete Record
-                                    </DropdownMenuItem>
+                                    {(isAdmin || roleDefinition?.permissions.students === 'full') && (
+                                      <>
+                                        <DropdownMenuItem 
+                                          className="hover:bg-sidebar-accent cursor-pointer"
+                                          onClick={() => {
+                                            setSelectedStudent(student);
+                                            setIsEditDialogOpen(true);
+                                          }}
+                                        >
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Edit Details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                          onClick={() => {
+                                            setSelectedStudent(student);
+                                            setIsDeleteDialogOpen(true);
+                                          }}
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          Delete Record
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
                                   </DropdownMenuGroup>
                                 </DropdownMenuContent>
                               </DropdownMenu>

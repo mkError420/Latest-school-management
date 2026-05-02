@@ -13,6 +13,7 @@ import {
   Users2,
   Search
 } from 'lucide-react';
+import { useAuth } from '@/src/lib/auth';
 import { 
   AreaChart, 
   Area, 
@@ -69,6 +70,7 @@ interface Class {
 }
 
 export default function Attendance() {
+  const { isAdmin, roleDefinition } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [classes, setClasses] = useState<Class[]>([]);
@@ -259,6 +261,11 @@ export default function Attendance() {
   };
 
   const saveAttendance = async () => {
+    if (!isAdmin && roleDefinition?.permissions.attendance !== 'full') {
+      toast.error('Unauthorized: You do not have permission to mark attendance.');
+      return;
+    }
+    
     setIsSaving(true);
     try {
       const selectedCls = classes.find(c => c.id === selectedClass);
@@ -330,6 +337,8 @@ export default function Attendance() {
     student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const isEditable = isAdmin || roleDefinition?.permissions.attendance === 'full';
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -384,10 +393,12 @@ export default function Attendance() {
               Export
             </Button>
 
-            <Button onClick={saveAttendance} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white h-9 uppercase font-bold tracking-wider text-[10px]">
-              <Save className="w-3.5 h-3.5 mr-2" />
-              {isSaving ? 'Saving...' : 'Save Record'}
-            </Button>
+            {(isAdmin || roleDefinition?.permissions.attendance === 'full') && (
+              <Button onClick={saveAttendance} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white h-9 uppercase font-bold tracking-wider text-[10px]">
+                <Save className="w-3.5 h-3.5 mr-2" />
+                {isSaving ? 'Saving...' : 'Save Record'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -482,7 +493,8 @@ export default function Attendance() {
                             "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
                             attendance[student.id] === 'present' ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
                           )}
-                          onClick={() => handleStatusChange(student.id, 'present')}
+                          onClick={() => isEditable && handleStatusChange(student.id, 'present')}
+                          disabled={!isEditable}
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
                           Present
@@ -494,7 +506,8 @@ export default function Attendance() {
                             "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
                             attendance[student.id] === 'absent' ? "bg-rose-600 hover:bg-rose-700 text-white shadow-[0_0_15px_rgba(244,63,94,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
                           )}
-                          onClick={() => handleStatusChange(student.id, 'absent')}
+                          onClick={() => isEditable && handleStatusChange(student.id, 'absent')}
+                          disabled={!isEditable}
                         >
                           <XCircle className="w-3.5 h-3.5 mr-2" />
                           Absent
@@ -506,7 +519,8 @@ export default function Attendance() {
                             "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
                             attendance[student.id] === 'late' ? "bg-amber-600 hover:bg-amber-700 text-white shadow-[0_0_15px_rgba(245,158,11,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
                           )}
-                          onClick={() => handleStatusChange(student.id, 'late')}
+                          onClick={() => isEditable && handleStatusChange(student.id, 'late')}
+                          disabled={!isEditable}
                         >
                           <Clock className="w-3.5 h-3.5 mr-2" />
                           Late

@@ -15,7 +15,10 @@ import {
   ChevronRight,
   ShieldAlert,
   Wrench,
-  Activity
+  Activity,
+  Search,
+  Loader2,
+  UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +28,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 import { 
   Dialog, 
   DialogContent, 
@@ -45,6 +56,9 @@ import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { doc, onSnapshot, updateDoc, setDoc, collection, query, orderBy, addDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { initializeApp, deleteApp, getApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -80,8 +94,17 @@ export default function Settings() {
   const { profile, user, isAdmin } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Partial<Role> | null>(null);
+  const [newUserFormData, setNewUserFormData] = useState({
+    email: '',
+    password: '',
+    displayName: '',
+    role: 'student'
+  });
   const [formData, setFormData] = useState({
     displayName: '',
     phone: '',
@@ -151,6 +174,19 @@ export default function Settings() {
         ...doc.data()
       })) as Role[];
       setRoles(roleData);
+    });
+    return () => unsubscribe();
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const q = query(collection(db, 'users'), orderBy('displayName'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const userData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setAllUsers(userData);
     });
     return () => unsubscribe();
   }, [isAdmin]);
@@ -287,6 +323,78 @@ export default function Settings() {
     }
   };
 
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        role: newRole,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success('User role updated successfully');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserFormData.email || !newUserFormData.password || !newUserFormData.displayName) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSaving(true);
+    const toastId = toast.loading('Architecting new user identity...');
+    
+    let secondaryApp;
+    try {
+      // Initialize secondary app to create user without logging out current admin
+      try {
+        secondaryApp = getApp('Secondary');
+      } catch (e) {
+        secondaryApp = initializeApp(firebaseConfig, 'Secondary');
+      }
+      
+      const secondaryAuth = getAuth(secondaryApp);
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth, 
+        newUserFormData.email, 
+        newUserFormData.password
+      );
+      
+      const newUid = userCredential.user.uid;
+
+      // Create profile in Firestore
+      await setDoc(doc(db, 'users', newUid), {
+        uid: newUid,
+        email: newUserFormData.email,
+        displayName: newUserFormData.displayName,
+        role: newUserFormData.role,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      toast.success('Digital identity established successfully', { id: toastId });
+      setIsAddUserDialogOpen(false);
+      setNewUserFormData({
+        email: '',
+        password: '',
+        displayName: '',
+        role: 'student'
+      });
+      
+      // Logout the secondary app user
+      await secondaryAuth.signOut();
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Failed to establish user identity', { id: toastId });
+    } finally {
+      if (secondaryApp) {
+        await deleteApp(secondaryApp);
+      }
+      setIsSaving(false);
+    }
+  };
+
   const handleDeleteRole = async (id: string) => {
     if (!window.confirm('Are you sure you want to decommission this role? All staff assigned to this role will lose their specific permissions.')) return;
     
@@ -311,6 +419,7 @@ export default function Settings() {
             <TabsTrigger value="profile" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Profile</TabsTrigger>
             <TabsTrigger value="notifications" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Notifications</TabsTrigger>
             <TabsTrigger value="security" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Security</TabsTrigger>
+            {isAdmin && <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">Users</TabsTrigger>}
             {isAdmin && <TabsTrigger value="system" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg uppercase text-[10px] font-bold tracking-widest px-6 transition-all">System</TabsTrigger>}
           </TabsList>
 
@@ -578,31 +687,232 @@ export default function Settings() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col justify-between hover:border-primary/20 transition-all group">
-                        <div className="flex items-start gap-4 mb-6">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                            <Wrench className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">Sync Student Identifiers</h4>
-                            <p className="text-[10px] text-sidebar-foreground font-medium mt-1 leading-relaxed opacity-60">
-                              Detects records with incomplete or legacy "N/A" identifiers and reconstructs them using the [Year][Roll] logic.
-                            </p>
-                          </div>
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col justify-between hover:border-primary/20 transition-all group">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <Wrench className="w-5 h-5 text-primary" />
                         </div>
-                        <Button 
-                          onClick={handleSyncStudentIds}
-                          disabled={isSaving}
-                          className="w-full bg-white/5 hover:bg-white/10 text-white uppercase font-black text-[10px] tracking-widest h-9 border border-white/5"
-                        >
-                          <Activity className={cn("w-3 h-3 mr-2", isSaving && "animate-pulse")} />
-                          Synchronize IDs
-                        </Button>
+                        <div>
+                          <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">Sync Student Identifiers</h4>
+                          <p className="text-[10px] text-sidebar-foreground font-medium mt-1 leading-relaxed opacity-60">
+                            Detects records with incomplete or legacy "N/A" identifiers and reconstructs them using the [Year][Roll] logic.
+                          </p>
+                        </div>
                       </div>
+                      <Button 
+                        onClick={handleSyncStudentIds}
+                        disabled={isSaving}
+                        className="w-full bg-white/5 hover:bg-white/10 text-white uppercase font-black text-[10px] tracking-widest h-9 border border-white/5"
+                      >
+                        <Activity className={cn("w-3 h-3 mr-2", isSaving && "animate-pulse")} />
+                        Synchronize IDs
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="col-span-full pt-8 border-t border-white/5 space-y-6">
+                </div>
+              </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {isAdmin && (
+            <TabsContent value="users" className="space-y-6">
+              <Card className="bg-card border-border shadow-none rounded-xl">
+                <CardHeader className="border-b border-border mb-6">
+                  <CardTitle className="text-white text-lg uppercase tracking-tight">Access Control & User Directory</CardTitle>
+                  <CardDescription className="text-sidebar-foreground text-[11px] font-medium uppercase tracking-widest opacity-60">Manage institutional users and role-based permissions.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-12">
+                  {/* User Directory */}
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-1">Institutional User Directory</h3>
+                        <p className="text-[10px] text-sidebar-foreground font-medium uppercase tracking-widest opacity-60">Manage individual staff and student login permissions.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              className="bg-primary hover:bg-primary/90 text-white uppercase font-black text-[10px] tracking-widest h-9 px-4"
+                            >
+                              <UserPlus className="w-3.5 h-3.5 mr-2" />
+                              Add User
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-[#1A1D23] border-white/10 text-white sm:max-w-md">
+                            <form onSubmit={handleAddUser}>
+                              <DialogHeader>
+                                <DialogTitle className="text-white uppercase tracking-tight">Establish New Identity</DialogTitle>
+                                <DialogDescription className="text-sidebar-foreground text-[11px] font-medium uppercase tracking-widest opacity-60">
+                                  Create a new institutional account with specific access authority.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-6">
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-black uppercase tracking-widest text-sidebar-foreground">Full Name</Label>
+                                  <Input 
+                                    placeholder="e.g. John Doe"
+                                    value={newUserFormData.displayName}
+                                    onChange={e => setNewUserFormData({...newUserFormData, displayName: e.target.value})}
+                                    className="bg-white/5 border-white/10 h-10 text-[12px] uppercase font-bold tracking-tight"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-black uppercase tracking-widest text-sidebar-foreground">Institutional Email</Label>
+                                  <Input 
+                                    type="email"
+                                    placeholder="john.doe@school.edu"
+                                    value={newUserFormData.email}
+                                    onChange={e => setNewUserFormData({...newUserFormData, email: e.target.value})}
+                                    className="bg-white/5 border-white/10 h-10 text-[12px] font-medium"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-black uppercase tracking-widest text-sidebar-foreground">Access Authority Role</Label>
+                                  <Select 
+                                    value={newUserFormData.role} 
+                                    onValueChange={val => setNewUserFormData({...newUserFormData, role: val})}
+                                  >
+                                    <SelectTrigger className="bg-white/5 border-white/10 h-10 text-[10px] uppercase font-bold tracking-widest">
+                                      <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1A1D23] border-white/10">
+                                      <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest">Admin</SelectItem>
+                                      <SelectItem value="teacher" className="text-[10px] uppercase font-bold tracking-widest">Teacher</SelectItem>
+                                      <SelectItem value="staff" className="text-[10px] uppercase font-bold tracking-widest">Staff</SelectItem>
+                                      <SelectItem value="student" className="text-[10px] uppercase font-bold tracking-widest">Student</SelectItem>
+                                      <SelectItem value="parent" className="text-[10px] uppercase font-bold tracking-widest">Parent</SelectItem>
+                                      {roles.map(r => (
+                                        <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-black uppercase tracking-widest text-sidebar-foreground">Security Password</Label>
+                                  <Input 
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={newUserFormData.password}
+                                    onChange={e => setNewUserFormData({...newUserFormData, password: e.target.value})}
+                                    className="bg-white/5 border-white/10 h-10 text-[12px] font-medium"
+                                    required
+                                    minLength={6}
+                                  />
+                                  <p className="text-[9px] text-sidebar-foreground font-medium uppercase tracking-widest opacity-40">Minimum 6 characters required.</p>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  onClick={() => setIsAddUserDialogOpen(false)}
+                                  className="text-sidebar-foreground uppercase font-black text-[10px] tracking-widest h-10"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  type="submit" 
+                                  disabled={isSaving}
+                                  className="bg-primary hover:bg-primary/90 text-white uppercase font-black text-[10px] tracking-widest h-10 px-8"
+                                >
+                                  {isSaving ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                      Architecting...
+                                    </>
+                                  ) : (
+                                    'Create Identity'
+                                  )}
+                                </Button>
+                              </DialogFooter>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                        <div className="relative w-48 lg:w-64">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-foreground opacity-40" />
+                          <Input 
+                            placeholder="Search users..." 
+                            className="pl-9 h-9 bg-white/5 border-border text-[10px] uppercase font-bold tracking-widest"
+                            value={userSearchTerm}
+                            onChange={e => setUserSearchTerm(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border border-white/5 rounded-xl overflow-hidden bg-white/[0.02]">
+                      <Table>
+                        <TableHeader className="bg-white/5">
+                          <TableRow className="border-white/5 hover:bg-transparent">
+                            <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest">Digital Identity</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest">Institutional Email</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest">Authority Role</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest text-right pr-6">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {allUsers
+                            .filter(u => 
+                              u.displayName?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
+                              u.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
+                            )
+                            .map((u) => (
+                              <TableRow key={u.id} className="border-white/5 hover:bg-white/[0.04] transition-colors">
+                                <TableCell className="py-4">
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8 border border-white/10">
+                                      <AvatarImage src={u.photoURL} />
+                                      <AvatarFallback className="text-[10px] font-black bg-primary/10 text-primary">
+                                        {u.displayName?.charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-[12px] font-bold text-white uppercase tracking-tight">{u.displayName}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-[11px] text-sidebar-foreground font-medium">{u.email}</TableCell>
+                                <TableCell>
+                                  <Select 
+                                    value={u.role || 'student'} 
+                                    onValueChange={(val) => handleUpdateUserRole(u.id, val)}
+                                    disabled={u.email === 'mk.rabbani.cse@gmail.com' || u.email === 'jakir995627@gmail.com'}
+                                  >
+                                    <SelectTrigger className="w-32 h-8 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-widest">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1A1D23] border-white/10">
+                                      <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest">Admin</SelectItem>
+                                      <SelectItem value="teacher" className="text-[10px] uppercase font-bold tracking-widest">Teacher</SelectItem>
+                                      <SelectItem value="staff" className="text-[10px] uppercase font-bold tracking-widest">Staff</SelectItem>
+                                      <SelectItem value="student" className="text-[10px] uppercase font-bold tracking-widest">Student</SelectItem>
+                                      <SelectItem value="parent" className="text-[10px] uppercase font-bold tracking-widest">Parent</SelectItem>
+                                      {roles.map(r => (
+                                        <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                  <Badge variant="outline" className={cn(
+                                    "text-[9px] font-black uppercase tracking-tighter border-none",
+                                    u.role === 'admin' ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary"
+                                  )}>
+                                    {u.role || 'No Role'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  {/* Staff Role Architecture */}
+                  <div className="pt-12 border-t border-white/5 space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-1">Staff Role Architecture</h3>
@@ -663,7 +973,8 @@ export default function Settings() {
                       {roles.length === 0 && (
                         <div className="col-span-full py-12 text-center border border-dashed border-white/10 rounded-xl">
                           <ShieldAlert className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
-                          <p className="text-[10px] text-sidebar-foreground font-bold uppercase tracking-widest">No custom roles established</p>
+                          <p className="text-[10px] text-sidebar-foreground font-bold uppercase tracking-widest"
+>No custom roles established</p>
                         </div>
                       )}
                     </div>

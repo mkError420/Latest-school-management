@@ -3,14 +3,31 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
-export type UserRole = 'admin' | 'teacher' | 'parent' | 'student';
+export type UserRole = 'admin' | 'teacher' | 'parent' | 'student' | 'staff';
 
 interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  role: UserRole;
+  role: string;
   photoURL?: string;
+}
+
+interface UserRolePermissions {
+  students: 'none' | 'view' | 'full';
+  attendance: 'none' | 'view' | 'full';
+  fees: 'none' | 'view' | 'full';
+  exams: 'none' | 'view' | 'full';
+  library: 'none' | 'view' | 'full';
+  staff: 'none' | 'view' | 'full';
+  payroll: 'none' | 'view' | 'full';
+  settings: 'none' | 'view' | 'full';
+}
+
+interface UserRoleDefinition {
+  id: string;
+  name: string;
+  permissions: UserRolePermissions;
 }
 
 interface SystemConfig {
@@ -27,12 +44,14 @@ interface SystemConfig {
 interface AuthContextType {
   user: FirebaseUser | null;
   profile: UserProfile | null;
+  roleDefinition: UserRoleDefinition | null;
   systemConfig: SystemConfig | null;
   loading: boolean;
   isAdmin: boolean;
   isTeacher: boolean;
   isParent: boolean;
   isStudent: boolean;
+  isStaff: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +59,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [roleDefinition, setRoleDefinition] = useState<UserRoleDefinition | null>(null);
   const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       if (!firebaseUser) {
         setProfile(null);
+        setRoleDefinition(null);
         setLoading(false);
       }
     });
@@ -73,13 +94,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) {
-        setProfile(doc.data() as UserProfile);
+    const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as UserProfile;
+        setProfile(userData);
+
+        // Fetch role definition if exists
+        if (userData.role && userData.role !== 'admin') {
+          // Find role by name or ID
+          import('firebase/firestore').then(({ collection, query, where, getDocs, limit }) => {
+            const roleQ = query(collection(db, 'roles'), where('name', '==', userData.role), limit(1));
+            getDocs(roleQ).then(snap => {
+              if (!snap.empty) {
+                setRoleDefinition({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserRoleDefinition);
+              } else {
+                setRoleDefinition(null);
+              }
+              setLoading(false);
+            });
+          });
+        } else {
+          setRoleDefinition(null);
+          setLoading(false);
+        }
       } else {
         setProfile(null);
+        setRoleDefinition(null);
+        setLoading(false);
       }
-      setLoading(false);
     }, (error) => {
       console.error("Error fetching user profile:", error);
       setLoading(false);
@@ -91,12 +133,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = {
     user,
     profile,
+    roleDefinition,
     systemConfig,
     loading,
     isAdmin: profile?.role === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com',
-    isTeacher: profile?.role === 'teacher',
+    isTeacher: profile?.role === 'teacher' || profile?.role === 'Teacher',
     isParent: profile?.role === 'parent',
-    isStudent: profile?.role === 'student',
+    isStudent: profile?.role === 'student' || profile?.role === 'Student',
+    isStaff: profile?.role === 'staff' || profile?.role === 'Staff',
   };
 
   return (
