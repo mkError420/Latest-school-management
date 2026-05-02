@@ -396,7 +396,7 @@ export default function Attendance() {
               Export
             </Button>
 
-            {(isAdmin || roleDefinition?.permissions.attendance === 'full') && (
+            {(isAdmin || isTeacher || isStaff || roleDefinition?.permissions.attendance === 'full') && (
               <Button onClick={saveAttendance} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white h-9 uppercase font-bold tracking-wider text-[10px]">
                 <Save className="w-3.5 h-3.5 mr-2" />
                 {isSaving ? 'Saving...' : 'Save Record'}
