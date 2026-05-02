@@ -24,8 +24,8 @@ import Settings from '@/src/pages/Settings';
 import Unauthorized from '@/src/pages/Unauthorized';
 
 function DashboardRedirect() {
-  const { profile } = useAuth();
-  if (profile?.role === 'admin') return <Dashboard />;
+  const { isAdmin } = useAuth();
+  if (isAdmin) return <Dashboard />;
   return <Navigate to="/classes" replace />;
 }
 

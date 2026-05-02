@@ -37,7 +37,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { profile, systemConfig } = useAuth();
+  const { profile, systemConfig, isAdmin, roleDefinition } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
@@ -108,13 +108,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
       <nav className="flex-1 space-y-8 overflow-y-auto custom-scrollbar">
         {navigationGroups.map((group) => {
-          const { roleDefinition } = useAuth();
-          
           const filteredItems = group.items.filter(item => {
             if (!profile) return false;
             
             // 1. Admin always sees everything
-            if (profile.role === 'admin' || profile.role === 'Admin') return true;
+            if (isAdmin) return true;
 
             // 2. If we have a role definition, check permissions
             if (roleDefinition?.permissions) {

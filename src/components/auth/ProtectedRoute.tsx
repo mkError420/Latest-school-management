@@ -19,8 +19,16 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-    return <Navigate to="/unauthorized" replace />;
+  if (allowedRoles && profile) {
+    const isActuallyAdmin = profile.role === 'admin' || profile.role === 'Admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com';
+    const isAuthorized = allowedRoles.some(role => {
+      if (role === 'admin') return isActuallyAdmin;
+      return role.toLowerCase() === profile.role.toLowerCase();
+    });
+
+    if (!isAuthorized) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return <>{children}</>;
