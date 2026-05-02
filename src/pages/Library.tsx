@@ -69,6 +69,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { collection, onSnapshot, query, orderBy, addDoc, doc, updateDoc, deleteDoc, where, getDocs, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase';
+import { useAuth } from '@/src/lib/auth';
 import { format, addDays, isAfter } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -140,6 +141,8 @@ interface Class {
 }
 
 export default function Library() {
+  const { isAdmin, roleDefinition } = useAuth();
+  const hasFullAccess = isAdmin || roleDefinition?.permissions.library === 'full';
   const [books, setBooks] = useState<Book[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

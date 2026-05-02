@@ -27,17 +27,22 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      // Use get() to fetch the user document. If it doesn't exist, this will return null.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : {};
     }
 
     function hasRole(role) {
       // Safely check for role using get() with a fallback to avoid errors if the field/doc is missing
-      return isSignedIn() && getUserData().get('role', 'none') == role;
+      // Make it case-insensitive to match the frontend logic
+      let data = getUserData();
+      let userRole = data.get('role', 'none');
+      return isSignedIn() && (userRole == role || userRole.lower() == role.lower());
     }
 
     function isStaff() {
-      return isSignedIn() && !(getUserData().get('role', 'none') in ['student', 'parent', 'Student', 'Parent', 'none']);
+      let data = getUserData();
+      let userRole = data.get('role', 'none').lower();
+      return isSignedIn() && !(userRole in ['student', 'parent', 'none']);
     }
 
     function isAdmin() {
@@ -45,12 +50,26 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
         request.auth.token.email == "jakir995627@gmail.com" || 
-        hasRole('admin') || hasRole('Admin')
+        hasRole('admin')
+      );
+    }
+
+    function getRoleId() {
+      return getUserData().get('roleId', getUserData().get('role', 'none').lower());
+    }
+
+    function hasPermission(module, level) {
+      return isAdmin() || (
+        level == 'view' ? 
+          (exists(/databases/$(database)/documents/roles/$(getRoleId())) && 
+           get(/databases/$(database)/documents/roles/$(getRoleId())).data.permissions.get(module, 'none') in ['view', 'full']) :
+          (exists(/databases/$(database)/documents/roles/$(getRoleId())) && 
+           get(/databases/$(database)/documents/roles/$(getRoleId())).data.permissions.get(module, 'none') == 'full')
       );
     }
 
     function isTeacher() {
-      return hasRole('teacher') || hasRole('Teacher') || isStaff();
+      return hasRole('teacher') || hasPermission('students', 'view') || isStaff();
     }
 
     function isParent() {
@@ -62,6 +81,14 @@ service cloud.firestore {
     }
 
     // Domain Validators
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['studentId', 'classId', 'date', 'status', 'createdAt']) &&
+             data.studentId is string && data.studentId.size() > 0 &&
+             data.classId is string && data.classId.size() > 0 &&
+             data.date is string && data.date.size() > 0 &&
+             data.status in ['present', 'absent', 'late'] &&
+             data.createdAt is string;
+    }
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'role']) &&
              data.uid is string && data.email is string &&
@@ -172,75 +199,77 @@ service cloud.firestore {
 
     match /students/{studentId} {
       allow read: if isSignedIn();
-      allow create, update: if (isAdmin() || isTeacher()) && isValidStudent(request.resource.data);
-      allow delete: if isAdmin() || isTeacher();
+      allow create, update: if hasPermission('students', 'full') && isValidStudent(request.resource.data);
+      allow delete: if hasPermission('students', 'full');
     }
 
     match /classes/{classId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || isTeacher();
+      allow create, update, delete: if hasPermission('students', 'full');
     }
 
     match /attendance/{attendanceId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || isTeacher();
+      allow create, update: if hasPermission('attendance', 'full') && isValidAttendance(request.resource.data);
+      allow delete: if hasPermission('attendance', 'full');
     }
 
     match /exams/{examId} {
       allow read: if isSignedIn();
-      allow create, update: if (isAdmin() || isTeacher()) && isValidExam(request.resource.data);
-      allow delete: if isAdmin() || isTeacher();
+      allow create, update: if hasPermission('exams', 'full') && isValidExam(request.resource.data);
+      allow delete: if hasPermission('exams', 'full');
     }
 
     match /results/{resultId} {
       allow read: if isSignedIn();
-      allow create, update: if (isAdmin() || isTeacher()) && isValidResult(request.resource.data);
-      allow delete: if isAdmin() || isTeacher();
+      allow create, update: if hasPermission('exams', 'full') && isValidResult(request.resource.data);
+      allow delete: if hasPermission('exams', 'full');
     }
 
     match /routine/{routineId} {
       allow read: if isSignedIn();
-      allow create, update: if (isAdmin() || isTeacher()) && isValidRoutine(request.resource.data);
-      allow delete: if isAdmin() || isTeacher();
+      allow create, update: if hasPermission('students', 'full') && isValidRoutine(request.resource.data);
+      allow delete: if hasPermission('students', 'full');
     }
 
     match /subjects/{subjectId} {
       allow read: if isSignedIn();
-      allow create, update: if (isAdmin() || isTeacher()) && isValidSubject(request.resource.data);
-      allow delete: if isAdmin() || isTeacher();
+      allow create, update: if hasPermission('students', 'full') && isValidSubject(request.resource.data);
+      allow delete: if hasPermission('students', 'full');
     }
 
     match /library_books/{bookId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || isTeacher();
+      allow create, update, delete: if hasPermission('library', 'full');
     }
 
     match /library_issues/{issueId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() || isTeacher();
+      allow create, update, delete: if hasPermission('library', 'full');
     }
 
     match /fees/{feeId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow create, update: if hasPermission('fees', 'full');
+      allow delete: if hasPermission('fees', 'full');
     }
 
     match /staff/{staffId} {
       allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidStaff(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update: if hasPermission('staff', 'full') && isValidStaff(request.resource.data);
+      allow delete: if hasPermission('staff', 'full');
     }
 
     match /staff_attendance/{id} {
       allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidStaffAttendance(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update: if hasPermission('staff', 'full') && isValidStaffAttendance(request.resource.data);
+      allow delete: if hasPermission('staff', 'full');
     }
 
     match /payroll/{payrollId} {
       allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidPayroll(request.resource.data);
-      allow delete: if isAdmin();
+      allow create, update: if hasPermission('payroll', 'full') && isValidPayroll(request.resource.data);
+      allow delete: if hasPermission('payroll', 'full');
     }
 
     match /notifications/{id} {

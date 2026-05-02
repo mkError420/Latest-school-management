@@ -104,7 +104,7 @@ export default function Exams() {
   const { profile, isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
   
   // Consolidated permission check
-  const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions?.exams === 'full';
+  const hasFullAccess = isAdmin || roleDefinition?.permissions?.exams === 'full';
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);

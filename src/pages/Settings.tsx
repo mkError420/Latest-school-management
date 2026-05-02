@@ -315,7 +315,8 @@ export default function Settings() {
         await updateDoc(doc(db, 'roles', editingRole.id), roleData);
         toast.success('Role updated successfully');
       } else {
-        await addDoc(collection(db, 'roles'), roleData);
+        const roleId = editingRole.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        await setDoc(doc(db, 'roles', roleId), roleData);
         toast.success('New role architected successfully');
       }
       setIsRoleDialogOpen(false);
@@ -329,8 +330,10 @@ export default function Settings() {
 
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     try {
+      const roleId = newRole.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       await updateDoc(doc(db, 'users', userId), {
         role: newRole,
+        roleId: roleId,
         updatedAt: new Date().toISOString()
       });
       toast.success('User role updated successfully');
@@ -367,6 +370,8 @@ export default function Settings() {
       
       const newUid = userCredential.user.uid;
 
+      const roleId = newUserFormData.role.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      
       // Create profile in Firestore
       try {
         await setDoc(doc(db, 'users', newUid), {
@@ -374,6 +379,7 @@ export default function Settings() {
           email: newUserFormData.email,
           displayName: newUserFormData.displayName,
           role: newUserFormData.role,
+          roleId: roleId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });

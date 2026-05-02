@@ -536,7 +536,7 @@ export default function Students() {
     });
   }
 
-  const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full';
+  const hasFullAccess = isAdmin || roleDefinition?.permissions.students === 'full';
   
   return (
     <DashboardLayout>

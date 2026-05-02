@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export type UserRole = 'admin' | 'teacher' | 'parent' | 'student' | 'staff';
@@ -103,18 +103,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Fetch role definition if exists
         const roleName = userData.role;
-        if (roleName && roleName.toLowerCase() !== 'admin') {
-          // Find role by name
-          const roleQ = query(collection(db, 'roles'), where('name', '==', roleName), limit(1));
-          getDocs(roleQ).then(snap => {
-            if (!snap.empty) {
-              setRoleDefinition({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserRoleDefinition);
+        const roleBasics = ['admin', 'student', 'parent'];
+        if (roleName && !roleBasics.includes(roleName.toLowerCase())) {
+          // 1. Try slugified ID first (new strategy)
+          const roleId = roleName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+          
+          getDoc(doc(db, 'roles', roleId)).then(roleDoc => {
+            if (roleDoc.exists()) {
+              setRoleDefinition({ id: roleDoc.id, ...roleDoc.data() } as UserRoleDefinition);
+              setLoading(false);
             } else {
-              setRoleDefinition(null);
+              // 2. Fallback to name query (old strategy)
+              const roleQ = query(collection(db, 'roles'), where('name', '==', roleName), limit(1));
+              getDocs(roleQ).then(snap => {
+                if (!snap.empty) {
+                  setRoleDefinition({ id: snap.docs[0].id, ...snap.docs[0].data() } as UserRoleDefinition);
+                } else {
+                  setRoleDefinition(null);
+                }
+                setLoading(false);
+              }).catch(() => {
+                setLoading(false);
+              });
             }
-            setLoading(false);
-          }).catch(err => {
-            console.error("Error fetching role definition:", err);
+          }).catch(() => {
             setLoading(false);
           });
         } else {
@@ -144,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isTeacher: profile?.role?.toLowerCase() === 'teacher',
     isParent: profile?.role?.toLowerCase() === 'parent',
     isStudent: profile?.role?.toLowerCase() === 'student',
-    isStaff: profile?.role ? !['student', 'parent'].includes(profile.role.toLowerCase()) : false,
+    isStaff: profile?.role ? !['student', 'parent', 'admin'].includes(profile.role.toLowerCase()) : false,
   };
 
   return (

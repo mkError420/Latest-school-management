@@ -52,7 +52,7 @@ import {
 } from '@/components/ui/dialog';
 import { format, subDays } from 'date-fns';
 import { collection, onSnapshot, query, where, addDoc, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
+import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -261,8 +261,8 @@ export default function Attendance() {
   };
 
   const saveAttendance = async () => {
-    // Grant full access for the academic sections as per user request
-    const hasFullAccess = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.attendance === 'full';
+    // Grant full access based on role definition
+    const hasFullAccess = isAdmin || roleDefinition?.permissions.attendance === 'full';
     
     if (!hasFullAccess) {
       toast.error('Unauthorized: You do not have permission to mark attendance.');
@@ -275,25 +275,38 @@ export default function Attendance() {
       const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? ` - ${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All Classes' : selectedClass);
       const dateStr = format(date, 'yyyy-MM-dd');
       
-      const batch = Object.entries(attendance).map(([studentId, status]) => {
-        const studentClassId = selectedClass === 'all' 
-          ? students.find(s => s.id === studentId)?.classId || ''
-          : selectedClass;
+      const studentIds = new Set(students.map(s => s.id));
+      const batch = Object.entries(attendance)
+        .filter(([studentId]) => studentIds.has(studentId)) // Only save for currently visible students
+        .map(([studentId, status]) => {
+          const studentClassId = selectedClass === 'all' 
+            ? students.find(s => s.id === studentId)?.classId || ''
+            : selectedClass;
 
-        return addDoc(collection(db, 'attendance'), {
-          studentId,
-          classId: studentClassId,
-          date: dateStr,
-          status,
-          createdAt: new Date().toISOString()
-        });
-      });
+          if (!studentClassId) {
+            console.warn(`No classId found for student ${studentId}, skipping record.`);
+            return null;
+          }
+
+          return addDoc(collection(db, 'attendance'), {
+            studentId,
+            classId: studentClassId,
+            date: dateStr,
+            status,
+            createdAt: new Date().toISOString()
+          });
+        })
+        .filter(promise => promise !== null);
       
+      if (batch.length === 0) {
+        toast.error('No attendance records to save');
+        return;
+      }
+
       await Promise.all(batch);
       toast.success(`Attendance for ${className} on ${dateStr} saved successfully`);
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      toast.error('Failed to save attendance');
+      handleFirestoreError(error, OperationType.WRITE, 'attendance');
     } finally {
       setIsSaving(false);
     }

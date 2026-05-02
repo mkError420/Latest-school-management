@@ -67,6 +67,7 @@ interface Teacher {
 
 export default function Classes() {
   const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
+  const hasFullAccess = isAdmin || roleDefinition?.permissions.students === 'full';
   const [classes, setClasses] = useState<Class[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,7 +198,7 @@ export default function Classes() {
             <h1 className="text-2xl font-bold text-white">Class Management</h1>
             <p className="text-sidebar-foreground">Define and manage school classes and sections.</p>
           </div>
-          {(isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full') && (
+          {hasFullAccess && (
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger render={
                 <Button className="bg-primary hover:bg-primary/90 text-white">
@@ -301,7 +302,7 @@ export default function Classes() {
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <GraduationCap className="w-6 h-6 text-primary" />
                 </div>
-                {(isAdmin || isTeacher || isStaff || roleDefinition?.permissions.students === 'full') && (
+                {hasFullAccess && (
                   <DropdownMenu>
                     <DropdownMenuTrigger render={
                       <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent opacity-0 group-hover:opacity-100 transition-opacity">

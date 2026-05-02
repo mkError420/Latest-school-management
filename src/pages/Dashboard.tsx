@@ -50,7 +50,9 @@ const data = [
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
-  const { profile, isAdmin, isTeacher, isStaff } = useAuth();
+  const { profile, isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
+  const hasFinanceAccess = isAdmin || roleDefinition?.permissions.fees !== 'none' || roleDefinition?.permissions.payroll !== 'none';
+  const hasStaffAccess = isAdmin || isTeacher || isStaff || !!roleDefinition;
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
@@ -181,8 +183,8 @@ export default function Dashboard() {
       console.error("Dashboard Classes Listener Error:", error);
     }));
 
-    // Data only for Staff (including Admin, Teachers, and custom staff roles)
-    if (isAdmin || isTeacher || isStaff) {
+    // Data for Staff (including Admin, Teachers, and custom staff roles)
+    if (hasStaffAccess) {
       // Recent Transactions
       const transactionsQ = query(
         collection(db, 'fees'),
@@ -236,8 +238,8 @@ export default function Dashboard() {
       }));
     }
 
-    // Revenue and Payroll - Admin only
-    if (isAdmin) {
+    // Revenue and Payroll - Admin and users with finance access
+    if (hasFinanceAccess) {
       // Revenue (Fees Collected)
       const feesQ = query(collection(db, 'fees'), where('status', '==', 'paid'));
       unsubscribes.push(onSnapshot(feesQ, (snapshot) => {

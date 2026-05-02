@@ -125,6 +125,7 @@ interface StaffAttendance {
 export default function Payroll() {
   const { profile, isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
   const hasFullAccess = isAdmin || roleDefinition?.permissions.payroll === 'full';
+  const hasStaffAccess = isAdmin || roleDefinition?.permissions.staff === 'full';
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'history';
 
@@ -885,7 +886,7 @@ export default function Payroll() {
             <p className="text-sidebar-foreground">Manage staff salaries and payment history.</p>
           </div>
           <div className="flex items-center gap-2">
-            {isAdmin && (
+            {(isAdmin || hasStaffAccess) && (
               <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
                 <DialogTrigger render={
                   <Button size="sm" variant="outline" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
@@ -1460,7 +1461,7 @@ export default function Payroll() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                {isAdmin && (
+                                {(isAdmin || hasStaffAccess) && (
                                   <>
                                     <Button 
                                       variant="ghost" 
