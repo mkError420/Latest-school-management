@@ -22,6 +22,7 @@ interface UserRolePermissions {
   staff: 'none' | 'view' | 'full';
   payroll: 'none' | 'view' | 'full';
   settings: 'none' | 'view' | 'full';
+  routine: 'none' | 'view' | 'full';
 }
 
 interface UserRoleDefinition {

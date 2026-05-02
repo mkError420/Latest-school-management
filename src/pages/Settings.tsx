@@ -75,6 +75,7 @@ interface Role {
     staff: 'none' | 'view' | 'full';
     payroll: 'none' | 'view' | 'full';
     settings: 'none' | 'view' | 'full';
+    routine: 'none' | 'view' | 'full';
   };
   isSystem?: boolean;
 }
@@ -87,7 +88,8 @@ const DEFAULT_PERMISSIONS: Role['permissions'] = {
   library: 'none',
   staff: 'none',
   payroll: 'none',
-  settings: 'none'
+  settings: 'none',
+  routine: 'none'
 };
 
 export default function Settings() {
@@ -1075,7 +1077,9 @@ export default function Settings() {
                     {Object.keys(DEFAULT_PERMISSIONS).map((module) => (
                       <div key={module} className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-3">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-black uppercase text-white tracking-tight">{module}</Label>
+                          <Label className="text-[10px] font-black uppercase text-white tracking-tight">
+                            {module === 'routine' ? 'Class Routine' : module}
+                          </Label>
                           <Info className="w-3 h-3 text-sidebar-foreground opacity-40" />
                         </div>
                         <Select 

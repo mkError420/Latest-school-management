@@ -228,8 +228,8 @@ service cloud.firestore {
 
     match /routine/{routineId} {
       allow read: if isSignedIn();
-      allow create, update: if hasPermission('students', 'full') && isValidRoutine(request.resource.data);
-      allow delete: if hasPermission('students', 'full');
+      allow create, update: if hasPermission('routine', 'full') && isValidRoutine(request.resource.data);
+      allow delete: if hasPermission('routine', 'full');
     }
 
     match /subjects/{subjectId} {
