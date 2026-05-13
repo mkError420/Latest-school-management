@@ -151,16 +151,15 @@ export default function Attendance() {
       const dbAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
       snapshot.docs.forEach(doc => {
         const data = doc.data();
-        dbAttendance[data.studentId] = data.status;
+        if (data.studentId && data.status) {
+          dbAttendance[data.studentId] = data.status;
+        }
       });
 
-      setAttendance(prev => {
-        // We want to merge DB state into current state, but WITHOUT wiping unsaved local changes
-        // For simplicity in this page, we'll assume DB is the truth IF the user hasn't touched the student.
-        // But since it's a batch save, let's just initialize the state from DB when the date/class changes.
-        return { ...dbAttendance };
-      });
+      // We overwrite with the DB truth.
+      setAttendance(dbAttendance);
     }, (error) => {
+      console.error('Attendance Load Error:', error);
       handleFirestoreError(error, OperationType.GET, 'attendance');
     });
 
@@ -246,29 +245,40 @@ export default function Attendance() {
       return;
     }
     
+    if (students.length === 0) {
+      toast.error('No students found to save attendance for.');
+      return;
+    }
+
     setIsSaving(true);
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const timestamp = new Date().toISOString();
+    
     try {
       const selectedCls = classes.find(c => c.id === selectedClass);
       const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? ` - ${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All Classes' : 'Class');
-      const dateStr = format(date, 'yyyy-MM-dd');
       
-      // Save for ALL visible students. If missing in 'attendance' state, assume 'present'
+      // Separate into counts for the toast
+      let counts = { present: 0, absent: 0, late: 0 };
+
       const savePromises = students.map(student => {
         const status = attendance[student.id] || 'present';
+        counts[status]++;
         
         return setDoc(doc(db, 'attendance', `${student.id}_${dateStr}`), {
           studentId: student.id,
-          classId: student.classId,
+          classId: student.classId || 'unassigned',
           date: dateStr,
           status,
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString() // In a real app we'd fetch previous doc to preserve createdAt
+          updatedAt: timestamp,
+          createdAt: timestamp
         }, { merge: true });
       });
 
       await Promise.all(savePromises);
-      toast.success(`Attendance for ${className} on ${dateStr} saved successfully`);
+      toast.success(`Attendance for ${className} on ${dateStr} saved! (${counts.present} P, ${counts.absent} A, ${counts.late} L)`);
     } catch (error) {
+      console.error('Save attendance error:', error);
       handleFirestoreError(error, OperationType.WRITE, 'attendance');
     } finally {
       setIsSaving(false);
