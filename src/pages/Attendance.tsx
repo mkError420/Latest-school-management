@@ -70,7 +70,7 @@ interface Class {
 }
 
 export default function Attendance() {
-  const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
+  const { isAdmin, isTeacher, isStaff, roleDefinition, isSuperAdmin } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [classes, setClasses] = useState<Class[]>([]);
@@ -83,89 +83,21 @@ export default function Attendance() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [avgRate, setAvgRate] = useState(0);
 
-  useEffect(() => {
-    if (!selectedClass) return;
+  // Stats calculation based on current visible students and attendance state
+  const stats = React.useMemo(() => {
+    const presentCount = students.filter(s => attendance[s.id] === 'present').length;
+    const lateCount = students.filter(s => attendance[s.id] === 'late').length;
+    const absentCount = students.filter(s => attendance[s.id] === 'absent').length;
+    // For students not in state, they default to present in UI/Export but let's count them clearly
+    const unmarkedCount = students.filter(s => !attendance[s.id]).length;
     
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const now = new Date();
-    const trend: any[] = [];
-    
-    // Fetch last 7 days of attendance
-    const fetchHistory = async () => {
-      const hist: any[] = [];
-      let totalRate = 0;
-      let count = 0;
-
-      for (let i = 6; i >= 0; i--) {
-        const d = subDays(now, i);
-        const dateStr = format(d, 'yyyy-MM-dd');
-        const dayName = dayNames[d.getDay()];
-        
-        const constraints = [where('date', '==', dateStr)];
-        if (selectedClass !== 'all') {
-          constraints.push(where('classId', '==', selectedClass));
-        }
-
-        const q = query(collection(db, 'attendance'), ...constraints);
-        
-        const snapshot = await getDocs(q);
-        const docs = snapshot.docs.map(doc => doc.data());
-        const sessionTotal = docs.length;
-        const present = docs.filter(doc => doc.status === 'present' || doc.status === 'late').length;
-        const rate = sessionTotal > 0 ? Math.round((present / sessionTotal) * 100) : 0;
-        
-        if (sessionTotal > 0) {
-          totalRate += rate;
-          count++;
-        }
-
-        hist.push({
-          name: dayName,
-          rate,
-          fullDate: dateStr
-        });
-      }
-      setHistoryData(hist);
-      setAvgRate(count > 0 ? Math.round(totalRate / count) : 0);
+    return {
+      present: presentCount + unmarkedCount, // Default to present
+      late: lateCount,
+      absent: absentCount,
+      total: students.length
     };
-
-    fetchHistory();
-    
-    // Real-time Audit Logs (Recent submissions)
-    const auditQ = query(
-      collection(db, 'attendance'),
-      orderBy('createdAt', 'desc'),
-      limit(200) // Increased limit for better grouping context
-    );
-
-    const unsubscribeAudit = onSnapshot(auditQ, (snapshot) => {
-      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Group by Date & ClassId for the audit log view
-      const grouped = logs.reduce((acc: any, log: any) => {
-        const key = `${log.date}_${log.classId}`;
-        if (!acc[key]) {
-          const cls = classes.find(c => c.id === log.classId);
-          acc[key] = {
-            date: log.date,
-            className: cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'Loading...',
-            createdAt: log.createdAt,
-            records: 0,
-            present: 0
-          };
-        }
-        acc[key].records++;
-        if (log.status === 'present' || log.status === 'late') acc[key].present++;
-        return acc;
-      }, {});
-
-      setAuditLogs(Object.values(grouped));
-    });
-
-    return () => {
-      unsubscribeAudit();
-    };
-  }, [selectedClass, classes]);
+  }, [students, attendance]);
 
   useEffect(() => {
     const classesQuery = query(collection(db, 'classes'), orderBy('name'));
@@ -182,10 +114,10 @@ export default function Attendance() {
     return () => unsubscribeClasses();
   }, []);
 
+  // Fetch students based on selection
   useEffect(() => {
     if (!selectedClass) return;
     
-    // Fetch students based on class selection
     const constraints = [];
     if (selectedClass !== 'all') {
       constraints.push(where('classId', '==', selectedClass));
@@ -198,22 +130,14 @@ export default function Attendance() {
         ...doc.data()
       })) as Student[];
       setStudents(studentData);
-      
-      // Initialize attendance with 'present' as default for taking attendance
-      // If we are viewing 'all', we should probably fetch the actual attendance records for the day 
-      // instead of blindly setting everyone to 'present'. But the previous behavior for a single class 
-      // was to initialize to 'present' so the teacher can modify.
     });
     
-    return () => {
-      unsubscribeStudents();
-    };
+    return () => unsubscribeStudents();
   }, [selectedClass]);
 
-  // Fetch actual attendance records for the selected date to populate stats accurately, 
-  // especially when viewing "All Classes" or historical data.
+  // Load existing attendance records
   useEffect(() => {
-    if (!selectedClass || !date) return;
+    if (!date || !selectedClass) return;
     
     const dateStr = format(date, 'yyyy-MM-dd');
     const constraints = [where('date', '==', dateStr)];
@@ -222,47 +146,100 @@ export default function Attendance() {
     }
     
     const q = query(collection(db, 'attendance'), ...constraints);
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty && selectedClass !== 'all') {
-        // If no records and a specific class is selected, let the student effect initialize them
-        // We will just keep the current state or reset to 'present' for the selected class's students
-        setAttendance(prev => {
-          const newState = { ...prev };
-          students.forEach(s => {
-            if (!newState[s.id]) newState[s.id] = 'present';
-          });
-          return newState;
-        });
-      } else {
-        const attendanceData: Record<string, 'present' | 'absent' | 'late'> = {};
-        snapshot.docs.forEach(doc => {
-          const data = doc.data();
-          attendanceData[data.studentId] = data.status;
-        });
-        
-        // Merge with existing students so we have a full list even if some aren't marked yet
-        setAttendance(prev => {
-          const newState = { ...attendanceData };
-          if (selectedClass !== 'all') {
-            students.forEach(s => {
-              if (!newState[s.id]) newState[s.id] = 'present';
-            });
-          }
-          return newState;
-        });
-      }
+      const dbAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        dbAttendance[data.studentId] = data.status;
+      });
+
+      setAttendance(prev => {
+        // We want to merge DB state into current state, but WITHOUT wiping unsaved local changes
+        // For simplicity in this page, we'll assume DB is the truth IF the user hasn't touched the student.
+        // But since it's a batch save, let's just initialize the state from DB when the date/class changes.
+        return { ...dbAttendance };
+      });
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'attendance');
     });
 
     return () => unsubscribe();
-  }, [selectedClass, date, students]);
+  }, [selectedClass, date]); // Removed students from dependency to avoid loop
+
+  // History and Audit effect
+  useEffect(() => {
+    if (!selectedClass) return;
+    
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    
+    const fetchHistory = async () => {
+      const hist: any[] = [];
+      let totalRate = 0;
+      let count = 0;
+
+      for (let i = 6; i >= 0; i--) {
+        const d = subDays(now, i);
+        const dateStr = format(d, 'yyyy-MM-dd');
+        const dayName = dayNames[d.getDay()];
+        
+        const constraints = [where('date', '==', dateStr)];
+        if (selectedClass !== 'all') {
+          constraints.push(where('classId', '==', selectedClass));
+        }
+
+        const q = query(collection(db, 'attendance'), ...constraints);
+        const snapshot = await getDocs(q);
+        const docs = snapshot.docs.map(doc => doc.data());
+        const sessionTotal = docs.length;
+        const present = docs.filter(doc => doc.status === 'present' || doc.status === 'late').length;
+        const rate = sessionTotal > 0 ? Math.round((present / sessionTotal) * 100) : 0;
+        
+        if (sessionTotal > 0) {
+          totalRate += rate;
+          count++;
+        }
+
+        hist.push({ name: dayName, rate, fullDate: dateStr });
+      }
+      setHistoryData(hist);
+      setAvgRate(count > 0 ? Math.round(totalRate / count) : 0);
+    };
+
+    fetchHistory();
+    
+    const auditQ = query(collection(db, 'attendance'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribeAudit = onSnapshot(auditQ, (snapshot) => {
+      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const grouped = logs.reduce((acc: any, log: any) => {
+        const key = `${log.date}_${log.classId}`;
+        if (!acc[key]) {
+          const cls = classes.find(c => c.id === log.classId);
+          acc[key] = {
+            date: log.date,
+            className: cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'Class Record',
+            createdAt: log.createdAt,
+            records: 0,
+            present: 0
+          };
+        }
+        acc[key].records++;
+        if (log.status === 'present' || log.status === 'late') acc[key].present++;
+        return acc;
+      }, {});
+      setAuditLogs(Object.values(grouped));
+    });
+
+    return () => unsubscribeAudit();
+  }, [selectedClass, classes]);
 
   const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late') => {
     setAttendance(prev => ({ ...prev, [studentId]: status }));
   };
 
   const saveAttendance = async () => {
-    // Grant full access based on isAdmin or specific role permissions
-    const hasFullAccess = isAdmin || roleDefinition?.permissions.attendance === 'full';
+    const hasFullAccess = isSuperAdmin || isAdmin || roleDefinition?.permissions.attendance === 'full';
     
     if (!hasFullAccess) {
       toast.error('Unauthorized: You do not have permission to mark attendance.');
@@ -272,39 +249,24 @@ export default function Attendance() {
     setIsSaving(true);
     try {
       const selectedCls = classes.find(c => c.id === selectedClass);
-      const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? ` - ${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All Classes' : selectedClass);
+      const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? ` - ${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All Classes' : 'Class');
       const dateStr = format(date, 'yyyy-MM-dd');
       
-      const studentIds = new Set(students.map(s => s.id));
-      const batch = Object.entries(attendance)
-        .filter(([studentId]) => studentIds.has(studentId)) // Only save for currently visible students
-        .map(([studentId, status]) => {
-          const studentClassId = selectedClass === 'all' 
-            ? students.find(s => s.id === studentId)?.classId || ''
-            : selectedClass;
+      // Save for ALL visible students. If missing in 'attendance' state, assume 'present'
+      const savePromises = students.map(student => {
+        const status = attendance[student.id] || 'present';
+        
+        return setDoc(doc(db, 'attendance', `${student.id}_${dateStr}`), {
+          studentId: student.id,
+          classId: student.classId,
+          date: dateStr,
+          status,
+          updatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString() // In a real app we'd fetch previous doc to preserve createdAt
+        }, { merge: true });
+      });
 
-          if (!studentClassId) {
-            console.warn(`No classId found for student ${studentId}, skipping record.`);
-            return null;
-          }
-
-          return setDoc(doc(db, 'attendance', `${studentId}_${dateStr}`), {
-            studentId,
-            classId: studentClassId,
-            date: dateStr,
-            status,
-            updatedAt: new Date().toISOString(),
-            createdAt: new Date().toISOString() // Fallback if it's new, though better to handle separately or use serverTimestamp
-          }, { merge: true });
-        })
-        .filter(promise => promise !== null);
-      
-      if (batch.length === 0) {
-        toast.error('No attendance records to save');
-        return;
-      }
-
-      await Promise.all(batch);
+      await Promise.all(savePromises);
       toast.success(`Attendance for ${className} on ${dateStr} saved successfully`);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'attendance');
@@ -319,20 +281,17 @@ export default function Attendance() {
       return;
     }
 
-    const selectedCls = classes.find(c => c.id === selectedClass);
-    const className = selectedCls ? `${selectedCls.name}${selectedCls.section ? `-${selectedCls.section}` : ''}` : (selectedClass === 'all' ? 'All_Classes' : 'Class');
     const dateStr = format(date, 'yyyy-MM-dd');
-
     const headers = ['Roll Number', 'Student Name', 'Status', 'Date', 'Class'];
     const csvData = students.map(student => {
       const studentClass = classes.find(c => c.id === student.classId);
-      const studentClassName = studentClass ? `${studentClass.name}${studentClass.section ? `-${studentClass.section}` : ''}` : 'N/A';
+      const className = studentClass ? `${studentClass.name}${studentClass.section ? `-${studentClass.section}` : ''}` : 'N/A';
       return [
         student.rollNumber,
         student.name,
         attendance[student.id] || 'present',
         dateStr,
-        selectedClass === 'all' ? studentClassName : className
+        className
       ].map(field => `"${field}"`).join(',');
     });
 
@@ -341,12 +300,11 @@ export default function Attendance() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `attendance_${className}_${dateStr}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute('download', `attendance_${dateStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Attendance exported successfully');
+    toast.success('Attendance exported');
   };
 
   const filteredStudents = students.filter(student => 
@@ -354,7 +312,7 @@ export default function Attendance() {
     student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.attendance === 'full';
+  const hasFullAccess = isSuperAdmin || isAdmin || roleDefinition?.permissions.attendance === 'full';
   const isEditable = hasFullAccess;
 
   return (
@@ -380,16 +338,7 @@ export default function Attendance() {
             
             <Select value={selectedClass} onValueChange={(val) => setSelectedClass(val || '')}>
               <SelectTrigger className="w-[180px] bg-card border-border text-sidebar-foreground uppercase font-bold tracking-wider text-[10px] h-9">
-                <SelectValue placeholder="Class">
-                  {selectedClass === 'all' 
-                    ? 'All Classes' 
-                    : selectedClass && classes.find(c => c.id === selectedClass)
-                      ? (() => {
-                          const c = classes.find(cl => cl.id === selectedClass);
-                          return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : 'Select Class';
-                        })()
-                      : "Select Class"}
-                </SelectValue>
+                <SelectValue placeholder="Class" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 <SelectItem value="all">All Classes</SelectItem>
@@ -428,7 +377,7 @@ export default function Attendance() {
             </div>
             <div>
               <p className="text-[10px] text-sidebar-foreground font-black uppercase tracking-widest opacity-60">Total Students</p>
-              <p className="text-xl font-bold text-white">{students.length}</p>
+              <p className="text-xl font-bold text-white">{stats.total}</p>
             </div>
           </Card>
           <Card className="bg-card border-border rounded-xl p-5 shadow-none flex items-center gap-4">
@@ -437,7 +386,7 @@ export default function Attendance() {
             </div>
             <div>
               <p className="text-[10px] text-sidebar-foreground font-black uppercase tracking-widest opacity-60">Present</p>
-              <p className="text-xl font-bold text-white">{Object.values(attendance).filter(v => v === 'present').length}</p>
+              <p className="text-xl font-bold text-white">{stats.present}</p>
             </div>
           </Card>
           <Card className="bg-card border-border rounded-xl p-5 shadow-none flex items-center gap-4">
@@ -446,7 +395,7 @@ export default function Attendance() {
             </div>
             <div>
               <p className="text-[10px] text-sidebar-foreground font-black uppercase tracking-widest opacity-60">Late</p>
-              <p className="text-xl font-bold text-white">{Object.values(attendance).filter(v => v === 'late').length}</p>
+              <p className="text-xl font-bold text-white">{stats.late}</p>
             </div>
           </Card>
           <Card className="bg-card border-border rounded-xl p-5 shadow-none flex items-center gap-4">
@@ -455,7 +404,7 @@ export default function Attendance() {
             </div>
             <div>
               <p className="text-[10px] text-sidebar-foreground font-black uppercase tracking-widest opacity-60">Absent</p>
-              <p className="text-xl font-bold text-white">{Object.values(attendance).filter(v => v === 'absent').length}</p>
+              <p className="text-xl font-bold text-white">{stats.absent}</p>
             </div>
           </Card>
         </div>
@@ -498,61 +447,64 @@ export default function Attendance() {
             </TableHeader>
             <TableBody>
               {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
-                  <TableRow key={student.id} className="border-border hover:bg-white/[0.02] transition-colors group">
-                    <TableCell className="font-bold text-sidebar-foreground uppercase tracking-tighter">{student.rollNumber}</TableCell>
-                    <TableCell className="font-extrabold text-white text-[13px] uppercase tracking-tight">{student.name}</TableCell>
-                    <TableCell className="text-right pr-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant={attendance[student.id] === 'present' ? 'default' : 'outline'}
-                          size="sm"
-                          className={cn(
-                            "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
-                            attendance[student.id] === 'present' ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
-                          )}
-                          onClick={() => isEditable && handleStatusChange(student.id, 'present')}
-                          disabled={!isEditable}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
-                          Present
-                        </Button>
-                        <Button 
-                          variant={attendance[student.id] === 'absent' ? 'default' : 'outline'}
-                          size="sm"
-                          className={cn(
-                            "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
-                            attendance[student.id] === 'absent' ? "bg-rose-600 hover:bg-rose-700 text-white shadow-[0_0_15px_rgba(244,63,94,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
-                          )}
-                          onClick={() => isEditable && handleStatusChange(student.id, 'absent')}
-                          disabled={!isEditable}
-                        >
-                          <XCircle className="w-3.5 h-3.5 mr-2" />
-                          Absent
-                        </Button>
-                        <Button 
-                          variant={attendance[student.id] === 'late' ? 'default' : 'outline'}
-                          size="sm"
-                          className={cn(
-                            "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
-                            attendance[student.id] === 'late' ? "bg-amber-600 hover:bg-amber-700 text-white shadow-[0_0_15px_rgba(245,158,11,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
-                          )}
-                          onClick={() => isEditable && handleStatusChange(student.id, 'late')}
-                          disabled={!isEditable}
-                        >
-                          <Clock className="w-3.5 h-3.5 mr-2" />
-                          Late
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredStudents.map((student) => {
+                  const currentStatus = attendance[student.id] || 'present';
+                  return (
+                    <TableRow key={student.id} className="border-border hover:bg-white/[0.02] transition-colors group">
+                      <TableCell className="font-bold text-sidebar-foreground uppercase tracking-tighter">{student.rollNumber}</TableCell>
+                      <TableCell className="font-extrabold text-white text-[13px] uppercase tracking-tight">{student.name}</TableCell>
+                      <TableCell className="text-right pr-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant={currentStatus === 'present' ? 'default' : 'outline'}
+                            size="sm"
+                            className={cn(
+                              "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
+                              currentStatus === 'present' ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            )}
+                            onClick={() => isEditable && handleStatusChange(student.id, 'present')}
+                            disabled={!isEditable}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                            Present
+                          </Button>
+                          <Button 
+                            variant={currentStatus === 'absent' ? 'default' : 'outline'}
+                            size="sm"
+                            className={cn(
+                              "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
+                              currentStatus === 'absent' ? "bg-rose-600 hover:bg-rose-700 text-white shadow-[0_0_15px_rgba(244,63,94,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            )}
+                            onClick={() => isEditable && handleStatusChange(student.id, 'absent')}
+                            disabled={!isEditable}
+                          >
+                            <XCircle className="w-3.5 h-3.5 mr-2" />
+                            Absent
+                          </Button>
+                          <Button 
+                            variant={currentStatus === 'late' ? 'default' : 'outline'}
+                            size="sm"
+                            className={cn(
+                              "rounded-lg px-4 h-9 border-border text-[10px] font-bold uppercase tracking-wider transition-all duration-300",
+                              currentStatus === 'late' ? "bg-amber-600 hover:bg-amber-700 text-white shadow-[0_0_15px_rgba(245,158,11,0.2)]" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            )}
+                            onClick={() => isEditable && handleStatusChange(student.id, 'late')}
+                            disabled={!isEditable}
+                          >
+                            <Clock className="w-3.5 h-3.5 mr-2" />
+                            Late
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={3} className="h-32 text-center text-sidebar-foreground">
                     <div className="flex flex-col items-center justify-center opacity-40">
                       <Users2 className="w-8 h-8 mb-2" />
-                      <p className="text-[10px] uppercase font-bold tracking-widest">Awaiting class selection</p>
+                      <p className="text-[10px] uppercase font-bold tracking-widest">No students found</p>
                     </div>
                   </TableCell>
                 </TableRow>
