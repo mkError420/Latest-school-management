@@ -41,10 +41,43 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const nq = query(collection(db, 'notices'), orderBy('date', 'desc'), limit(5));
+        // Fetch Notices
+        const nq = query(collection(db, 'notices'), orderBy('date', 'desc'), limit(10));
         const nSnap = await getDocs(nq);
-        setNotices(nSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]);
+        const noticesData = nSnap.docs.map(doc => ({ 
+          id: doc.id, 
+          type: 'notice',
+          ...doc.data() 
+        })) as Notice[];
 
+        // Fetch Exams
+        const today = new Date().toISOString().split('T')[0];
+        const eq = query(
+          collection(db, 'exams'), 
+          where('date', '>=', today),
+          orderBy('date', 'asc'),
+          limit(10)
+        );
+        const eSnap = await getDocs(eq);
+        const examsData = eSnap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: 'exam',
+            title: `Exam: ${data.subject} (${data.type})`,
+            content: `Examination for ${data.subject}. Time: ${data.time}. Status: ${data.status}.`,
+            date: data.date
+          };
+        }) as Notice[];
+
+        // Combine and sort by date descending
+        const combined = [...noticesData, ...examsData]
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 8);
+        
+        setNotices(combined);
+
+        // Fetch Important Links
         const lq = query(collection(db, 'important_links'), orderBy('order', 'asc'));
         const lSnap = await getDocs(lq);
         const linksData = lSnap.docs.map(doc => doc.data()) as any[];
@@ -169,9 +202,22 @@ export default function Home() {
                   {notices.length > 0 ? (
                     <div className="divide-y divide-gray-100">
                       {notices.map((notice) => (
-                        <div key={notice.id} className="p-5 hover:bg-white transition-all flex gap-5 items-start group">
-                          <div className="bg-white border border-emerald-100 p-2.5 rounded shadow-sm text-center min-w-[75px]">
-                            <span className="block text-emerald-700 font-black text-2xl leading-none">
+                        <div key={notice.id} className="p-5 hover:bg-white transition-all flex gap-5 items-start group relative overflow-hidden">
+                          {notice.type === 'exam' && (
+                            <div className="absolute top-0 right-0">
+                               <div className="bg-red-600 text-white text-[8px] font-black uppercase px-4 py-1 rotate-45 translate-x-[15px] translate-y-[5px] shadow-sm">
+                                 Exam
+                               </div>
+                            </div>
+                          )}
+                          <div className={cn(
+                            "border p-2.5 rounded shadow-sm text-center min-w-[75px]",
+                            notice.type === 'exam' ? "bg-red-50 border-red-100" : "bg-white border-emerald-100"
+                          )}>
+                            <span className={cn(
+                              "block font-black text-2xl leading-none",
+                              notice.type === 'exam' ? "text-red-700" : "text-emerald-700"
+                            )}>
                               {new Date(notice.date).getDate()}
                             </span>
                             <span className="text-[11px] text-gray-500 font-black uppercase tracking-tighter">
@@ -179,15 +225,21 @@ export default function Home() {
                             </span>
                           </div>
                           <div className="flex-1">
-                            <h4 className="text-[13px] font-black text-emerald-900 group-hover:text-red-600 transition-colors uppercase leading-tight">
+                            <h4 className={cn(
+                              "text-[13px] font-black uppercase leading-tight transition-colors",
+                              notice.type === 'exam' ? "text-red-900 group-hover:text-red-600" : "text-emerald-900 group-hover:text-red-600"
+                            )}>
                               {notice.title}
                             </h4>
                             <p className="text-[11px] text-gray-600 mt-2 line-clamp-2 leading-relaxed">
                               {notice.content}
                             </p>
                             <div className="flex items-center gap-4 mt-3">
-                               <Link to={`/notice/${notice.id}`} className="flex items-center gap-1 text-[10px] text-emerald-700 font-black hover:underline uppercase tracking-tighter">
-                                  Read Details
+                               <Link to={notice.type === 'exam' ? '/academic' : `/notice/${notice.id}`} className={cn(
+                                  "flex items-center gap-1 text-[10px] font-black hover:underline uppercase tracking-tighter",
+                                  notice.type === 'exam' ? "text-red-700" : "text-emerald-700"
+                               )}>
+                                  {notice.type === 'exam' ? 'View Scedule' : 'Read Details'}
                                </Link>
                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                <span className="text-[9px] text-gray-400 font-bold uppercase">{notice.date}</span>
