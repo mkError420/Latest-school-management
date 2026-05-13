@@ -40,7 +40,7 @@ interface RoutineEntry {
 export default function ClassRoutine() {
   const [routine, setRoutine] = useState<RoutineEntry[]>([]);
   const { isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.routine === 'full';
+  const hasFullAccess = isAdmin;
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string>('all');

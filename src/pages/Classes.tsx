@@ -67,7 +67,7 @@ interface Teacher {
 
 export default function Classes() {
   const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.students === 'full';
+  const hasFullAccess = isAdmin;
   const [classes, setClasses] = useState<Class[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

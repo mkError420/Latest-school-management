@@ -53,7 +53,7 @@ export default function Subjects() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.students === 'full';
+  const hasFullAccess = isAdmin;
 
   const [formData, setFormData] = useState({
     name: '',

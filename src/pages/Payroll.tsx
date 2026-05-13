@@ -124,8 +124,8 @@ interface StaffAttendance {
 
 export default function Payroll() {
   const { profile, isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.payroll === 'full';
-  const hasStaffAccess = isAdmin || roleDefinition?.permissions.staff === 'full';
+  const hasFullAccess = isAdmin;
+  const hasStaffAccess = isAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'history';
 

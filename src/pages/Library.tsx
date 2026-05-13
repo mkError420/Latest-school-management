@@ -142,7 +142,7 @@ interface Class {
 
 export default function Library() {
   const { isAdmin, roleDefinition } = useAuth();
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.library === 'full';
+  const hasFullAccess = isAdmin;
   const [books, setBooks] = useState<Book[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -545,204 +545,208 @@ export default function Library() {
             <p className="text-sidebar-foreground">Manage book inventory and student borrowings.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
-              <DialogTrigger render={
-                <Button variant="outline" size="sm" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
-                  <ArrowRightLeft className="w-4 h-4 mr-2" />
-                  Issue Book
-                </Button>
-              } />
-              <DialogContent className="bg-card border-border text-foreground">
-                <form onSubmit={handleIssueBook}>
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Issue Book</DialogTitle>
-                    <DialogDescription className="text-sidebar-foreground">Assign a book to a student.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Select Book</label>
-                      <Select value={newIssue.bookId || ''} onValueChange={val => setNewIssue({...newIssue, bookId: val || ''})}>
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Choose a book">
-                            {newIssue.bookId && books.find(b => b.id === newIssue.bookId)?.title}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                          <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+            {hasFullAccess && (
+              <>
+                <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
+                  <DialogTrigger render={
+                    <Button variant="outline" size="sm" className="border-border text-sidebar-foreground hover:bg-sidebar-accent">
+                      <ArrowRightLeft className="w-4 h-4 mr-2" />
+                      Issue Book
+                    </Button>
+                  } />
+                  <DialogContent className="bg-card border-border text-foreground">
+                    <form onSubmit={handleIssueBook}>
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Issue Book</DialogTitle>
+                        <DialogDescription className="text-sidebar-foreground">Assign a book to a student.</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Select Book</label>
+                          <Select value={newIssue.bookId || ''} onValueChange={val => setNewIssue({...newIssue, bookId: val || ''})}>
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue placeholder="Choose a book">
+                                {newIssue.bookId && books.find(b => b.id === newIssue.bookId)?.title}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                                <Input 
+                                  placeholder="Search book..." 
+                                  value={bookSearch}
+                                  onChange={e => setBookSearch(e.target.value)}
+                                  className="h-8 text-xs bg-background"
+                                  onKeyDown={e => e.stopPropagation()}
+                                />
+                              </div>
+                              {books
+                                .filter(b => b.available > 0)
+                                .filter(b => b.title.toLowerCase().includes(bookSearch.toLowerCase()) || b.author.toLowerCase().includes(bookSearch.toLowerCase()))
+                                .map(book => (
+                                  <SelectItem key={book.id} value={book.id}>{book.title} ({book.available} left)</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
+                          <Select value={issueSelectedClassId || ''} onValueChange={val => {
+                            setIssueSelectedClassId(val || '');
+                            setNewIssue({...newIssue, studentId: ''});
+                          }}>
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue placeholder="Choose a class">
+                                {issueSelectedClassId && classes.find(c => c.id === issueSelectedClassId) 
+                                  ? (() => {
+                                      const c = classes.find(cl => cl.id === issueSelectedClassId);
+                                      return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : null;
+                                    })()
+                                  : null}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                                <Input 
+                                  placeholder="Search class..." 
+                                  value={classSearch}
+                                  onChange={e => setClassSearch(e.target.value)}
+                                  className="h-8 text-xs bg-background"
+                                  onKeyDown={e => e.stopPropagation()}
+                                />
+                              </div>
+                              {classes
+                                .filter(c => c.name.toLowerCase().includes(classSearch.toLowerCase()) || c.section.toLowerCase().includes(classSearch.toLowerCase()))
+                                .map(cls => (
+                                  <SelectItem key={cls.id} value={cls.id}>
+                                    {cls.name}{cls.section ? ` - ${cls.section}` : ''}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Select Student</label>
+                          <Select 
+                            value={newIssue.studentId || ''} 
+                            onValueChange={val => setNewIssue({...newIssue, studentId: val || ''})}
+                            disabled={!issueSelectedClassId}
+                          >
+                            <SelectTrigger className="bg-background border-border">
+                              <SelectValue placeholder={issueSelectedClassId ? "Choose a student" : "Select a class first"}>
+                                {newIssue.studentId && students.find(s => s.id === newIssue.studentId)?.name}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border">
+                              <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                                <Input 
+                                  placeholder="Search student..." 
+                                  value={studentSearch}
+                                  onChange={e => setStudentSearch(e.target.value)}
+                                  className="h-8 text-xs bg-background"
+                                  onKeyDown={e => e.stopPropagation()}
+                                />
+                              </div>
+                              {students
+                                .filter(s => s.classId === issueSelectedClassId)
+                                .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.rollNumber.includes(studentSearch))
+                                .map(student => (
+                                  <SelectItem key={student.id} value={student.id}>{student.name} ({student.rollNumber})</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Duration (Days)</label>
+                          <Input 
+                            type="number" 
+                            value={newIssue.days ?? ''} 
+                            onChange={e => setNewIssue({...newIssue, days: Number(e.target.value)})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsIssueOpen(false)}>Cancel</Button>
+                        <Button type="submit" className="bg-primary text-white">Issue Book</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+    
+                <Dialog open={isAddBookOpen} onOpenChange={setIsAddBookOpen}>
+                  <DialogTrigger render={
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Book
+                    </Button>
+                  } />
+                  <DialogContent className="bg-card border-border text-foreground">
+                    <form onSubmit={handleAddBook}>
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Add New Book</DialogTitle>
+                        <DialogDescription className="text-sidebar-foreground">Enter book details for the inventory.</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-sidebar-foreground">Title</label>
+                          <Input 
+                            required 
+                            value={newBook.title || ''} 
+                            onChange={e => setNewBook({...newBook, title: e.target.value})}
+                            className="bg-background border-border"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-sidebar-foreground">Author</label>
                             <Input 
-                              placeholder="Search book..." 
-                              value={bookSearch}
-                              onChange={e => setBookSearch(e.target.value)}
-                              className="h-8 text-xs bg-background"
-                              onKeyDown={e => e.stopPropagation()}
+                              required 
+                              value={newBook.author || ''} 
+                              onChange={e => setNewBook({...newBook, author: e.target.value})}
+                              className="bg-background border-border"
                             />
                           </div>
-                          {books
-                            .filter(b => b.available > 0)
-                            .filter(b => b.title.toLowerCase().includes(bookSearch.toLowerCase()) || b.author.toLowerCase().includes(bookSearch.toLowerCase()))
-                            .map(book => (
-                              <SelectItem key={book.id} value={book.id}>{book.title} ({book.available} left)</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Select Class</label>
-                      <Select value={issueSelectedClassId || ''} onValueChange={val => {
-                        setIssueSelectedClassId(val || '');
-                        setNewIssue({...newIssue, studentId: ''});
-                      }}>
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Choose a class">
-                            {issueSelectedClassId && classes.find(c => c.id === issueSelectedClassId) 
-                              ? (() => {
-                                  const c = classes.find(cl => cl.id === issueSelectedClassId);
-                                  return c ? `${c.name}${c.section ? ` - ${c.section}` : ''}` : null;
-                                })()
-                              : null}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                          <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-sidebar-foreground">ISBN</label>
                             <Input 
-                              placeholder="Search class..." 
-                              value={classSearch}
-                              onChange={e => setClassSearch(e.target.value)}
-                              className="h-8 text-xs bg-background"
-                              onKeyDown={e => e.stopPropagation()}
+                              required 
+                              value={newBook.isbn || ''} 
+                              onChange={e => setNewBook({...newBook, isbn: e.target.value})}
+                              className="bg-background border-border"
                             />
                           </div>
-                          {classes
-                            .filter(c => c.name.toLowerCase().includes(classSearch.toLowerCase()) || c.section.toLowerCase().includes(classSearch.toLowerCase()))
-                            .map(cls => (
-                              <SelectItem key={cls.id} value={cls.id}>
-                                {cls.name}{cls.section ? ` - ${cls.section}` : ''}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Select Student</label>
-                      <Select 
-                        value={newIssue.studentId || ''} 
-                        onValueChange={val => setNewIssue({...newIssue, studentId: val || ''})}
-                        disabled={!issueSelectedClassId}
-                      >
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder={issueSelectedClassId ? "Choose a student" : "Select a class first"}>
-                            {newIssue.studentId && students.find(s => s.id === newIssue.studentId)?.name}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                          <div className="p-2 sticky top-0 bg-card z-10 border-b border-border mb-1">
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-sidebar-foreground">Category</label>
                             <Input 
-                              placeholder="Search student..." 
-                              value={studentSearch}
-                              onChange={e => setStudentSearch(e.target.value)}
-                              className="h-8 text-xs bg-background"
-                              onKeyDown={e => e.stopPropagation()}
+                              required 
+                              value={newBook.category || ''} 
+                              onChange={e => setNewBook({...newBook, category: e.target.value})}
+                              className="bg-background border-border"
                             />
                           </div>
-                          {students
-                            .filter(s => s.classId === issueSelectedClassId)
-                            .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()) || s.rollNumber.includes(studentSearch))
-                            .map(student => (
-                              <SelectItem key={student.id} value={student.id}>{student.name} ({student.rollNumber})</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Duration (Days)</label>
-                      <Input 
-                        type="number" 
-                        value={newIssue.days ?? ''} 
-                        onChange={e => setNewIssue({...newIssue, days: Number(e.target.value)})}
-                        className="bg-background border-border"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsIssueOpen(false)}>Cancel</Button>
-                    <Button type="submit" className="bg-primary text-white">Issue Book</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isAddBookOpen} onOpenChange={setIsAddBookOpen}>
-              <DialogTrigger render={
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Book
-                </Button>
-              } />
-              <DialogContent className="bg-card border-border text-foreground">
-                <form onSubmit={handleAddBook}>
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Add New Book</DialogTitle>
-                    <DialogDescription className="text-sidebar-foreground">Enter book details for the inventory.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Title</label>
-                      <Input 
-                        required 
-                        value={newBook.title || ''} 
-                        onChange={e => setNewBook({...newBook, title: e.target.value})}
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Author</label>
-                        <Input 
-                          required 
-                          value={newBook.author || ''} 
-                          onChange={e => setNewBook({...newBook, author: e.target.value})}
-                          className="bg-background border-border"
-                        />
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-sidebar-foreground">Total Copies</label>
+                            <Input 
+                              type="number" 
+                              required 
+                              value={newBook.total ?? ''} 
+                              onChange={e => setNewBook({...newBook, total: Number(e.target.value)})}
+                              className="bg-background border-border"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">ISBN</label>
-                        <Input 
-                          required 
-                          value={newBook.isbn || ''} 
-                          onChange={e => setNewBook({...newBook, isbn: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Category</label>
-                        <Input 
-                          required 
-                          value={newBook.category || ''} 
-                          onChange={e => setNewBook({...newBook, category: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Total Copies</label>
-                        <Input 
-                          type="number" 
-                          required 
-                          value={newBook.total ?? ''} 
-                          onChange={e => setNewBook({...newBook, total: Number(e.target.value)})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddBookOpen(false)}>Cancel</Button>
-                    <Button type="submit" className="bg-primary text-white">Add Book</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsAddBookOpen(false)}>Cancel</Button>
+                        <Button type="submit" className="bg-primary text-white">Add Book</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
           </div>
         </div>
 
@@ -852,38 +856,40 @@ export default function Library() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger render={
-                              <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            } />
-                            <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
-                              <DropdownMenuGroup>
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                  className="hover:bg-sidebar-accent cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedBook(book);
-                                    setIsEditBookOpen(true);
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Edit Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                                  onClick={() => {
-                                    setSelectedBook(book);
-                                    setIsDeleteBookOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Remove Book
-                                </DropdownMenuItem>
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {hasFullAccess && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger render={
+                                <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              } />
+                              <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                                <DropdownMenuGroup>
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem 
+                                    className="hover:bg-sidebar-accent cursor-pointer"
+                                    onClick={() => {
+                                      setSelectedBook(book);
+                                      setIsEditBookOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                    onClick={() => {
+                                      setSelectedBook(book);
+                                      setIsDeleteBookOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Remove Book
+                                  </DropdownMenuItem>
+                                </DropdownMenuGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -977,7 +983,7 @@ export default function Library() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {issue.status === 'issued' && (
+                              {issue.status === 'issued' && hasFullAccess && (
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
@@ -987,40 +993,42 @@ export default function Library() {
                                   Return
                                 </Button>
                               )}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger render={
-                                  <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                } />
-                                <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
-                                  <DropdownMenuGroup>
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuItem 
-                                      className="hover:bg-sidebar-accent cursor-pointer"
-                                      onClick={() => {
-                                        const student = students.find(s => s.id === issue.studentId);
-                                        setSelectedIssue(issue);
-                                        setEditIssueSelectedClassId(student?.classId || '');
-                                        setIsEditIssueOpen(true);
-                                      }}
-                                    >
-                                      <Edit className="w-4 h-4 mr-2" />
-                                      Edit Record
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
-                                      onClick={() => {
-                                        setSelectedIssue(issue);
-                                        setIsDeleteIssueOpen(true);
-                                      }}
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete Record
-                                    </DropdownMenuItem>
-                                  </DropdownMenuGroup>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {hasFullAccess && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger render={
+                                    <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8">
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                  } />
+                                  <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[160px]">
+                                    <DropdownMenuGroup>
+                                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                      <DropdownMenuItem 
+                                        className="hover:bg-sidebar-accent cursor-pointer"
+                                        onClick={() => {
+                                          const student = students.find(s => s.id === issue.studentId);
+                                          setSelectedIssue(issue);
+                                          setEditIssueSelectedClassId(student?.classId || '');
+                                          setIsEditIssueOpen(true);
+                                        }}
+                                      >
+                                        <Edit className="w-4 h-4 mr-2" />
+                                        Edit Record
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        className="text-rose-500 hover:bg-sidebar-accent cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedIssue(issue);
+                                          setIsDeleteIssueOpen(true);
+                                        }}
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Delete Record
+                                      </DropdownMenuItem>
+                                    </DropdownMenuGroup>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

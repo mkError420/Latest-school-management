@@ -84,7 +84,7 @@ interface Class {
 
 export default function Fees() {
   const { profile, isAdmin, isTeacher, isStaff, roleDefinition, systemConfig } = useAuth();
-  const hasFullAccess = isAdmin || roleDefinition?.permissions.fees === 'full';
+  const hasFullAccess = isAdmin;
   const [fees, setFees] = useState<FeeRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);

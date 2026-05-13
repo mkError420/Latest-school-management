@@ -261,8 +261,8 @@ export default function Attendance() {
   };
 
   const saveAttendance = async () => {
-    // Grant full access based on role definition
-    const hasFullAccess = isAdmin || roleDefinition?.permissions.attendance === 'full';
+    // Grant full access based on isAdmin
+    const hasFullAccess = isAdmin;
     
     if (!hasFullAccess) {
       toast.error('Unauthorized: You do not have permission to mark attendance.');
@@ -353,7 +353,7 @@ export default function Attendance() {
     student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const isEditable = isAdmin || isTeacher || isStaff || roleDefinition?.permissions.attendance === 'full';
+  const isEditable = isAdmin;
 
   return (
     <DashboardLayout>
@@ -409,7 +409,7 @@ export default function Attendance() {
               Export
             </Button>
 
-            {(isAdmin || isTeacher || isStaff || roleDefinition?.permissions.attendance === 'full') && (
+            {isAdmin && (
               <Button onClick={saveAttendance} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white h-9 uppercase font-bold tracking-wider text-[10px]">
                 <Save className="w-3.5 h-3.5 mr-2" />
                 {isSaving ? 'Saving...' : 'Save Record'}
