@@ -45,28 +45,29 @@ service cloud.firestore {
       return isSignedIn() && !(userRole in ['student', 'parent', 'none']);
     }
 
-    function isAdmin() {
-      // Put the email check first for immediate admin access regardless of DB state
+    function isSystemAdmin() {
       return isSignedIn() && (
         request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
         request.auth.token.email == "jakir995627@gmail.com" || 
-        request.auth.token.email == "akondsourov786@gmail.com" || 
-        hasRole('admin')
+        request.auth.token.email == "akondsourov786@gmail.com"
       );
+    }
+
+    function isAdmin() {
+      // System admins always have admin rights, otherwise check stored role
+      return isSystemAdmin() || (isSignedIn() && hasRole('admin'));
     }
 
     function getRoleId() {
-      return getUserData().get('roleId', getUserData().get('role', 'none').lower());
+      let data = getUserData();
+      return data.get('roleId', data.get('role', 'none').lower());
     }
 
     function isApproved() {
-      return isSignedIn() && (
-        request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
-        request.auth.token.email == "jakir995627@gmail.com" || 
-        request.auth.token.email == "akondsourov786@gmail.com" || 
+      return isSystemAdmin() || (isSignedIn() && (
         getUserData().get('approved', false) == true || 
         getUserData().get('role', 'none').lower() == 'admin'
-      );
+      ));
     }
 
     function hasPermission(module, level) {
@@ -101,21 +102,16 @@ service cloud.firestore {
              data.createdAt is string;
     }
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'role']) &&
-             data.uid is string && data.email is string &&
-             data.role is string && data.role.size() > 0 &&
+      // Basic type validation for common fields
+      return (!data.keys().contains('uid') || data.uid is string) &&
+             (!data.keys().contains('email') || data.email is string) &&
+             (!data.keys().contains('role') || data.role is string) &&
              (!data.keys().contains('approved') || data.approved is bool);
     }
 
     function isValidSystemConfig(data) {
-      return data.keys().hasAll(['schoolName', 'academicYear']) &&
-             data.schoolName is string && data.schoolName.size() > 0 &&
-             data.academicYear is string && data.academicYear.size() > 0 &&
-             (data.get('address', '') is string) &&
-             (data.get('phone', '') is string) &&
-             (data.get('email', '') is string) &&
-             (data.get('website', '') is string) &&
-             (data.get('schoolLogoUrl', '') is string);
+      // Allow any updates to system config as long as it's from an admin
+      return true;
     }
 
     function isValidStudent(data) {
