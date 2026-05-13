@@ -94,7 +94,7 @@ const DEFAULT_PERMISSIONS: Role['permissions'] = {
 
 export default function Settings() {
   const { profile, user, isAdmin, isTeacher, isStaff, roleDefinition, isSuperAdmin } = useAuth();
-  const hasSettingsAccess = isAdmin || roleDefinition?.permissions.settings === 'full';
+  const hasSettingsAccess = isSuperAdmin;
   const [isSaving, setIsSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -153,7 +153,7 @@ export default function Settings() {
 
   // Sync with System Config
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     const unsubscribe = onSnapshot(doc(db, 'config', 'system'), (doc) => {
       if (doc.exists()) {
         const data = doc.data();
@@ -174,7 +174,7 @@ export default function Settings() {
 
   // Sync Roles
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     const q = query(collection(db, 'roles'), orderBy('name'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const roleData = snapshot.docs.map(doc => ({
@@ -187,7 +187,7 @@ export default function Settings() {
   }, [isAdmin]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     const q = query(collection(db, 'users'), orderBy('displayName'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userData = snapshot.docs.map(doc => ({
@@ -228,8 +228,8 @@ export default function Settings() {
         updatedAt: new Date().toISOString()
       });
 
-      // Update System Config if Admin
-      if (isAdmin) {
+      // Update System Config if Super Admin
+      if (isSuperAdmin) {
         await setDoc(doc(db, 'config', 'system'), {
           ...systemConfig,
           updatedAt: new Date().toISOString()
@@ -245,7 +245,7 @@ export default function Settings() {
   };
 
   const handleBackup = async () => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setIsSaving(true);
     try {
       const now = new Date().toISOString();
@@ -261,7 +261,7 @@ export default function Settings() {
   };
 
   const handleSyncStudentIds = async () => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setIsSaving(true);
     const toastId = toast.loading('Architecting legacy student IDs...');
     
@@ -632,7 +632,7 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {isAdmin && (
+          {isSuperAdmin && (
             <TabsContent value="system" className="space-y-6">
               <Card className="bg-card border-border shadow-none rounded-xl">
                 <CardHeader className="border-b border-border mb-6">
@@ -797,7 +797,7 @@ export default function Settings() {
             </TabsContent>
           )}
 
-          {isAdmin && (
+          {isSuperAdmin && (
             <TabsContent value="users" className="space-y-6">
               <Card className="bg-card border-border shadow-none rounded-xl">
                 <CardHeader className="border-b border-border mb-6">
