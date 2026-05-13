@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleLogout = async () => {
     await auth.signOut();
-    navigate('/login');
+    navigate('/');
   };
 
   const navigationGroups = [
