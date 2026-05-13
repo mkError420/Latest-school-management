@@ -72,7 +72,7 @@ interface Class {
 export default function Attendance() {
   const { isAdmin, isTeacher, isStaff, roleDefinition, isSuperAdmin } = useAuth();
   const [date, setDate] = useState<Date>(new Date());
-  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,9 +107,6 @@ export default function Attendance() {
         ...doc.data()
       })) as Class[];
       setClasses(classData);
-      if (classData.length > 0 && !selectedClass) {
-        setSelectedClass(classData[0].id);
-      }
     });
     return () => unsubscribeClasses();
   }, []);
@@ -346,9 +343,16 @@ export default function Attendance() {
               </PopoverContent>
             </Popover>
             
-            <Select value={selectedClass} onValueChange={(val) => setSelectedClass(val || '')}>
+            <Select value={selectedClass} onValueChange={(val) => setSelectedClass(val || 'all')}>
               <SelectTrigger className="w-[180px] bg-card border-border text-sidebar-foreground uppercase font-bold tracking-wider text-[10px] h-9">
-                <SelectValue placeholder="Class" />
+                <SelectValue placeholder="Class">
+                  {selectedClass === 'all' 
+                    ? 'All Classes' 
+                    : (() => {
+                        const cls = classes.find(c => c.id === selectedClass);
+                        return cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'All Classes';
+                      })()}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 <SelectItem value="all">All Classes</SelectItem>
@@ -452,6 +456,7 @@ export default function Attendance() {
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="w-[120px] font-bold text-[11px] text-sidebar-foreground uppercase tracking-widest">Roll Identifier</TableHead>
                 <TableHead className="font-bold text-[11px] text-sidebar-foreground uppercase tracking-widest">Student Identity</TableHead>
+                <TableHead className="font-bold text-[11px] text-sidebar-foreground uppercase tracking-widest">Class</TableHead>
                 <TableHead className="text-right font-bold text-[11px] text-sidebar-foreground uppercase tracking-widest pr-12">Session Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -463,6 +468,12 @@ export default function Attendance() {
                     <TableRow key={student.id} className="border-border hover:bg-white/[0.02] transition-colors group">
                       <TableCell className="font-bold text-sidebar-foreground uppercase tracking-tighter">{student.rollNumber}</TableCell>
                       <TableCell className="font-extrabold text-white text-[13px] uppercase tracking-tight">{student.name}</TableCell>
+                      <TableCell className="text-sidebar-foreground text-[11px] font-bold uppercase tracking-tight">
+                        {(() => {
+                          const cls = classes.find(c => c.id === student.classId);
+                          return cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'No Class';
+                        })()}
+                      </TableCell>
                       <TableCell className="text-right pr-4">
                         <div className="flex items-center justify-end gap-2">
                           <Button 
@@ -511,7 +522,7 @@ export default function Attendance() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-32 text-center text-sidebar-foreground">
+                  <TableCell colSpan={4} className="h-32 text-center text-sidebar-foreground">
                     <div className="flex flex-col items-center justify-center opacity-40">
                       <Users2 className="w-8 h-8 mb-2" />
                       <p className="text-[10px] uppercase font-bold tracking-widest">No students found</p>
