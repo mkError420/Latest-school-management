@@ -14,7 +14,8 @@ import {
   LogOut, 
   Bell,
   Menu,
-  X
+  X,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '@/src/lib/auth';
 import { auth } from '@/src/lib/firebase';
@@ -52,7 +53,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       title: 'Management',
       roles: ['admin', 'teacher', 'parent', 'student', 'staff'],
       items: [
-        { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin'] },
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin'] },
+        { name: 'Website Manager', href: '/website-manager', icon: Globe, roles: ['admin', 'staff'] },
       ]
     },
     {
@@ -215,7 +217,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Sheet>
             <div className="page-title">
               <h2 className="text-xl font-semibold text-white capitalize">
-                {location.pathname === '/' ? (systemConfig?.schoolName || 'Institutional Overview') : location.pathname.substring(1).replace('-', ' ')}
+                {location.pathname === '/dashboard' ? (systemConfig?.schoolName || 'Institutional Overview') : location.pathname.substring(1).replace('-', ' ')}
               </h2>
               <p className="text-xs text-sidebar-foreground">Academic Year: {systemConfig?.academicYear || '2023-2024'} • System status: Healthy.</p>
             </div>

@@ -13,7 +13,8 @@ import {
   CalendarCheck,
   DollarSign,
   GraduationCap,
-  Activity
+  Activity,
+  Megaphone
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const [myAttendance, setMyAttendance] = useState<any[]>([]);
   const [myFees, setMyFees] = useState<any[]>([]);
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [recentNotices, setRecentNotices] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [feeDocs, setFeeDocs] = useState<any[]>([]);
@@ -194,9 +196,17 @@ export default function Dashboard() {
     }
     const examsQ = query(collection(db, 'exams'), ...examConstraints);
     unsubscribes.push(onSnapshot(examsQ, (snapshot) => {
-      setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setUpcomingExams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), dataType: 'exam' })));
     }, (error) => {
       console.error("Dashboard Exams Listener Error:", error);
+    }));
+
+    // Recent Notices
+    const noticesQ = query(collection(db, 'notices'), orderBy('date', 'desc'), limit(5));
+    unsubscribes.push(onSnapshot(noticesQ, (snapshot) => {
+      setRecentNotices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), dataType: 'notice' })));
+    }, (error) => {
+      console.error("Dashboard Notices Listener Error:", error);
     }));
 
     // Classes - Accessible to all authenticated users for data resolution
@@ -832,19 +842,48 @@ export default function Dashboard() {
               <CalendarCheck className="w-24 h-24 text-primary" />
             </div>
             <div className="flex justify-between items-center mb-5 relative z-10">
-              <span className="text-sm font-semibold text-white">Upcoming Examinations</span>
+              <span className="text-sm font-semibold text-white">Notices & Examinations</span>
               <div className="px-2 py-0.5 bg-primary/10 rounded text-[10px] text-primary font-bold uppercase tracking-wider border border-primary/20">
-                Academic Calendar
+                Academic Feed
               </div>
             </div>
             <div className="space-y-0 relative z-10">
               {(() => {
-                const filtered = upcomingExams
-                  .filter(exam => classes.some(c => c.id === exam.classId))
-                  .slice(0, 5);
+                // Combine exams and notices
+                const combined = [
+                  ...upcomingExams.filter(exam => classes.some(c => c.id === exam.classId)),
+                  ...recentNotices
+                ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 5);
                 
-                return filtered.length > 0 ? filtered.map((event, i) => {
-                  const cls = classes.find(c => c.id === event.classId);
+                return combined.length > 0 ? combined.map((item, i) => {
+                  if (item.dataType === 'notice') {
+                    return (
+                      <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 group cursor-default hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                            <Megaphone className="w-4 h-4" />
+                          </div>
+                          <div className="max-w-[200px] sm:max-w-[300px]">
+                            <h4 className="text-[13px] font-bold text-white uppercase tracking-tight line-clamp-1">{item.title}</h4>
+                            <p className="text-[11px] text-sidebar-foreground line-clamp-1">
+                              {item.content}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mb-1">
+                            Notice
+                          </p>
+                          <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest opacity-60">
+                            {format(new Date(item.date), 'MMM dd, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const cls = classes.find(c => c.id === item.classId);
                   return (
                     <div key={i} className="flex items-center justify-between py-4 border-b border-border/50 last:border-0 group cursor-default hover:bg-white/5 px-2 -mx-2 rounded-lg transition-colors">
                       <div className="flex items-center gap-4">
@@ -852,18 +891,18 @@ export default function Dashboard() {
                           <Calendar className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">{event.subject}</h4>
+                          <h4 className="text-[13px] font-bold text-white uppercase tracking-tight">{item.subject}</h4>
                           <p className="text-[11px] text-sidebar-foreground">
-                            {cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'Unknown Class'} • {event.type.replace('_', ' ')}
+                            {cls ? `${cls.name}${cls.section ? ` - ${cls.section}` : ''}` : 'Unknown Class'} • {item.type.replace('_', ' ')}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-[13px] font-bold text-white">
-                          {formatDistanceToNow(new Date(event.date), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(item.date), { addSuffix: true })}
                         </p>
                         <p className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest opacity-60">
-                          {format(new Date(event.date), 'MMM dd, yyyy')}
+                          {format(new Date(item.date), 'MMM dd, yyyy')}
                         </p>
                       </div>
                     </div>
@@ -871,7 +910,7 @@ export default function Dashboard() {
                 }) : (
                   <div className="py-12 text-center">
                     <AlertCircle className="w-8 h-8 text-sidebar-foreground mx-auto mb-3 opacity-20" />
-                    <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No upcoming exams</p>
+                    <p className="text-sidebar-foreground text-xs font-medium uppercase tracking-widest">No recent updates</p>
                   </div>
                 );
               })()}

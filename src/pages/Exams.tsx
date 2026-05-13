@@ -955,8 +955,8 @@ export default function Exams() {
                       <Input 
                         type="number"
                         required 
-                        value={newExam.totalMarks || ''} 
-                        onChange={e => setNewExam({...newExam, totalMarks: Number(e.target.value)})}
+                        value={newExam.totalMarks || 0} 
+                        onChange={e => setNewExam({...newExam, totalMarks: Number(e.target.value) || 0})}
                         className="bg-background border-border"
                       />
                     </div>
@@ -1386,6 +1386,16 @@ export default function Exams() {
                         className="bg-background border-border"
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-sidebar-foreground">Total Marks</label>
+                    <Input 
+                      type="number"
+                      required 
+                      value={selectedExam.totalMarks || 0} 
+                      onChange={e => setSelectedExam({...selectedExam, totalMarks: Number(e.target.value) || 0})}
+                      className="bg-background border-border"
+                    />
                   </div>
                 </div>
               )}

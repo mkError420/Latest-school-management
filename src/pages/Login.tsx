@@ -18,7 +18,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

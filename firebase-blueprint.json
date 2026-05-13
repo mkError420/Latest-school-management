@@ -199,6 +199,42 @@
       },
       "required": ["name", "section", "teacher"]
     },
+    "CommitteeMember": {
+      "title": "CommitteeMember",
+      "description": "Members of the school managing committee.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "title"]
+    },
+    "DownloadItem": {
+      "title": "DownloadItem",
+      "description": "Educational documents for public download.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "size": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "category": { "type": "string", "enum": ["academic", "admission", "routine", "syllabus", "other"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "url", "category"]
+    },
+    "ImportantLink": {
+      "title": "ImportantLink",
+      "description": "External links for the side navigation.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "url", "order"]
+    },
     "SystemConfig": {
       "title": "SystemConfig",
       "description": "Global school settings and configurations.",
@@ -211,9 +247,29 @@
         "email": { "type": "string", "format": "email" },
         "website": { "type": "string" },
         "schoolLogoUrl": { "type": "string", "description": "Base64 or URL of the school logo" },
+        "principalName": { "type": "string" },
+        "principalMessage": { "type": "string" },
+        "principalImageUrl": { "type": "string" },
+        "history": { "type": "string" },
+        "mission": { "type": "string" },
+        "vision": { "type": "string" },
+        "mujibCornerEnabled": { "type": "boolean" },
         "lastBackup": { "type": "string", "format": "date-time" }
       },
       "required": ["schoolName", "academicYear"]
+    },
+    "PublicStaff": {
+      "title": "PublicStaff",
+      "description": "Staff members displayed on the public website.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string", "enum": ["administration", "teacher", "other"] },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "role", "category", "order"]
     },
     "Role": {
       "title": "Role",
@@ -275,6 +331,44 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["staffId", "date", "status"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "School notices and announcements.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Images for the school website gallery.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["campus", "events", "academic", "sports"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url", "title", "category"]
+    },
+    "PublicExamResult": {
+      "title": "PublicExamResult",
+      "description": "Publicly accessible exam results.",
+      "type": "object",
+      "properties": {
+        "studentRoll": { "type": "string" },
+        "studentName": { "type": "string" },
+        "examName": { "type": "string" },
+        "grade": { "type": "string" },
+        "percentage": { "type": "number" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["studentRoll", "studentName", "examName", "grade", "percentage"]
     }
   },
   "firestore": {
@@ -294,6 +388,13 @@
     "/staff/{staffId}": { "schema": "Staff", "description": "Staff records" },
     "/payroll/{payrollId}": { "schema": "Payroll", "description": "Staff payroll" },
     "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" },
-    "/roles/{roleId}": { "schema": "Role", "description": "Staff role definitions" }
+    "/roles/{roleId}": { "schema": "Role", "description": "Staff role definitions" },
+    "/notices/{noticeId}": { "schema": "Notice", "description": "Public notices" },
+    "/gallery/{itemId}": { "schema": "GalleryItem", "description": "Public gallery items" },
+    "/committee/{memberId}": { "schema": "CommitteeMember", "description": "Managing committee" },
+    "/downloads/{itemId}": { "schema": "DownloadItem", "description": "Public downloads" },
+    "/important_links/{linkId}": { "schema": "ImportantLink", "description": "Sidebar links" },
+    "/public_staff/{staffId}": { "schema": "PublicStaff", "description": "Public staff profiles" },
+    "/exam_results/{resultId}": { "schema": "PublicExamResult", "description": "Public exam results" }
   }
 }

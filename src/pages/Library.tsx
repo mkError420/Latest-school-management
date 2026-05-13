@@ -660,7 +660,7 @@ export default function Library() {
                           <Input 
                             type="number" 
                             value={newIssue.days ?? ''} 
-                            onChange={e => setNewIssue({...newIssue, days: Number(e.target.value)})}
+                            onChange={e => setNewIssue({...newIssue, days: Number(e.target.value) || 0})}
                             className="bg-background border-border"
                           />
                         </div>
@@ -732,7 +732,7 @@ export default function Library() {
                               type="number" 
                               required 
                               value={newBook.total ?? ''} 
-                              onChange={e => setNewBook({...newBook, total: Number(e.target.value)})}
+                              onChange={e => setNewBook({...newBook, total: Number(e.target.value) || 0})}
                               className="bg-background border-border"
                             />
                           </div>
@@ -1191,8 +1191,8 @@ export default function Library() {
                       <Input 
                         type="number" 
                         required 
-                        value={selectedBook.total ?? ''} 
-                        onChange={e => setSelectedBook({...selectedBook, total: Number(e.target.value)})}
+                        value={selectedBook.total ?? 0} 
+                        onChange={e => setSelectedBook({...selectedBook, total: Number(e.target.value) || 0})}
                         className="bg-background border-border"
                       />
                     </div>

@@ -1874,8 +1874,8 @@ export default function Payroll() {
                       <Input 
                         type="number" 
                         required 
-                        value={editingStaff.salary ?? ''} 
-                        onChange={e => setEditingStaff({...editingStaff, salary: Number(e.target.value)})}
+                        value={editingStaff.salary || 0} 
+                        onChange={e => setEditingStaff({...editingStaff, salary: Number(e.target.value) || 0})}
                         className="bg-background border-border"
                       />
                     </div>

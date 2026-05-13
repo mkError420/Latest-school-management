@@ -188,6 +188,56 @@ service cloud.firestore {
              (!data.keys().contains('code') || (data.code is string && data.code.size() <= 50));
     }
 
+    function isValidNotice(data) {
+      return data.keys().hasAll(['title', 'content']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll(['url', 'title', 'category']) &&
+             data.url is string && data.url.size() > 0 &&
+             data.title is string && data.title.size() > 0 &&
+             data.category in ['campus', 'events', 'academic', 'sports'];
+    }
+
+    function isValidCommitteeMember(data) {
+      return data.keys().hasAll(['name', 'title']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.title is string && data.title.size() > 0;
+    }
+
+    function isValidDownloadItem(data) {
+      return data.keys().hasAll(['name', 'url', 'category']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.url is string && data.url.size() > 0 &&
+             data.category in ['academic', 'admission', 'routine', 'syllabus', 'other'];
+    }
+
+    function isValidImportantLink(data) {
+      return data.keys().hasAll(['name', 'url', 'order']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.url is string && data.url.size() > 0 &&
+             data.order is number;
+    }
+
+    function isValidPublicStaff(data) {
+      return data.keys().hasAll(['name', 'role', 'category', 'order']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.role is string && data.role.size() > 0 &&
+             data.category in ['administration', 'teacher', 'other'] &&
+             data.order is number;
+    }
+
+    function isValidPublicExamResult(data) {
+      return data.keys().hasAll(['studentRoll', 'studentName', 'examName', 'grade', 'percentage']) &&
+             data.studentRoll is string && data.studentRoll.size() > 0 &&
+             data.studentName is string && data.studentName.size() > 0 &&
+             data.examName is string && data.examName.size() > 0 &&
+             data.grade is string &&
+             data.percentage is number;
+    }
+
     // Rules
     match /users/{uid} {
       allow read: if isSignedIn();
@@ -227,7 +277,7 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update, delete: if hasPermission('students', 'full');
     }
 
@@ -238,7 +288,7 @@ service cloud.firestore {
     }
 
     match /exams/{examId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update: if hasPermission('exams', 'full') && isValidExam(request.resource.data);
       allow delete: if hasPermission('exams', 'full');
     }
@@ -299,6 +349,48 @@ service cloud.firestore {
       allow read: if isOwner(resource.data.recipientId);
       allow create: if isAdmin() || isTeacher();
       allow update: if isOwner(resource.data.recipientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+
+    match /notices/{id} {
+      allow read: if true;
+      allow create, update: if isStaff() && isValidNotice(request.resource.data);
+      allow delete: if isStaff();
+    }
+
+    match /gallery/{id} {
+      allow read: if true;
+      allow create, update: if isStaff() && isValidGalleryItem(request.resource.data);
+      allow delete: if isStaff();
+    }
+
+    match /committee/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidCommitteeMember(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /downloads/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidDownloadItem(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /important_links/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidImportantLink(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /public_staff/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidPublicStaff(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /exam_results/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidPublicExamResult(request.resource.data);
+      allow delete: if isAdmin();
     }
   }
 }

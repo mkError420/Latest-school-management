@@ -41,6 +41,12 @@ interface SystemConfig {
   website?: string;
   schoolLogoUrl?: string;
   lastBackup?: string;
+  principalName?: string;
+  principalMessage?: string;
+  principalImageUrl?: string;
+  mission?: string;
+  vision?: string;
+  history?: string;
 }
 
 interface AuthContextType {

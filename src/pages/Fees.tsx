@@ -864,8 +864,8 @@ export default function Fees() {
                       <Input 
                         type="number" 
                         required 
-                        value={selectedFee.amount || ''} 
-                        onChange={e => setSelectedFee({...selectedFee, amount: Number(e.target.value)})}
+                        value={selectedFee.amount || 0} 
+                        onChange={e => setSelectedFee({...selectedFee, amount: Number(e.target.value) || 0})}
                         className="bg-background border-border"
                       />
                     </div>

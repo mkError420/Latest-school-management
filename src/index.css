@@ -201,48 +201,19 @@
   }
 }
 
-@layer utilities {
-  @media print {
-    /* Hide interactive elements in the dialog during print */
-    [data-slot="dialog-close"], 
-    [data-slot="dialog-overlay"],
-    [data-slot="dialog-footer"],
-    .print\:hidden {
-      display: none !important;
-    }
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
 
-    /* Ensure the portal container is visible if needed */
-    [data-radix-portal], [data-slot="dialog-portal"] {
-      position: static !important;
-      display: block !important;
-    }
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
 
-    /* Table print optimizations */
-    table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      page-break-inside: auto !important;
-    }
+.pause-marquee:hover {
+  animation-play-state: paused;
+}
 
-    tr {
-      page-break-inside: avoid !important;
-      page-break-after: auto !important;
-    }
-
-    thead {
-      display: table-header-group !important;
-    }
-
-    /* Force background colors to print */
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    /* Remove any fixed heights that might cause blank pages */
-    .h-screen, .h-full, .min-h-screen {
-      height: auto !important;
-      min-height: 0 !important;
-    }
-  }
+.gov-gradient {
+  background: linear-gradient(to right, #006a4e, #009e60);
 }
