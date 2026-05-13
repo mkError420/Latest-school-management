@@ -93,7 +93,7 @@ const DEFAULT_PERMISSIONS: Role['permissions'] = {
 };
 
 export default function Settings() {
-  const { profile, user, isAdmin, isTeacher, isStaff, roleDefinition } = useAuth();
+  const { profile, user, isAdmin, isTeacher, isStaff, roleDefinition, isSuperAdmin } = useAuth();
   const hasSettingsAccess = isAdmin || roleDefinition?.permissions.settings === 'full';
   const [isSaving, setIsSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -337,6 +337,24 @@ export default function Settings() {
         updatedAt: new Date().toISOString()
       });
       toast.success('User identity activated successfully');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    const targetUser = allUsers.find(u => u.id === userId);
+    if (targetUser?.email === 'mk.rabbani.cse@gmail.com') {
+      toast.error('The Super Admin identity cannot be deactivated.');
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        approved: !currentStatus,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success(`User account ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
     }
@@ -1008,12 +1026,12 @@ export default function Settings() {
                             <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest">Digital Identity</TableHead>
                             <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest">Institutional Email</TableHead>
                             <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest">Authority Role</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest text-center">Status</TableHead>
                             <TableHead className="text-[10px] font-black uppercase text-sidebar-foreground tracking-widest text-right pr-6">Action</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {allUsers
-                            .filter(u => u.approved !== false)
                             .filter(u => 
                               u.displayName?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
                               u.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
@@ -1049,14 +1067,35 @@ export default function Settings() {
                                     </SelectContent>
                                   </Select>
                                 </TableCell>
+                                <TableCell className="text-center">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={`h-7 px-3 text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all ${
+                                      (u.approved !== false || u.email === 'mk.rabbani.cse@gmail.com')
+                                        ? 'text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10' 
+                                        : 'text-rose-500 hover:text-rose-400 hover:bg-rose-500/10'
+                                    }`}
+                                    onClick={() => handleToggleUserStatus(u.id, u.approved !== false)}
+                                    disabled={u.email === 'mk.rabbani.cse@gmail.com'}
+                                  >
+                                    {(u.approved !== false || u.email === 'mk.rabbani.cse@gmail.com') ? 'Active' : 'Disabled'}
+                                  </Button>
+                                </TableCell>
                                 <TableCell className="text-right pr-6">
                                   <div className="flex items-center justify-end gap-2">
-                                    <Badge variant="outline" className={cn(
-                                      "text-[9px] font-black uppercase tracking-tighter border-none",
-                                      u.role === 'admin' ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary"
-                                    )}>
-                                      {u.role || 'No Role'}
-                                    </Badge>
+                                    {u.email === 'mk.rabbani.cse@gmail.com' ? (
+                                      <Badge variant="outline" className="bg-rose-500/10 text-rose-500 text-[9px] font-black uppercase tracking-tighter border-rose-500/20">
+                                        Super Admin
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className={cn(
+                                        "text-[9px] font-black uppercase tracking-tighter border-none",
+                                        u.role === 'admin' ? "bg-amber-500/10 text-amber-500" : "bg-primary/10 text-primary"
+                                      )}>
+                                        {u.role || 'No Role'}
+                                      </Badge>
+                                    )}
                                     <Button
                                       variant="ghost"
                                       size="icon"
