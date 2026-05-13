@@ -1,13 +1,22 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldAlert, Home, UserCheck, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/src/lib/firebase';
 import { signOut } from 'firebase/auth';
+import { useAuth } from '@/src/lib/auth';
 
 export default function Unauthorized() {
+  const { isApproved, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isUnapproved = location.state?.reason === 'unapproved';
+
+  useEffect(() => {
+    if (!loading && isApproved) {
+      navigate('/', { replace: true });
+    }
+  }, [isApproved, loading, navigate]);
 
   const handleSignOut = async () => {
     await signOut(auth);
