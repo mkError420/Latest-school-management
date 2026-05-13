@@ -368,7 +368,7 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="space-y-1">
             <h1 className="text-3xl font-black text-white uppercase tracking-tighter sm:text-4xl">
-              {hasStaffAccess ? 'Nexus Workspace' : 'Student Hub'}
+              {hasStaffAccess ? 'Workspace' : 'Student Hub'}
             </h1>
             <p className="text-sidebar-foreground text-sm font-medium opacity-60 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
