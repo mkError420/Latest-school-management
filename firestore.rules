@@ -59,14 +59,24 @@ service cloud.firestore {
       return getUserData().get('roleId', getUserData().get('role', 'none').lower());
     }
 
+    function isApproved() {
+      return isSignedIn() && (
+        request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
+        request.auth.token.email == "jakir995627@gmail.com" || 
+        request.auth.token.email == "akondsourov786@gmail.com" || 
+        getUserData().get('approved', false) == true || 
+        getUserData().get('role', 'none').lower() == 'admin'
+      );
+    }
+
     function hasPermission(module, level) {
-      return isAdmin() || (
+      return isApproved() && (isAdmin() || (
         level == 'view' ? 
           (exists(/databases/$(database)/documents/roles/$(getRoleId())) && 
            get(/databases/$(database)/documents/roles/$(getRoleId())).data.permissions.get(module, 'none') in ['view', 'full']) :
           (exists(/databases/$(database)/documents/roles/$(getRoleId())) && 
            get(/databases/$(database)/documents/roles/$(getRoleId())).data.permissions.get(module, 'none') == 'full')
-      );
+      ));
     }
 
     function isTeacher() {
@@ -93,7 +103,8 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'role']) &&
              data.uid is string && data.email is string &&
-             data.role is string && data.role.size() > 0;
+             data.role is string && data.role.size() > 0 &&
+             (!data.keys().contains('approved') || data.approved is bool);
     }
 
     function isValidSystemConfig(data) {
@@ -176,8 +187,12 @@ service cloud.firestore {
     // Rules
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
-      allow update: if isSignedIn() && (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+      allow create: if isSignedIn() && (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && 
+                      (request.resource.data.get('role', 'student') == 'student' || isAdmin()) &&
+                      (request.resource.data.get('approved', false) == false || isAdmin());
+      allow update: if isSignedIn() && (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && 
+                      (request.resource.data.get('role', 'student') == resource.data.get('role', 'student') || isAdmin()) &&
+                      (request.resource.data.get('approved', false) == resource.data.get('approved', false) || isAdmin());
       allow delete: if isAdmin();
     }
 

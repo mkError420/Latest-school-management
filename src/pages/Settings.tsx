@@ -330,6 +330,18 @@ export default function Settings() {
     }
   };
 
+  const handleApproveUser = async (userId: string) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        approved: true,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success('User identity activated successfully');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  };
+
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     try {
       const roleId = newRole.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -390,6 +402,7 @@ export default function Settings() {
           displayName: newUserFormData.displayName,
           role: newUserFormData.role,
           roleId: roleId,
+          approved: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
@@ -776,6 +789,86 @@ export default function Settings() {
                 <CardContent className="space-y-12">
                   {/* User Directory */}
                   <div className="space-y-6">
+                    {allUsers.some(u => u.approved === false) && (
+                      <div className="space-y-4 mb-12">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
+                          <h3 className="text-[11px] font-black text-amber-500 uppercase tracking-widest">Pending Approvals</h3>
+                        </div>
+                        <div className="border border-amber-500/20 rounded-xl overflow-hidden bg-amber-500/[0.02]">
+                          <Table>
+                            <TableHeader className="bg-amber-500/5">
+                              <TableRow className="border-amber-500/10 hover:bg-transparent">
+                                <TableHead className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Digital Identity</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-amber-500 tracking-widest">Authority Role</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-amber-500 tracking-widest text-right pr-6">Management</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {allUsers
+                                .filter(u => u.approved === false)
+                                .map((u) => (
+                                  <TableRow key={u.id} className="border-amber-500/10 hover:bg-amber-500/[0.04]">
+                                    <TableCell className="py-4">
+                                      <div className="flex items-center gap-3">
+                                        <Avatar className="h-8 w-8 border border-amber-500/20">
+                                          <AvatarImage src={u.photoURL} />
+                                          <AvatarFallback className="text-[10px] font-black bg-amber-500/10 text-amber-500">
+                                            {u.displayName?.charAt(0)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex flex-col">
+                                          <span className="text-[12px] font-bold text-white uppercase tracking-tight">{u.displayName}</span>
+                                          <span className="text-[10px] text-sidebar-foreground opacity-60">{u.email}</span>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select 
+                                        value={u.role || 'student'} 
+                                        onValueChange={(val) => handleUpdateUserRole(u.id, val)}
+                                      >
+                                        <SelectTrigger className="w-32 h-8 bg-amber-500/5 border-amber-500/10 text-[10px] uppercase font-bold tracking-widest text-amber-500">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-[#1A1D23] border-amber-500/10">
+                                          <SelectItem value="admin" className="text-[10px] uppercase font-bold tracking-widest text-primary">Admin</SelectItem>
+                                          <SelectItem value="teacher" className="text-[10px] uppercase font-bold tracking-widest">Teacher</SelectItem>
+                                          <SelectItem value="staff" className="text-[10px] uppercase font-bold tracking-widest">Staff</SelectItem>
+                                          <SelectItem value="student" className="text-[10px] uppercase font-bold tracking-widest">Student</SelectItem>
+                                          {roles.map(r => (
+                                            <SelectItem key={r.id} value={r.name} className="text-[10px] uppercase font-bold tracking-widest">{r.name}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-6">
+                                      <div className="flex items-center justify-end gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          className="bg-amber-500 hover:bg-amber-600 text-white uppercase font-black text-[9px] tracking-widest h-7"
+                                          onClick={() => handleApproveUser(u.id)}
+                                        >
+                                          Approve Access
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7 text-rose-500 hover:bg-rose-500/10"
+                                          onClick={() => handleDeleteUser(u)}
+                                        >
+                                          <Trash2 className="h-3.5 h-3.5" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-[11px] font-black text-white uppercase tracking-widest mb-1">Institutional User Directory</h3>
@@ -920,6 +1013,7 @@ export default function Settings() {
                         </TableHeader>
                         <TableBody>
                           {allUsers
+                            .filter(u => u.approved !== false)
                             .filter(u => 
                               u.displayName?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
                               u.email?.toLowerCase().includes(userSearchTerm.toLowerCase())

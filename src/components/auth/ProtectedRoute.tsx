@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, profile, loading, isAdmin, isTeacher, isStaff, isStudent, isParent } = useAuth();
+  const { user, profile, loading, isAdmin, isTeacher, isStaff, isStudent, isParent, isApproved } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -17,6 +17,12 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!isApproved) {
+    // If user is authenticated but not approved, redirect to unauthorized
+    // We add a state to indicate it's an approval issue
+    return <Navigate to="/unauthorized" state={{ reason: 'unapproved' }} replace />;
   }
 
   if (allowedRoles) {

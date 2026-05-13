@@ -50,19 +50,23 @@ export default function Login() {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (!userDoc.exists()) {
-        // Create new user profile with default role 'student' (or based on email if needed)
-        // For this demo, we'll make the first user an admin
-        const isFirstUser = user.email === 'mk.rabbani.cse@gmail.com';
+        const isHardcodedAdmin = ['mk.rabbani.cse@gmail.com', 'jakir995627@gmail.com', 'akondsourov786@gmail.com'].includes(user.email || '');
         
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          role: isFirstUser ? 'admin' : 'student',
+          role: isHardcodedAdmin ? 'admin' : 'student',
+          approved: isHardcodedAdmin ? true : false,
           createdAt: new Date().toISOString(),
         });
-        toast.success(`Welcome ${user.displayName}! Your account has been created.`);
+        
+        if (isHardcodedAdmin) {
+          toast.success(`Welcome ${user.displayName}! Administrative access granted.`);
+        } else {
+          toast.success(`Welcome ${user.displayName}! Your account is currently awaiting administrative approval.`);
+        }
       } else {
         toast.success(`Welcome back, ${user.displayName}!`);
       }

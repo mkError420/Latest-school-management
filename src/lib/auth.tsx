@@ -11,6 +11,7 @@ interface UserProfile {
   displayName: string;
   role: string;
   photoURL?: string;
+  approved?: boolean;
 }
 
 interface UserRolePermissions {
@@ -53,6 +54,7 @@ interface AuthContextType {
   isParent: boolean;
   isStudent: boolean;
   isStaff: boolean;
+  isApproved: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -158,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isParent: profile?.role?.toLowerCase() === 'parent',
     isStudent: profile?.role?.toLowerCase() === 'student',
     isStaff: profile?.role ? !['student', 'parent', 'admin'].includes(profile.role.toLowerCase()) : false,
+    isApproved: profile?.approved === true || profile?.role?.toLowerCase() === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com' || user?.email === 'akondsourov786@gmail.com',
   };
 
   return (
