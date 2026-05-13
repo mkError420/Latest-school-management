@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     roleDefinition,
     systemConfig,
     loading,
-    isAdmin: profile?.role?.toLowerCase() === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com',
+    isAdmin: profile?.role?.toLowerCase() === 'admin' || user?.email === 'mk.rabbani.cse@gmail.com' || user?.email === 'jakir995627@gmail.com' || user?.email === 'akondsourov786@gmail.com',
     isTeacher: profile?.role?.toLowerCase() === 'teacher',
     isParent: profile?.role?.toLowerCase() === 'parent',
     isStudent: profile?.role?.toLowerCase() === 'student',

@@ -50,6 +50,7 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == "mk.rabbani.cse@gmail.com" || 
         request.auth.token.email == "jakir995627@gmail.com" || 
+        request.auth.token.email == "akondsourov786@gmail.com" || 
         hasRole('admin')
       );
     }

@@ -354,6 +354,14 @@ export default function Settings() {
     setIsSaving(true);
     const toastId = toast.loading('Architecting new user identity...');
     
+    // Pre-check for existing email in institutional directory
+    const existingUser = allUsers.find(u => u.email?.toLowerCase() === newUserFormData.email.toLowerCase());
+    if (existingUser) {
+      toast.error(`Institutional identity already exists for ${newUserFormData.email}.`, { id: toastId });
+      setIsSaving(false);
+      return;
+    }
+    
     let secondaryApp;
     try {
       // Initialize secondary app to create user without logging out current admin
@@ -401,8 +409,19 @@ export default function Settings() {
       // Logout the secondary app user
       await secondaryAuth.signOut();
     } catch (error: any) {
-      console.error('Error creating user:', error);
-      toast.error(error.message || 'Failed to establish user identity', { id: toastId });
+      let errorMessage = 'Failed to establish user identity';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already in use by another account.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'The password is too weak.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'The email address is invalid.';
+      } else {
+        console.error('Institutional Auth Error:', error);
+      }
+
+      toast.error(errorMessage, { id: toastId });
     } finally {
       if (secondaryApp) {
         await deleteApp(secondaryApp);
@@ -423,7 +442,7 @@ export default function Settings() {
   };
 
   const handleDeleteUser = async (user: any) => {
-    if (user.email === 'mk.rabbani.cse@gmail.com' || user.email === 'jakir995627@gmail.com') {
+    if (user.email === 'mk.rabbani.cse@gmail.com' || user.email === 'jakir995627@gmail.com' || user.email === 'akondsourov786@gmail.com') {
       toast.error('This ultimate administrative identity cannot be decommissioned.');
       return;
     }
@@ -923,7 +942,7 @@ export default function Settings() {
                                   <Select 
                                     value={u.role || 'student'} 
                                     onValueChange={(val) => handleUpdateUserRole(u.id, val)}
-                                    disabled={u.email === 'mk.rabbani.cse@gmail.com' || u.email === 'jakir995627@gmail.com'}
+                                    disabled={u.email === 'mk.rabbani.cse@gmail.com' || u.email === 'jakir995627@gmail.com' || u.email === 'akondsourov786@gmail.com'}
                                   >
                                     <SelectTrigger className="w-32 h-8 bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-widest">
                                       <SelectValue />
@@ -949,7 +968,7 @@ export default function Settings() {
                                       size="icon"
                                       className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                       onClick={() => handleDeleteUser(u)}
-                                      disabled={u.email === 'mk.rabbani.cse@gmail.com' || u.email === 'jakir995627@gmail.com'}
+                                      disabled={u.email === 'mk.rabbani.cse@gmail.com' || u.email === 'jakir995627@gmail.com' || u.email === 'akondsourov786@gmail.com'}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
