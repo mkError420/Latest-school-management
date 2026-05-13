@@ -51,7 +51,7 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { format, subDays } from 'date-fns';
-import { collection, onSnapshot, query, where, addDoc, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, addDoc, getDocs, orderBy, limit, setDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -261,8 +261,8 @@ export default function Attendance() {
   };
 
   const saveAttendance = async () => {
-    // Grant full access based on isAdmin
-    const hasFullAccess = isAdmin;
+    // Grant full access based on isAdmin or specific role permissions
+    const hasFullAccess = isAdmin || roleDefinition?.permissions.attendance === 'full';
     
     if (!hasFullAccess) {
       toast.error('Unauthorized: You do not have permission to mark attendance.');
@@ -288,13 +288,14 @@ export default function Attendance() {
             return null;
           }
 
-          return addDoc(collection(db, 'attendance'), {
+          return setDoc(doc(db, 'attendance', `${studentId}_${dateStr}`), {
             studentId,
             classId: studentClassId,
             date: dateStr,
             status,
-            createdAt: new Date().toISOString()
-          });
+            updatedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString() // Fallback if it's new, though better to handle separately or use serverTimestamp
+          }, { merge: true });
         })
         .filter(promise => promise !== null);
       
@@ -353,7 +354,8 @@ export default function Attendance() {
     student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const isEditable = isAdmin;
+  const hasFullAccess = isAdmin || roleDefinition?.permissions.attendance === 'full';
+  const isEditable = hasFullAccess;
 
   return (
     <DashboardLayout>
@@ -409,7 +411,7 @@ export default function Attendance() {
               Export
             </Button>
 
-            {isAdmin && (
+            {hasFullAccess && (
               <Button onClick={saveAttendance} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white h-9 uppercase font-bold tracking-wider text-[10px]">
                 <Save className="w-3.5 h-3.5 mr-2" />
                 {isSaving ? 'Saving...' : 'Save Record'}
