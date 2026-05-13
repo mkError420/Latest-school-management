@@ -511,6 +511,28 @@ export default function WebsiteManager() {
                         <h4 className="text-sm font-black text-emerald-400 uppercase tracking-widest border-b border-sidebar-border pb-2">Institution Identity</h4>
                         <div className="space-y-4">
                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-sidebar-foreground tracking-widest ml-1">School/College Name</label>
+                              <Input value={configForm.schoolName} onChange={e => setConfigForm({...configForm, schoolName: e.target.value})} className="bg-sidebar-accent/50 border-sidebar-border h-12" placeholder="Govt. Model School & College" />
+                           </div>
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-sidebar-foreground tracking-widest ml-1">School Logo URL</label>
+                              <Input value={configForm.schoolLogoUrl} onChange={e => setConfigForm({...configForm, schoolLogoUrl: e.target.value})} className="bg-sidebar-accent/50 border-sidebar-border h-12" placeholder="https://..." />
+                           </div>
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold uppercase text-sidebar-foreground tracking-widest ml-1">Contact Phone</label>
+                                 <Input value={configForm.phone} onChange={e => setConfigForm({...configForm, phone: e.target.value})} className="bg-sidebar-accent/50 border-sidebar-border h-12" placeholder="+880..." />
+                              </div>
+                              <div className="space-y-1">
+                                 <label className="text-[10px] font-bold uppercase text-sidebar-foreground tracking-widest ml-1">Official Email</label>
+                                 <Input value={configForm.email} onChange={e => setConfigForm({...configForm, email: e.target.value})} className="bg-sidebar-accent/50 border-sidebar-border h-12" placeholder="info@..." />
+                              </div>
+                           </div>
+                           <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-sidebar-foreground tracking-widest ml-1">Physical Address</label>
+                              <Input value={configForm.address} onChange={e => setConfigForm({...configForm, address: e.target.value})} className="bg-sidebar-accent/50 border-sidebar-border h-12" placeholder="Sector-A, Educational Zone, Dhaka" />
+                           </div>
+                           <div className="space-y-1">
                               <label className="text-[10px] font-bold uppercase text-sidebar-foreground tracking-widest ml-1">Principal Name</label>
                               <Input value={configForm.principalName} onChange={e => setConfigForm({...configForm, principalName: e.target.value})} className="bg-sidebar-accent/50 border-sidebar-border h-12" />
                            </div>

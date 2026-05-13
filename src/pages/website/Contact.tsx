@@ -2,8 +2,11 @@ import React from 'react';
 import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/src/lib/auth';
 
 export default function Contact() {
+  const { systemConfig } = useAuth();
+  
   return (
     <div className="py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,9 +19,9 @@ export default function Contact() {
           {/* Contact Info */}
           <div className="lg:col-span-1 space-y-8">
             {[
-              { icon: Phone, title: 'Call Us', value: '+1 (234) 567 890', sub: 'Mon-Fri from 8am to 5pm' },
-              { icon: Mail, title: 'Email Us', value: 'admission@school.edu', sub: 'Our friendly team is here to help.' },
-              { icon: MapPin, title: 'Visit Us', value: '123 Education Lane', sub: 'Learning City, State 54321' },
+              { icon: Phone, title: 'Call Us', value: systemConfig?.phone || '+1 (234) 567 890', sub: 'Mon-Fri from 8am to 5pm' },
+              { icon: Mail, title: 'Email Us', value: systemConfig?.email || 'admission@school.edu', sub: 'Our friendly team is here to help.' },
+              { icon: MapPin, title: 'Visit Us', value: systemConfig?.address || '123 Education Lane', sub: 'Learning City, State 54321' },
               { icon: Clock, title: 'Office Hours', value: '8:00 AM - 4:00 PM', sub: 'Sunday to Thursday' },
             ].map((item, i) => (
               <div key={i} className="flex gap-6 items-start">
