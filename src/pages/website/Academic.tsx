@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { BookOpen, Calendar, FileText, Download, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
 
 interface DownloadItem { id: string; name: string; url: string; size: string; category: string; }
 
@@ -15,12 +13,11 @@ export default function Academic() {
   useEffect(() => {
     const fetchDownloads = async () => {
       try {
-        const q = query(collection(db, 'downloads'), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
-        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as DownloadItem[];
-        
-        if (docs.length > 0) {
-          setDocuments(docs);
+        const response = await fetch('/api/website/downloads');
+        const docs = await response.json();
+        // docs might not be an array
+        if (Array.isArray(docs) && docs.length > 0) {
+          setDocuments(docs.map((d: any) => ({ ...d, id: d._id })));
         } else {
           setDocuments([
             { id: '1', name: 'Academic Calendar 2024', size: '1.2 MB', url: '#', category: 'Academic' },

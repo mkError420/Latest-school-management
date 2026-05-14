@@ -41,16 +41,16 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch Notices
-        const nq = query(collection(db, 'notices'), orderBy('date', 'desc'), limit(10));
-        const nSnap = await getDocs(nq);
-        const noticesData = nSnap.docs.map(doc => ({ 
-          id: doc.id, 
-          type: 'notice',
-          ...doc.data() 
-        })) as Notice[];
+        // Fetch Notices from MongoDB
+        const nResponse = await fetch('/api/website/notices');
+        const noticesDataRaw = await nResponse.json();
+        const noticesData = Array.isArray(noticesDataRaw) ? noticesDataRaw.slice(0, 10).map((n: any) => ({ 
+          ...n,
+          id: n._id,
+          type: 'notice'
+        })) as Notice[] : [];
 
-        // Fetch Exams
+        // Fetch Exams from Firebase (keeping this as requested)
         const today = new Date().toISOString().split('T')[0];
         const eq = query(
           collection(db, 'exams'), 
@@ -77,12 +77,11 @@ export default function Home() {
         
         setNotices(combined);
 
-        // Fetch Important Links
-        const lq = query(collection(db, 'important_links'), orderBy('order', 'asc'));
-        const lSnap = await getDocs(lq);
-        const linksData = lSnap.docs.map(doc => doc.data()) as any[];
+        // Fetch Important Links from MongoDB
+        const lResponse = await fetch('/api/website/important_links');
+        const linksData = await lResponse.json();
         
-        if (linksData.length > 0) {
+        if (Array.isArray(linksData) && linksData.length > 0) {
           setImportantLinks(linksData);
         } else {
           setImportantLinks([

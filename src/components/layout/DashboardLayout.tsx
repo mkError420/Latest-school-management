@@ -103,8 +103,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         ) : (
           <>
-            <h1 className="text-lg font-bold tracking-widest text-primary uppercase">{systemConfig?.schoolName.split(' ')[0] || 'EduFlow'}</h1>
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{systemConfig?.schoolName.split(' ').slice(1).join(' ') || 'Management System'}</p>
+            <h1 className="text-lg font-bold tracking-widest text-primary uppercase">{systemConfig?.schoolName?.split(' ')[0] || 'EduFlow'}</h1>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">{systemConfig?.schoolName?.split(' ').slice(1).join(' ') || 'Management System'}</p>
           </>
         )}
       </div>

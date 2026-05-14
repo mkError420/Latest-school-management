@@ -80,13 +80,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       academicYear: '2023-2024'
     });
 
-    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'system'), (snapshot) => {
-      if (snapshot.exists()) {
-        setSystemConfig(snapshot.data() as SystemConfig);
+    // Move this outside to a separate function or keep it in useEffect
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config/system');
+        if (response.ok) {
+          const data = await response.json();
+          setSystemConfig(data);
+        }
+      } catch (error) {
+        console.error("Config fetch error:", error);
       }
-    }, (error) => {
-      console.error("Config listener error:", error);
-    });
+    };
+
+    fetchConfig();
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -99,7 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       unsubscribeAuth();
-      unsubscribeConfig();
     };
   }, []);
 

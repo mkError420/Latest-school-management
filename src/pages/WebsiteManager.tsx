@@ -23,21 +23,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  collection, 
-  addDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot, 
-  query, 
-  orderBy,
-  serverTimestamp,
-  updateDoc
-} from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
 import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
-import { handleFirestoreError, OperationType } from '@/src/lib/firebase-error';
 
 // Types
 interface Notice { id: string; title: string; content: string; date: string; createdAt: any; }
@@ -82,62 +69,50 @@ export default function WebsiteManager() {
   const [downloadForm, setDownloadForm] = useState({ name: '', url: '', size: '', category: 'academic' });
   const [linkForm, setLinkForm] = useState({ name: '', url: '', order: 0 });
 
-  useEffect(() => {
-    if (systemConfig) {
-      setConfigForm({
-        schoolName: systemConfig.schoolName || '',
-        phone: systemConfig.phone || '',
-        email: systemConfig.email || '',
-        address: systemConfig.address || '',
-        principalName: systemConfig.principalName || '',
-        principalMessage: systemConfig.principalMessage || '',
-        principalImageUrl: systemConfig.principalImageUrl || '',
-        mission: systemConfig.mission || '',
-        vision: systemConfig.vision || '',
-        history: systemConfig.history || '',
-        schoolLogoUrl: systemConfig.schoolLogoUrl || ''
-      });
+  const fetchData = async () => {
+    try {
+      const [n, g, c, d, l, s, conf] = await Promise.all([
+        fetch('/api/website/notices').then(async r => { const val = await r.json(); return Array.isArray(val) ? val.map((x: any) => ({ ...x, id: x._id })) : []; }),
+        fetch('/api/website/gallery').then(async r => { const val = await r.json(); return Array.isArray(val) ? val.map((x: any) => ({ ...x, id: x._id })) : []; }),
+        fetch('/api/website/committee').then(async r => { const val = await r.json(); return Array.isArray(val) ? val.map((x: any) => ({ ...x, id: x._id })) : []; }),
+        fetch('/api/website/downloads').then(async r => { const val = await r.json(); return Array.isArray(val) ? val.map((x: any) => ({ ...x, id: x._id })) : []; }),
+        fetch('/api/website/important_links').then(async r => { const val = await r.json(); return Array.isArray(val) ? val.map((x: any) => ({ ...x, id: x._id })) : []; }),
+        fetch('/api/website/public_staff').then(async r => { const val = await r.json(); return Array.isArray(val) ? val.map((x: any) => ({ ...x, id: x._id })) : []; }),
+        fetch('/api/config/system').then(async r => { const val = await r.json(); return val.error ? null : val; })
+      ]);
+      setNotices(n);
+      setGallery(g);
+      setCommittee(c);
+      setDownloads(d);
+      setLinks(l);
+      setPublicStaff(s);
+      if (conf) setConfigForm(conf);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load website content');
     }
-  }, [systemConfig]);
+  };
 
   useEffect(() => {
-    const unsubNotices = onSnapshot(query(collection(db, 'notices'), orderBy('createdAt', 'desc')), (snap) => {
-      setNotices(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Notice[]);
-    });
-    const unsubGallery = onSnapshot(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')), (snap) => {
-      setGallery(snap.docs.map(d => ({ id: d.id, ...d.data() })) as GalleryItem[]);
-    });
-    const unsubCommittee = onSnapshot(query(collection(db, 'committee'), orderBy('order', 'asc')), (snap) => {
-      setCommittee(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CommitteeMember[]);
-    });
-    const unsubDownloads = onSnapshot(query(collection(db, 'downloads'), orderBy('createdAt', 'desc')), (snap) => {
-      setDownloads(snap.docs.map(d => ({ id: d.id, ...d.data() })) as DownloadItem[]);
-    });
-    const unsubLinks = onSnapshot(query(collection(db, 'important_links'), orderBy('order', 'asc')), (snap) => {
-      setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })) as ImportantLink[]);
-    });
-    const unsubStaff = onSnapshot(query(collection(db, 'public_staff'), orderBy('order', 'asc')), (snap) => {
-      setPublicStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })) as PublicStaff[]);
-    });
-
-    return () => { 
-      unsubNotices(); unsubGallery(); unsubCommittee(); unsubDownloads(); unsubLinks(); unsubStaff();
-    };
+    fetchData();
   }, []);
 
   const handleAddNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await addDoc(collection(db, 'notices'), {
-        ...noticeForm,
-        createdAt: serverTimestamp()
+      const res = await fetch('/api/website/notices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(noticeForm)
       });
+      if (!res.ok) throw new Error('Network response was not ok');
       toast.success('Notice published successfully');
       setNoticeForm({ title: '', content: '', date: new Date().toISOString().split('T')[0] });
       setIsAdding(false);
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'notices');
+      toast.error('Failed to publish notice: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -147,15 +122,18 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await addDoc(collection(db, 'gallery'), {
-        ...galleryForm,
-        createdAt: serverTimestamp()
+      const res = await fetch('/api/website/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(galleryForm)
       });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Photo added to gallery');
       setGalleryForm({ url: '', title: '', category: 'campus' });
       setIsAdding(false);
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'gallery');
+      toast.error('Failed to add photo: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -165,10 +143,16 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await updateDoc(doc(db, 'config', 'system'), configForm);
+      const res = await fetch('/api/config/system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configForm)
+      });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Site configuration updated');
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'config/system');
+      toast.error('Failed to update config: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -178,12 +162,18 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await addDoc(collection(db, 'public_staff'), staffForm);
+      const res = await fetch('/api/website/public_staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(staffForm)
+      });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Staff added to website');
       setStaffForm({ name: '', role: '', imageUrl: '', category: 'administration', order: 0 });
       setIsAdding(false);
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'public_staff');
+      toast.error('Failed to add staff: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -193,12 +183,18 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await addDoc(collection(db, 'committee'), { ...committeeForm, createdAt: serverTimestamp() });
+      const res = await fetch('/api/website/committee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(committeeForm)
+      });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Member added to committee');
       setCommitteeForm({ name: '', title: '', order: 0 });
       setIsAdding(false);
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'committee');
+      toast.error('Failed to add member: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -208,12 +204,18 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await addDoc(collection(db, 'downloads'), { ...downloadForm, createdAt: serverTimestamp() });
+      const res = await fetch('/api/website/downloads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(downloadForm)
+      });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Resource added to downloads');
       setDownloadForm({ name: '', url: '', size: '', category: 'academic' });
       setIsAdding(false);
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'downloads');
+      toast.error('Failed to add resource: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -223,12 +225,18 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await addDoc(collection(db, 'important_links'), linkForm);
+      const res = await fetch('/api/website/important_links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(linkForm)
+      });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Link added to sidebar');
       setLinkForm({ name: '', url: '', order: 0 });
       setIsAdding(false);
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'important_links');
+      toast.error('Failed to add link: ' + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -237,10 +245,12 @@ export default function WebsiteManager() {
   const handleDelete = async (coll: string, id: string) => {
     if (!confirm('Are you sure? This action cannot be undone.')) return;
     try {
-      await deleteDoc(doc(db, coll, id));
+      const res = await fetch(`/api/website/${coll}/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
       toast.success('Deleted successfully');
+      fetchData();
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, coll);
+      toast.error('Failed to delete item: ' + (error as Error).message);
     }
   };
 

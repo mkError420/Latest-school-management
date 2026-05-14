@@ -201,13 +201,21 @@ export default function Dashboard() {
       console.error("Dashboard Exams Listener Error:", error);
     }));
 
-    // Recent Notices
-    const noticesQ = query(collection(db, 'notices'), orderBy('date', 'desc'), limit(5));
-    unsubscribes.push(onSnapshot(noticesQ, (snapshot) => {
-      setRecentNotices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), dataType: 'notice' })));
-    }, (error) => {
-      console.error("Dashboard Notices Listener Error:", error);
-    }));
+    // Recent Notices (From MongoDB)
+    const fetchDashboardNotices = async () => {
+       try {
+          const res = await fetch('/api/website/notices');
+          if (res.ok) {
+             const data = await res.json();
+             if (Array.isArray(data)) {
+                 setRecentNotices(data.slice(0,5).map((n: any) => ({ ...n, id: n._id, dataType: 'notice' })));
+             }
+          }
+       } catch (e) {
+          console.error('Failed to fetch dashboard notices', e);
+       }
+    };
+    fetchDashboardNotices();
 
     // Classes - Accessible to all authenticated users for data resolution
     const classesQ = query(collection(db, 'classes'));

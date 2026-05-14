@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Shield, Users, Briefcase } from 'lucide-react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
 
 interface StaffMember { id: string; name: string; role: string; imageUrl: string; }
 interface CommitteeMember { id: string; name: string; title: string; }
@@ -15,25 +13,25 @@ export default function Administration() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const sq = query(collection(db, 'public_staff'), orderBy('order', 'asc'));
-        const sSnap = await getDocs(sq);
-        const staffData = sSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as StaffMember[];
+        const [staffRes, committeeRes] = await Promise.all([
+          fetch('/api/website/public_staff'),
+          fetch('/api/website/committee')
+        ]);
         
-        if (staffData.length > 0) {
-          setStaff(staffData);
+        const staffData = await staffRes.json();
+        const committeeData = await committeeRes.json();
+        
+        if (Array.isArray(staffData) && staffData.length > 0) {
+          setStaff(staffData.map((s: any) => ({ ...s, id: s._id })));
         } else {
           setStaff([
             { id: '1', name: 'Prof. Md. Abdullah', role: 'Principal', imageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a' },
             { id: '2', name: 'Mrs. Rokeya Begum', role: 'Vice Principal', imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2' },
           ]);
         }
-
-        const cq = query(collection(db, 'committee'), orderBy('order', 'asc'));
-        const cSnap = await getDocs(cq);
-        const committeeData = cSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CommitteeMember[];
         
-        if (committeeData.length > 0) {
-          setCommittee(committeeData);
+        if (Array.isArray(committeeData) && committeeData.length > 0) {
+          setCommittee(committeeData.map((c: any) => ({ ...c, id: c._id })));
         } else {
           setCommittee([
             { id: '1', name: 'Alhaj Md. Karim', title: 'Chairman' },

@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Image as ImageIcon, Plus } from 'lucide-react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase';
 
 interface GalleryItem {
   id: string;
@@ -18,10 +16,9 @@ export default function Gallery() {
   useEffect(() => {
     const fetchGallery = async () => {
       try {
-        const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as GalleryItem[];
-        setItems(data);
+        const response = await fetch('/api/website/gallery');
+        const data = await response.json();
+        setItems(Array.isArray(data) ? data.map((item: any) => ({ ...item, id: item._id })) : []);
       } catch (error) {
         console.error("Error fetching gallery:", error);
       }
