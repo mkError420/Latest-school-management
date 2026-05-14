@@ -31,6 +31,8 @@ interface Notice {
   date: string;
   content: string;
   type?: 'notice' | 'exam';
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 export default function Home() {
@@ -240,6 +242,14 @@ export default function Home() {
                                )}>
                                   {notice.type === 'exam' ? 'View Scedule' : 'Read Details'}
                                </Link>
+                               {notice.attachmentUrl && (
+                                 <>
+                                   <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                   <a href={notice.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-blue-600 hover:underline uppercase tracking-tighter">
+                                     <ExternalLink className="w-3 h-3" /> Attachment
+                                   </a>
+                                 </>
+                               )}
                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
                                <span className="text-[9px] text-gray-400 font-bold uppercase">{notice.date}</span>
                             </div>

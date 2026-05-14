@@ -25,9 +25,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/src/lib/auth';
 import { toast } from 'sonner';
+import { storage } from '@/src/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Types
-interface Notice { id: string; title: string; content: string; date: string; createdAt: any; }
+interface Notice { id: string; title: string; content: string; date: string; attachmentUrl?: string; attachmentName?: string; createdAt: any; }
 interface GalleryItem { id: string; url: string; title: string; category: string; createdAt: any; }
 interface CommitteeMember { id: string; name: string; title: string; order: number; }
 interface DownloadItem { id: string; name: string; url: string; size: string; category: string; }
@@ -50,6 +52,7 @@ export default function WebsiteManager() {
 
   // Form states
   const [noticeForm, setNoticeForm] = useState({ title: '', content: '', date: new Date().toISOString().split('T')[0] });
+  const [noticeFile, setNoticeFile] = useState<File | null>(null);
   const [galleryForm, setGalleryForm] = useState({ url: '', title: '', category: 'campus' });
   const [configForm, setConfigForm] = useState({
     schoolName: '',
@@ -101,14 +104,40 @@ export default function WebsiteManager() {
     e.preventDefault();
     setIsLoading(true);
     try {
+      let attachmentUrl = '';
+      let attachmentName = '';
+
+      if (noticeFile) {
+        attachmentName = noticeFile.name;
+        try {
+          const fileRef = ref(storage, `notices/${Date.now()}-${noticeFile.name}`);
+          await uploadBytes(fileRef, noticeFile);
+          attachmentUrl = await getDownloadURL(fileRef);
+        } catch (storageError) {
+          console.warn('Storage upload failed, falling back to Base64:', storageError);
+          const reader = new FileReader();
+          attachmentUrl = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(noticeFile);
+          });
+        }
+      }
+
+      const payload = {
+        ...noticeForm,
+        attachmentUrl,
+        attachmentName
+      };
+
       const res = await fetch('/api/website/notices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(noticeForm)
+        body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('Network response was not ok');
       toast.success('Notice published successfully');
       setNoticeForm({ title: '', content: '', date: new Date().toISOString().split('T')[0] });
+      setNoticeFile(null);
       setIsAdding(false);
       fetchData();
     } catch (error) {
@@ -317,6 +346,10 @@ export default function WebsiteManager() {
                       </div>
                     </div>
                     <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-sidebar-foreground tracking-widest ml-1">Attachment (Image/PDF) - Optional</label>
+                      <Input type="file" accept="image/*,application/pdf" onChange={e => setNoticeFile(e.target.files?.[0] || null)} className="bg-sidebar-accent/50 border-sidebar-border h-12 rounded-xl text-white font-medium flex items-center justify-center file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:uppercase file:tracking-widest file:bg-primary/20 file:text-primary hover:file:bg-primary/30" />
+                    </div>
+                    <div className="space-y-2">
                       <label className="text-[10px] uppercase font-bold text-sidebar-foreground tracking-widest ml-1">Content</label>
                       <Textarea value={noticeForm.content} onChange={e => setNoticeForm({...noticeForm, content: e.target.value})} placeholder="Enter the detailed announcement..." className="bg-sidebar-accent/50 border-sidebar-border rounded-xl text-white font-medium min-h-[150px]" required />
                     </div>
@@ -336,6 +369,11 @@ export default function WebsiteManager() {
                         <h4 className="text-white font-bold tracking-tight">{notice.title}</h4>
                       </div>
                       <p className="text-xs text-sidebar-foreground line-clamp-1 opacity-60">{notice.content}</p>
+                      {notice.attachmentUrl && (
+                        <a href={notice.attachmentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300">
+                          <ExternalLink className="w-3 h-3" /> View Attachment {notice.attachmentName ? `(${notice.attachmentName})` : ''}
+                        </a>
+                      )}
                     </div>
                     <Button onClick={() => handleDelete('notices', notice.id)} variant="ghost" className="text-sidebar-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all">
                       <Trash2 className="w-4 h-4" />

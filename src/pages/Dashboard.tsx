@@ -14,7 +14,8 @@ import {
   DollarSign,
   GraduationCap,
   Activity,
-  Megaphone
+  Megaphone,
+  ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -872,11 +873,16 @@ export default function Dashboard() {
                           <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
                             <Megaphone className="w-4 h-4" />
                           </div>
-                          <div className="max-w-[200px] sm:max-w-[300px]">
+                          <div className="max-w-[150px] sm:max-w-[250px]">
                             <h4 className="text-[13px] font-bold text-white uppercase tracking-tight line-clamp-1">{item.title}</h4>
                             <p className="text-[11px] text-sidebar-foreground line-clamp-1">
                               {item.content}
                             </p>
+                            {item.attachmentUrl && (
+                              <a href={item.attachmentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 mt-1">
+                                <ExternalLink className="w-3 h-3" /> Attachment
+                              </a>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
