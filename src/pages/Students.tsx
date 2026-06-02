@@ -564,70 +564,94 @@ export default function Students() {
                     Add Student
                   </Button>
                 } />
-              <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
-                <form onSubmit={handleAddStudent}>
-                  <DialogHeader>
+              <DialogContent className="bg-card border-border text-foreground sm:max-w-[450px] max-h-[92vh] overflow-y-auto pr-1">
+                <form onSubmit={handleAddStudent} className="space-y-3">
+                  <DialogHeader className="pb-1">
                     <DialogTitle className="text-white">Add New Student</DialogTitle>
-                    <DialogDescription className="text-sidebar-foreground">
+                    <DialogDescription className="text-sidebar-foreground text-xs">
                       Enter the student's details to create a new record.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="flex flex-col items-center justify-center gap-4 mb-2">
-                      <div className="relative group">
-                        <div className="w-24 h-24 rounded-full bg-sidebar-accent/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                  <div className="grid gap-3 py-1">
+                    {/* Compact Photograph Row */}
+                    <div className="flex items-center gap-4 bg-sidebar-accent/10 p-2.5 rounded-xl border border-border/50 mb-1">
+                      <div className="relative group flex-shrink-0">
+                        <div className="w-14 h-14 rounded-full bg-sidebar-accent/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
                           {newStudent.imageUrl ? (
                             <img src={newStudent.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                           ) : (
-                            <UserIcon className="w-10 h-10 text-sidebar-foreground opacity-30" />
+                            <UserIcon className="w-6 h-6 text-sidebar-foreground opacity-30" />
                           )}
                         </div>
-                        <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
-                          <Camera className="w-3.5 h-3.5" />
+                        <label className="absolute bottom-0 right-0 p-1 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                          <Camera className="w-3 h-3" />
                           <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e)} />
                         </label>
                         {newStudent.imageUrl && (
                           <button 
                             type="button"
                             onClick={() => setNewStudent({...newStudent, imageUrl: ''})}
-                            className="absolute -top-1 -right-1 p-1 bg-card border border-border text-rose-500 rounded-full hover:bg-sidebar-accent transition-colors"
+                            className="absolute -top-1 -right-1 p-0.5 bg-card border border-border text-rose-500 rounded-full hover:bg-sidebar-accent transition-colors"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-2.5 h-2.5" />
                           </button>
                         )}
                       </div>
-                      <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Student Photograph</span>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Student Photograph</span>
+                        <span className="text-[10px] text-sidebar-foreground">Upload a profile photo (optional)</span>
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
-                      <Input 
-                        required 
-                        value={newStudent.name || ''} 
-                        onChange={e => setNewStudent({...newStudent, name: e.target.value})}
-                        placeholder="John Doe" 
-                        className="bg-background border-border"
-                      />
+                    {/* Row 1: Name & Gender */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2 space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Full Name</label>
+                        <Input 
+                          required 
+                          value={newStudent.name || ''} 
+                          onChange={e => setNewStudent({...newStudent, name: e.target.value})}
+                          placeholder="John Doe" 
+                          className="bg-background border-border h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Gender</label>
+                        <Select 
+                          value={newStudent.gender || ''} 
+                          onValueChange={val => setNewStudent({...newStudent, gender: val || ''})}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
+                            <SelectValue placeholder="Gender" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Roll Number</label>
+
+                    {/* Row 2: Roll Number, Class, Blood Group */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Roll Number</label>
                         <Input 
                           required 
                           value={newStudent.rollNumber || ''} 
                           onChange={e => setNewStudent({...newStudent, rollNumber: e.target.value})}
                           placeholder="S101" 
-                          className="bg-background border-border"
+                          className="bg-background border-border h-9 text-sm"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Class</label>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Class</label>
                         <Select 
                           value={newStudent.classId || ''} 
                           onValueChange={val => setNewStudent({...newStudent, classId: val || ''})}
                         >
-                          <SelectTrigger className="w-full bg-background border-border">
-                            <SelectValue placeholder="Select Class">
+                          <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
+                            <SelectValue placeholder="Class">
                               {newStudent.classId && classes.find(c => c.id === newStudent.classId) 
                                 ? (() => {
                                     const c = classes.find(cl => cl.id === newStudent.classId);
@@ -648,68 +672,13 @@ export default function Students() {
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Guardian Name</label>
-                        <Input 
-                          required 
-                          value={newStudent.guardianName || ''} 
-                          onChange={e => setNewStudent({...newStudent, guardianName: e.target.value})}
-                          placeholder="Parent Name" 
-                          className="bg-background border-border"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Relation</label>
-                        <Select 
-                          value={newStudent.guardianRelation || ''} 
-                          onValueChange={val => setNewStudent({...newStudent, guardianRelation: val || ''})}
-                        >
-                          <SelectTrigger className="w-full bg-background border-border">
-                            <SelectValue placeholder="Relation" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value="Father">Father</SelectItem>
-                            <SelectItem value="Mother">Mother</SelectItem>
-                            <SelectItem value="Brother">Brother</SelectItem>
-                            <SelectItem value="Sister">Sister</SelectItem>
-                            <SelectItem value="Uncle">Uncle</SelectItem>
-                            <SelectItem value="Aunt">Aunt</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Guardian Phone Number</label>
-                      <Input 
-                        type="tel" 
-                        required 
-                        value={newStudent.guardianPhone || ''} 
-                        onChange={e => setNewStudent({...newStudent, guardianPhone: e.target.value})}
-                        placeholder="+880 1XXX XXXXXX" 
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
-                        <Input 
-                          type="date" 
-                          required 
-                          value={newStudent.admissionDate || ''} 
-                          onChange={e => setNewStudent({...newStudent, admissionDate: e.target.value})}
-                          className="bg-background border-border"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Blood Group</label>
                         <Select 
                           value={newStudent.bloodGroup || ''} 
                           onValueChange={val => setNewStudent({...newStudent, bloodGroup: val || ''})}
                         >
-                          <SelectTrigger className="w-full bg-background border-border">
+                          <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
                             <SelectValue placeholder="Group" />
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border">
@@ -725,25 +694,69 @@ export default function Students() {
                         </Select>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Gender</label>
-                      <Select 
-                        value={newStudent.gender || ''} 
-                        onValueChange={val => setNewStudent({...newStudent, gender: val || ''})}
-                      >
-                        <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Gender" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                          <SelectItem value="Male">Male</SelectItem>
-                          <SelectItem value="Female">Female</SelectItem>
-                        </SelectContent>
-                      </Select>
+
+                    {/* Row 3: Guardian Name & Relation */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Guardian Name</label>
+                        <Input 
+                          required 
+                          value={newStudent.guardianName || ''} 
+                          onChange={e => setNewStudent({...newStudent, guardianName: e.target.value})}
+                          placeholder="Parent Name" 
+                          className="bg-background border-border h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Relation</label>
+                        <Select 
+                          value={newStudent.guardianRelation || ''} 
+                          onValueChange={val => setNewStudent({...newStudent, guardianRelation: val || ''})}
+                        >
+                          <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
+                            <SelectValue placeholder="Relation" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            <SelectItem value="Father">Father</SelectItem>
+                            <SelectItem value="Mother">Mother</SelectItem>
+                            <SelectItem value="Brother">Brother</SelectItem>
+                            <SelectItem value="Sister">Sister</SelectItem>
+                            <SelectItem value="Uncle">Uncle</SelectItem>
+                            <SelectItem value="Aunt">Aunt</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Row 4: Guardian Phone & Admission Date */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Guardian Phone</label>
+                        <Input 
+                          type="tel" 
+                          required 
+                          value={newStudent.guardianPhone || ''} 
+                          onChange={e => setNewStudent({...newStudent, guardianPhone: e.target.value})}
+                          placeholder="+880 1XXX XXXXXX" 
+                          className="bg-background border-border h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-sidebar-foreground">Admission Date</label>
+                        <Input 
+                          type="date" 
+                          required 
+                          value={newStudent.admissionDate || ''} 
+                          onChange={e => setNewStudent({...newStudent, admissionDate: e.target.value})}
+                          className="bg-background border-border h-9 text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
-                    <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">Save Student</Button>
+                  <DialogFooter className="pt-2 border-t border-border/40">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsAddDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                    <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 text-white">Save Student</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -1123,69 +1136,93 @@ export default function Students() {
 
         {/* Edit Student Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
-            <form onSubmit={handleEditStudent}>
-              <DialogHeader>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[450px] max-h-[92vh] overflow-y-auto pr-1">
+            <form onSubmit={handleEditStudent} className="space-y-3">
+              <DialogHeader className="pb-1">
                 <DialogTitle className="text-white">Edit Student Details</DialogTitle>
-                <DialogDescription className="text-sidebar-foreground">
+                <DialogDescription className="text-sidebar-foreground text-xs">
                   Update the student's information.
                 </DialogDescription>
               </DialogHeader>
               {selectedStudent && (
-                <div className="grid gap-4 py-4">
-                  <div className="flex flex-col items-center justify-center gap-4 mb-2">
-                    <div className="relative group">
-                      <div className="w-24 h-24 rounded-full bg-sidebar-accent/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                <div className="grid gap-3 py-1">
+                  {/* Compact Photograph Row */}
+                  <div className="flex items-center gap-4 bg-sidebar-accent/10 p-2.5 rounded-xl border border-border/50 mb-1">
+                    <div className="relative group flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full bg-sidebar-accent/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
                         {selectedStudent.imageUrl ? (
                           <img src={selectedStudent.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
-                          <UserIcon className="w-10 h-10 text-sidebar-foreground opacity-30" />
+                          <UserIcon className="w-6 h-6 text-sidebar-foreground opacity-30" />
                         )}
                       </div>
-                      <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
-                        <Camera className="w-3.5 h-3.5" />
+                      <label className="absolute bottom-0 right-0 p-1 bg-primary text-white rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                        <Camera className="w-3 h-3" />
                         <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, true)} />
                       </label>
                       {selectedStudent.imageUrl && (
                         <button 
                           type="button"
                           onClick={() => setSelectedStudent({...selectedStudent, imageUrl: ''})}
-                          className="absolute -top-1 -right-1 p-1 bg-card border border-border text-rose-500 rounded-full hover:bg-sidebar-accent transition-colors"
+                          className="absolute -top-1 -right-1 p-0.5 bg-card border border-border text-rose-500 rounded-full hover:bg-sidebar-accent transition-colors"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-2.5 h-2.5" />
                         </button>
                       )}
                     </div>
-                    <span className="text-[10px] text-sidebar-foreground uppercase font-bold tracking-widest">Update Photograph</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Update Photograph</span>
+                      <span className="text-[10px] text-sidebar-foreground">Upload a profile photo (optional)</span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Full Name</label>
-                    <Input 
-                      required 
-                      value={selectedStudent.name || ''} 
-                      onChange={e => setSelectedStudent({...selectedStudent, name: e.target.value})}
-                      className="bg-background border-border"
-                    />
+                  {/* Row 1: Name & Gender */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Full Name</label>
+                      <Input 
+                        required 
+                        value={selectedStudent.name || ''} 
+                        onChange={e => setSelectedStudent({...selectedStudent, name: e.target.value})}
+                        className="bg-background border-border h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Gender</label>
+                      <Select 
+                        value={selectedStudent.gender || ''} 
+                        onValueChange={val => setSelectedStudent({...selectedStudent, gender: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
+                          <SelectValue placeholder="Gender" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Roll Number</label>
+
+                  {/* Row 2: Roll Number, Class, Blood Group */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Roll Number</label>
                       <Input 
                         required 
                         value={selectedStudent.rollNumber || ''} 
                         onChange={e => setSelectedStudent({...selectedStudent, rollNumber: e.target.value})}
-                        className="bg-background border-border"
+                        className="bg-background border-border h-9 text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Class</label>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Class</label>
                       <Select 
                         value={selectedStudent.classId || ''} 
                         onValueChange={val => setSelectedStudent({...selectedStudent, classId: val || ''})}
                       >
-                        <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Select Class">
+                        <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
+                          <SelectValue placeholder="Class">
                             {selectedStudent.classId && classes.find(c => c.id === selectedStudent.classId)
                               ? `${classes.find(c => c.id === selectedStudent.classId)?.name} - ${classes.find(c => c.id === selectedStudent.classId)?.section}`
                               : undefined}
@@ -1200,66 +1237,13 @@ export default function Students() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Guardian Name</label>
-                      <Input 
-                        required 
-                        value={selectedStudent.guardianName || ''} 
-                        onChange={e => setSelectedStudent({...selectedStudent, guardianName: e.target.value})}
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Relation</label>
-                      <Select 
-                        value={selectedStudent.guardianRelation || ''} 
-                        onValueChange={val => setSelectedStudent({...selectedStudent, guardianRelation: val || ''})}
-                      >
-                        <SelectTrigger className="w-full bg-background border-border">
-                          <SelectValue placeholder="Relation" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
-                          <SelectItem value="Father">Father</SelectItem>
-                          <SelectItem value="Mother">Mother</SelectItem>
-                          <SelectItem value="Brother">Brother</SelectItem>
-                          <SelectItem value="Sister">Sister</SelectItem>
-                          <SelectItem value="Uncle">Uncle</SelectItem>
-                          <SelectItem value="Aunt">Aunt</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Guardian Phone Number</label>
-                    <Input 
-                      type="tel"
-                      required 
-                      value={selectedStudent.guardianPhone || ''} 
-                      onChange={e => setSelectedStudent({...selectedStudent, guardianPhone: e.target.value})}
-                      className="bg-background border-border"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Admission Date</label>
-                      <Input 
-                        type="date"
-                        required 
-                        value={selectedStudent.admissionDate || ''} 
-                        onChange={e => setSelectedStudent({...selectedStudent, admissionDate: e.target.value})}
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-sidebar-foreground">Blood Group</label>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Blood Group</label>
                       <Select 
                         value={selectedStudent.bloodGroup || ''} 
                         onValueChange={val => setSelectedStudent({...selectedStudent, bloodGroup: val || ''})}
                       >
-                        <SelectTrigger className="w-full bg-background border-border">
+                        <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
                           <SelectValue placeholder="Group" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
@@ -1275,28 +1259,72 @@ export default function Students() {
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Gender</label>
-                    <Select 
-                      value={selectedStudent.gender || ''} 
-                      onValueChange={val => setSelectedStudent({...selectedStudent, gender: val || ''})}
-                    >
-                      <SelectTrigger className="w-full bg-background border-border">
-                        <SelectValue placeholder="Select Gender" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
+
+                  {/* Row 3: Guardian Name & Relation */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Guardian Name</label>
+                      <Input 
+                        required 
+                        value={selectedStudent.guardianName || ''} 
+                        onChange={e => setSelectedStudent({...selectedStudent, guardianName: e.target.value})}
+                        className="bg-background border-border h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Relation</label>
+                      <Select 
+                        value={selectedStudent.guardianRelation || ''} 
+                        onValueChange={val => setSelectedStudent({...selectedStudent, guardianRelation: val || ''})}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
+                          <SelectValue placeholder="Relation" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Father">Father</SelectItem>
+                          <SelectItem value="Mother">Mother</SelectItem>
+                          <SelectItem value="Brother">Brother</SelectItem>
+                          <SelectItem value="Sister">Sister</SelectItem>
+                          <SelectItem value="Uncle">Uncle</SelectItem>
+                          <SelectItem value="Aunt">Aunt</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-sidebar-foreground">Status</label>
+
+                  {/* Row 4: Guardian Phone & Admission Date */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Guardian Phone</label>
+                      <Input 
+                        type="tel"
+                        required 
+                        value={selectedStudent.guardianPhone || ''} 
+                        onChange={e => setSelectedStudent({...selectedStudent, guardianPhone: e.target.value})}
+                        className="bg-background border-border h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-sidebar-foreground">Admission Date</label>
+                      <Input 
+                        type="date"
+                        required 
+                        value={selectedStudent.admissionDate || ''} 
+                        onChange={e => setSelectedStudent({...selectedStudent, admissionDate: e.target.value})}
+                        className="bg-background border-border h-9 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 5: Status dropdown */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-sidebar-foreground">Status</label>
                     <Select 
                       value={selectedStudent.status || ''} 
                       onValueChange={(val: any) => setSelectedStudent({...selectedStudent, status: val})}
                     >
-                      <SelectTrigger className="w-full bg-background border-border">
+                      <SelectTrigger className="w-full bg-background border-border h-9 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
@@ -1307,9 +1335,9 @@ export default function Students() {
                   </div>
                 </div>
               )}
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Save Changes</Button>
+              <DialogFooter className="pt-2 border-t border-border/40">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsEditDialogOpen(false)} className="border-border text-sidebar-foreground">Cancel</Button>
+                <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 text-white">Save Changes</Button>
               </DialogFooter>
             </form>
           </DialogContent>
