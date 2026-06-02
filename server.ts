@@ -168,6 +168,21 @@ app.delete('/api/website/:collection/:id', async (req, res) => {
   }
 });
 
+// Generic PUT
+app.put('/api/website/:collection/:id', async (req, res) => {
+  if (!isDbConnected) return res.status(503).json({ error: 'Database not connected' });
+  try {
+    const model = models[req.params.collection];
+    if (!model) return res.status(404).json({ error: 'Collection not found' });
+    
+    const updated = await model.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Item not found' });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update data' });
+  }
+});
+
 // System Config Routes
 app.get('/api/config/system', async (req, res) => {
   if (!isDbConnected) return res.status(503).json({ error: 'Database not connected' });
