@@ -61,6 +61,12 @@ service cloud.firestore {
       return email == "mk.rabbani.cse@gmail.com";
     }
 
+    function isSystemAdminEmail(email) {
+      return email == "mk.rabbani.cse@gmail.com" || 
+             email == "jakir995627@gmail.com" || 
+             email == "akondsourov786@gmail.com";
+    }
+
     function isAdmin() {
       // System admins always have admin rights, otherwise check stored role
       return isSystemAdmin() || (isSignedIn() && hasRole('admin'));
@@ -241,16 +247,26 @@ service cloud.firestore {
     // Rules
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && (isOwner(uid) || isSuperAdmin());
+      allow create: if isSignedIn() && (isOwner(uid) || isSystemAdmin() || isAdmin());
       allow update: if isSignedIn() && (
-        // Regular access check
-        (isOwner(uid) || isSuperAdmin()) && 
-        // Protection: Non-SuperAdmins cannot modify the Super Admin's critical fields
-        (!isSuperAdminEmail(resource.data.get('email', '')) || isSuperAdmin()) &&
-        // Protection: Super Admin must remain approved and remain an admin
-        (!isSuperAdminEmail(request.resource.data.get('email', '')) || (
-          request.resource.data.get('approved', false) == true && 
-          request.resource.data.get('role', 'none').lower() == 'admin'
+        // Must be the owner, or a system admin, or have admin rights
+        (isOwner(uid) || isSystemAdmin() || isAdmin()) &&
+        
+        // Prevent non-admins from self-promoting or self-approving
+        (isAdmin() || isSystemAdmin() || (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'roleId', 'approved', 'email'])
+        )) &&
+        
+        // Safety lock for system/super admins:
+        (!isSystemAdminEmail(resource.data.get('email', '')) || (
+          // Only the owner themselves or a system admin can update it
+          (isOwner(uid) || isSystemAdmin()) &&
+          // They cannot change their email to an unsafe one
+          isSystemAdminEmail(request.resource.data.get('email', '')) &&
+          // System/Super admins must remain approved
+          request.resource.data.get('approved', false) == true &&
+          // Their role must belong to admin-level categories
+          request.resource.data.get('role', 'none').lower() in ['admin', 'super admin', 'superadmin', 'system admin', 'staff']
         ))
       );
       allow delete: if isSuperAdmin();
