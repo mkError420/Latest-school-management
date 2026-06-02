@@ -262,11 +262,7 @@ service cloud.firestore {
           // Only the owner themselves or a system admin can update it
           (isOwner(uid) || isSystemAdmin()) &&
           // They cannot change their email to an unsafe one
-          isSystemAdminEmail(request.resource.data.get('email', '')) &&
-          // System/Super admins must remain approved
-          request.resource.data.get('approved', false) == true &&
-          // Their role must belong to admin-level categories
-          request.resource.data.get('role', 'none').lower() in ['admin', 'super admin', 'superadmin', 'system admin', 'staff']
+          isSystemAdminEmail(request.resource.data.get('email', ''))
         ))
       );
       allow delete: if isSuperAdmin();
@@ -274,7 +270,7 @@ service cloud.firestore {
 
     match /config/system {
       allow read: if true;
-      allow create, update: if isSuperAdmin() && isValidSystemConfig(request.resource.data);
+      allow create, update: if isAdmin() && isValidSystemConfig(request.resource.data);
       allow delete: if isSuperAdmin();
     }
 

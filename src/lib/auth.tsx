@@ -80,13 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       academicYear: '2023-2024'
     });
 
-    // Move this outside to a separate function or keep it in useEffect
     const fetchConfig = async () => {
       try {
         const response = await fetch('/api/config/system');
         if (response.ok) {
           const data = await response.json();
-          setSystemConfig(data);
+          setSystemConfig(prev => ({ ...prev, ...data }));
         }
       } catch (error) {
         console.error("Config fetch error:", error);
@@ -94,6 +93,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchConfig();
+
+    // Live subscription to Firestore system config
+    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'system'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setSystemConfig(prev => ({
+          ...prev,
+          ...data
+        }) as SystemConfig);
+      }
+    }, (error) => {
+      console.error("Firestore config subscription error:", error);
+    });
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -106,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       unsubscribeAuth();
+      unsubscribeConfig();
     };
   }, []);
 
@@ -161,6 +174,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsubscribeProfile();
   }, [user]);
+
+  // Dynamically synchronize the web browser tab title with the custom Institution Identity Name
+  useEffect(() => {
+    if (systemConfig?.schoolName) {
+      document.title = systemConfig.schoolName;
+    }
+  }, [systemConfig?.schoolName]);
 
   const value = {
     user,

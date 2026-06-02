@@ -94,7 +94,7 @@ const DEFAULT_PERMISSIONS: Role['permissions'] = {
 
 export default function Settings() {
   const { profile, user, isAdmin, isTeacher, isStaff, roleDefinition, isSuperAdmin } = useAuth();
-  const hasSettingsAccess = isSuperAdmin;
+  const hasSettingsAccess = isSuperAdmin || isAdmin;
   const [isSaving, setIsSaving] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -153,7 +153,7 @@ export default function Settings() {
 
   // Sync with System Config
   useEffect(() => {
-    if (!isSuperAdmin) return;
+    if (!hasSettingsAccess) return;
     const unsubscribe = onSnapshot(doc(db, 'config', 'system'), (doc) => {
       if (doc.exists()) {
         const data = doc.data();
@@ -170,11 +170,11 @@ export default function Settings() {
       }
     });
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [hasSettingsAccess]);
 
   // Sync Roles
   useEffect(() => {
-    if (!isSuperAdmin) return;
+    if (!hasSettingsAccess) return;
     const q = query(collection(db, 'roles'), orderBy('name'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const roleData = snapshot.docs.map(doc => ({
@@ -184,10 +184,10 @@ export default function Settings() {
       setRoles(roleData);
     });
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [hasSettingsAccess]);
 
   useEffect(() => {
-    if (!isSuperAdmin) return;
+    if (!hasSettingsAccess) return;
     const q = query(collection(db, 'users'), orderBy('displayName'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userData = snapshot.docs.map(doc => ({
@@ -197,7 +197,7 @@ export default function Settings() {
       setAllUsers(userData);
     });
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [hasSettingsAccess]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -228,12 +228,23 @@ export default function Settings() {
         updatedAt: new Date().toISOString()
       });
 
-      // Update System Config if Super Admin
-      if (isSuperAdmin) {
+      // Update System Config if Admin or Super Admin
+      if (hasSettingsAccess) {
         await setDoc(doc(db, 'config', 'system'), {
           ...systemConfig,
           updatedAt: new Date().toISOString()
         }, { merge: true });
+
+        // Synchronize with the public website config API (MongoDB)
+        try {
+          await fetch('/api/config/system', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(systemConfig)
+          });
+        } catch (apiErr) {
+          console.error("Backend config sync failed:", apiErr);
+        }
       }
 
       toast.success('Settings saved successfully');
@@ -245,7 +256,7 @@ export default function Settings() {
   };
 
   const handleBackup = async () => {
-    if (!isSuperAdmin) return;
+    if (!hasSettingsAccess) return;
     setIsSaving(true);
     try {
       const now = new Date().toISOString();
@@ -261,7 +272,7 @@ export default function Settings() {
   };
 
   const handleSyncStudentIds = async () => {
-    if (!isSuperAdmin) return;
+    if (!hasSettingsAccess) return;
     setIsSaving(true);
     const toastId = toast.loading('Architecting legacy student IDs...');
     
@@ -632,7 +643,7 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {isSuperAdmin && (
+          {hasSettingsAccess && (
             <TabsContent value="system" className="space-y-6">
               <Card className="bg-card border-border shadow-none rounded-xl">
                 <CardHeader className="border-b border-border mb-6">
@@ -797,7 +808,7 @@ export default function Settings() {
             </TabsContent>
           )}
 
-          {isSuperAdmin && (
+          {hasSettingsAccess && (
             <TabsContent value="users" className="space-y-6">
               <Card className="bg-card border-border shadow-none rounded-xl">
                 <CardHeader className="border-b border-border mb-6">
