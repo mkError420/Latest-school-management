@@ -246,9 +246,12 @@ service cloud.firestore {
         // Regular access check
         (isOwner(uid) || isSuperAdmin()) && 
         // Protection: Non-SuperAdmins cannot modify the Super Admin's critical fields
-        (!isSuperAdminEmail(resource.data.email) || isSuperAdmin()) &&
+        (!isSuperAdminEmail(resource.data.get('email', '')) || isSuperAdmin()) &&
         // Protection: Super Admin must remain approved and remain an admin
-        (!isSuperAdminEmail(request.resource.data.email) || (request.resource.data.approved == true && request.resource.data.role.lower() == 'admin'))
+        (!isSuperAdminEmail(request.resource.data.get('email', '')) || (
+          request.resource.data.get('approved', false) == true && 
+          request.resource.data.get('role', 'none').lower() == 'admin'
+        ))
       );
       allow delete: if isSuperAdmin();
     }
