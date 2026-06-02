@@ -72,9 +72,23 @@ export default function Login() {
       }
 
       navigate(from, { replace: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      toast.error('Failed to login. Please try again.');
+      const errorCode = error?.code || '';
+      const errorMessage = error?.message || '';
+      
+      if (errorCode === 'auth/unauthorized-domain' || errorMessage.toLowerCase().includes('unauthorized domain') || errorMessage.toLowerCase().includes('unauthorized-domain')) {
+        toast.error(
+          'Unauthorized Domain! You must add this Vercel domain to the "Authorized domains" list in Firebase Console > Authentication > Settings.',
+          { duration: 10000 }
+        );
+      } else if (errorCode === 'auth/popup-blocked' || errorMessage.toLowerCase().includes('popup-blocked') || errorMessage.toLowerCase().includes('popup blocked')) {
+        toast.error('Sign-in popup was blocked. Please enable popups in your browser or try again.');
+      } else if (errorCode === 'auth/operation-not-allowed') {
+        toast.error('Google Sign-In is not enabled. Go to Firebase Console > Authentication > Sign-in method and enable Google provider.');
+      } else {
+        toast.error(errorMessage || 'Failed to login. Please try again.');
+      }
     }
   };
 

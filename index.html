@@ -4,6 +4,37 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Latets-school-management</title>
+    <script>
+      // Suppress benign Vite dev environment WebSocket connection failures
+      window.addEventListener('unhandledrejection', function(event) {
+        const reason = event.reason;
+        if (reason) {
+          const reasonStr = String(reason);
+          const reasonMsg = reason.message || '';
+          if (
+            /websocket/i.test(reasonStr) || 
+            /websocket/i.test(reasonMsg) ||
+            reasonStr.includes('WebSocket') ||
+            reasonMsg.includes('WebSocket')
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      }, true);
+
+      window.addEventListener('error', function(event) {
+        const message = event.message || '';
+        if (
+          /websocket/i.test(message) || 
+          message.includes('WebSocket') || 
+          message.includes('failed to connect')
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
   </head>
   <body>
     <div id="root"></div>
